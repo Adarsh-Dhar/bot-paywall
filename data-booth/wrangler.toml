@@ -1,9 +1,9 @@
-name = "databooth"
+name = "bot-tollbooth"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
 [[d1_databases]]
-binding = "databooth_db"
-database_name = "databooth-db"
+binding = "DB"
+database_name = "tollbooth-db"
 database_id = "8052f3d9-f4eb-4538-8e40-6153437ce35e"

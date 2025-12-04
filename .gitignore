@@ -1,0 +1,262 @@
+# Ignore files and folders for data-booth
+
+# Dependencies
+data-booth/node_modules/
+data-booth/.pnp
+data-booth/.pnp.js
+
+# Testing
+data-booth/coverage/
+data-booth/.nyc_output/
+
+# Next.js (or build output)
+data-booth/.next/
+data-booth/out/
+data-booth/build/
+data-booth/dist/
+
+# Production logs
+data-booth/*.log
+data-booth/*.log.*
+
+# Miscellaneous
+data-booth/.DS_Store
+data-booth/*.pem
+
+# Debug logs
+data-booth/npm-debug.log*
+data-booth/yarn-debug.log*
+data-booth/yarn-error.log*
+data-booth/pnpm-debug.log*
+data-booth/lerna-debug.log*
+
+# Local env files
+data-booth/.env
+data-booth/.env*.local
+data-booth/.env.development.local
+data-booth/.env.test.local
+data-booth/.env.production.local
+
+# Vercel
+data-booth/.vercel
+
+# TypeScript cache
+data-booth/*.tsbuildinfo
+data-booth/next-env.d.ts
+
+# IDE / Editor folders and swap files
+data-booth/.idea/
+data-booth/.vscode/
+data-booth/*.swp
+data-booth/*.swo
+data-booth/*~
+data-booth/.project
+data-booth/.classpath
+data-booth/.settings/
+data-booth/*.sublime-project
+data-booth/*.sublime-workspace
+
+# OS generated files
+data-booth/.DS_Store
+data-booth/.DS_Store?
+data-booth/._*
+data-booth/.Spotlight-V100
+data-booth/.Trashes
+data-booth/ehthumbs.db
+data-booth/Thumbs.db
+data-booth/Desktop.ini
+
+# Package manager
+data-booth/.pnpm-store/
+data-booth/pnpm-lock.yaml
+# Note: You might want to keep pnpm-lock.yaml for consistency
+# Remove the line above if you want to commit it
+
+# Temporary files
+data-booth/*.tmp
+data-booth/*.temp
+data-booth/.cache/
+data-booth/.turbo/
+
+# Storybook
+data-booth/storybook-static/
+
+# Optional: Keep if you want to ignore these
+# data-booth/.eslintcache
+# data-booth/.stylelintcache
+
+
+# Ignore files and folders for test-cloudflare-website
+
+# Dependencies
+test-cloudflare-website/node_modules/
+test-cloudflare-website/.pnp
+test-cloudflare-website/.pnp.js
+
+# Testing
+test-cloudflare-website/coverage/
+test-cloudflare-website/.nyc_output/
+
+# Next.js (or build output)
+test-cloudflare-website/.next/
+test-cloudflare-website/out/
+test-cloudflare-website/build/
+test-cloudflare-website/dist/
+
+# Production logs
+test-cloudflare-website/*.log
+test-cloudflare-website/*.log.*
+
+# Miscellaneous
+test-cloudflare-website/.DS_Store
+test-cloudflare-website/*.pem
+
+# Debug logs
+test-cloudflare-website/npm-debug.log*
+test-cloudflare-website/yarn-debug.log*
+test-cloudflare-website/yarn-error.log*
+test-cloudflare-website/pnpm-debug.log*
+test-cloudflare-website/lerna-debug.log*
+
+# Local env files
+test-cloudflare-website/.env
+test-cloudflare-website/.env*.local
+test-cloudflare-website/.env.development.local
+test-cloudflare-website/.env.test.local
+test-cloudflare-website/.env.production.local
+
+# Vercel
+test-cloudflare-website/.vercel
+
+# TypeScript cache
+test-cloudflare-website/*.tsbuildinfo
+test-cloudflare-website/next-env.d.ts
+
+# IDE / Editor folders and swap files
+test-cloudflare-website/.idea/
+test-cloudflare-website/.vscode/
+test-cloudflare-website/*.swp
+test-cloudflare-website/*.swo
+test-cloudflare-website/*~
+test-cloudflare-website/.project
+test-cloudflare-website/.classpath
+test-cloudflare-website/.settings/
+test-cloudflare-website/*.sublime-project
+test-cloudflare-website/*.sublime-workspace
+
+# OS generated files
+test-cloudflare-website/.DS_Store
+test-cloudflare-website/.DS_Store?
+test-cloudflare-website/._*
+test-cloudflare-website/.Spotlight-V100
+test-cloudflare-website/.Trashes
+test-cloudflare-website/ehthumbs.db
+test-cloudflare-website/Thumbs.db
+test-cloudflare-website/Desktop.ini
+
+# Package manager
+test-cloudflare-website/.pnpm-store/
+test-cloudflare-website/pnpm-lock.yaml
+# Note: You might want to keep pnpm-lock.yaml for consistency
+# Remove the line above if you want to commit it
+
+# Temporary files
+test-cloudflare-website/*.tmp
+test-cloudflare-website/*.temp
+test-cloudflare-website/.cache/
+test-cloudflare-website/.turbo/
+
+# Storybook
+test-cloudflare-website/storybook-static/
+
+# Optional: Keep if you want to ignore these
+# test-cloudflare-website/.eslintcache
+# test-cloudflare-website/.stylelintcache
+
+
+# Ignore files and folders for test-paywall-website
+
+# Dependencies
+test-paywall-website/node_modules/
+test-paywall-website/.pnp
+test-paywall-website/.pnp.js
+
+# Testing
+test-paywall-website/coverage/
+test-paywall-website/.nyc_output/
+
+# Next.js (or build output)
+test-paywall-website/.next/
+test-paywall-website/out/
+test-paywall-website/build/
+test-paywall-website/dist/
+
+# Production logs
+test-paywall-website/*.log
+test-paywall-website/*.log.*
+
+# Miscellaneous
+test-paywall-website/.DS_Store
+test-paywall-website/*.pem
+
+# Debug logs
+test-paywall-website/npm-debug.log*
+test-paywall-website/yarn-debug.log*
+test-paywall-website/yarn-error.log*
+test-paywall-website/pnpm-debug.log*
+test-paywall-website/lerna-debug.log*
+
+# Local env files
+test-paywall-website/.env
+test-paywall-website/.env*.local
+test-paywall-website/.env.development.local
+test-paywall-website/.env.test.local
+test-paywall-website/.env.production.local
+
+# Vercel
+test-paywall-website/.vercel
+
+# TypeScript cache
+test-paywall-website/*.tsbuildinfo
+test-paywall-website/next-env.d.ts
+
+# IDE / Editor folders and swap files
+test-paywall-website/.idea/
+test-paywall-website/.vscode/
+test-paywall-website/*.swp
+test-paywall-website/*.swo
+test-paywall-website/*~
+test-paywall-website/.project
+test-paywall-website/.classpath
+test-paywall-website/.settings/
+test-paywall-website/*.sublime-project
+test-paywall-website/*.sublime-workspace
+
+# OS generated files
+test-paywall-website/.DS_Store
+test-paywall-website/.DS_Store?
+test-paywall-website/._*
+test-paywall-website/.Spotlight-V100
+test-paywall-website/.Trashes
+test-paywall-website/ehthumbs.db
+test-paywall-website/Thumbs.db
+test-paywall-website/Desktop.ini
+
+# Package manager
+test-paywall-website/.pnpm-store/
+test-paywall-website/pnpm-lock.yaml
+# Note: You might want to keep pnpm-lock.yaml for consistency
+# Remove the line above if you want to commit it
+
+# Temporary files
+test-paywall-website/*.tmp
+test-paywall-website/*.temp
+test-paywall-website/.cache/
+test-paywall-website/.turbo/
+
+# Storybook
+test-paywall-website/storybook-static/
+
+# Optional: Keep if you want to ignore these
+# test-paywall-website/.eslintcache
+# test-paywall-website/.stylelintcache

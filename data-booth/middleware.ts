@@ -1,78 +1,101 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createPublicClient, http, parseEther } from 'viem';
+import { createPublicClient, http, formatEther } from 'viem';
 
-// 1. Define Movement Network
-const movementBardock = {
+// --- CONFIGURATION ---
+const MOVEMENT_CHAIN = {
   id: 30732,
   name: 'Movement Bardock',
   network: 'movement-bardock',
   nativeCurrency: { name: 'MOVE', symbol: 'MOVE', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://rpc.sentio.xyz/movement/v1'] },
-    public: { http: ['https://rpc.sentio.xyz/movement/v1'] },
+    default: { http: ['https://mevm.testnet.imola.movementlabs.xyz'] },
   },
   testnet: true,
 };
 
+const MERCHANT_WALLET =
+  process.env.NEXT_PUBLIC_MERCHANT_WALLET ?? '0xYOUR_WALLET_ADDRESS_HERE';
+const PRICE_PER_REQUEST = '0.1'; // MOVE price per API call
+
 export async function middleware(req: NextRequest) {
-  // Only protect specific routes
-  if (!req.nextUrl.pathname.startsWith('/api/secret-data')) {
+  const url = req.nextUrl;
+
+  if (!url.pathname.startsWith('/api/premium')) {
     return NextResponse.next();
   }
 
-  // 2. Check for Payment Header
+  // --- STEP 1: BOT DETECTION ---
+  const userAgent = req.headers.get('user-agent') ?? '';
+  const isBot = /bot|crawler|spider|gpt|claude|python|curl/i.test(userAgent);
+
+  if (!isBot) {
+    // return NextResponse.next(); // Uncomment to allow humans for free
+  }
+
+  // --- STEP 2: CHECK FOR PAYMENT ---
   const paymentHeader = req.headers.get('X-Payment');
 
   if (!paymentHeader) {
-    // 402: STOP! Payment Required
-    return new NextResponse(JSON.stringify({ error: "Payment Required" }), {
-      status: 402,
-      headers: {
-        'Content-Type': 'application/json',
-        // Tell the agent WHERE and HOW MUCH to pay
-        'X-Payment-Accepts': JSON.stringify({
-          chainId: 30732,
-          token: 'MOVE',
-          amount: '0.1', // Matches our DB
-          recipient: '0xYOUR_WALLET_ADDRESS_HERE'
-        })
-      }
-    });
+    return new NextResponse(
+      JSON.stringify({
+        error: 'Payment Required. This data is for paying agents only.',
+      }),
+      {
+        status: 402,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Payment-Accepts': JSON.stringify({
+            chain: 'Movement Bardock',
+            chainId: MOVEMENT_CHAIN.id,
+            token: 'MOVE',
+            amount: PRICE_PER_REQUEST,
+            recipient: MERCHANT_WALLET,
+          }),
+        },
+      },
+    );
   }
 
-  // 3. Verify Payment (If header exists)
+  // --- STEP 3: VERIFY PAYMENT ---
   try {
-    const { txHash } = JSON.parse(atob(paymentHeader)); // Decode Base64
+    const decoded = JSON.parse(atob(paymentHeader));
+    const txHash = decoded?.txHash;
+
+    if (!txHash) throw new Error('Missing txHash');
 
     const client = createPublicClient({
-      chain: movementBardock,
-      transport: http()
+      chain: MOVEMENT_CHAIN,
+      transport: http(),
     });
 
-    // Check if transaction exists and is successful on-chain
-    const receipt = await client.getTransactionReceipt({ hash: txHash });
     const tx = await client.getTransaction({ hash: txHash });
+    const receipt = await client.getTransactionReceipt({ hash: txHash });
 
-    if (receipt.status!== 'success') throw new Error("Tx failed");
-    
-    // Security: Validate Recipient & Amount
-    // Note: In production, fetch real price from D1 here. 
-    // For speed in middleware, we hardcode or use KV.
-    const REQUIRED_AMOUNT = parseEther('0.1');
-    if (tx.value < REQUIRED_AMOUNT) throw new Error("Insufficient payment");
+    if (receipt.status !== 'success') throw new Error('Transaction failed');
+    if (tx.to?.toLowerCase() !== MERCHANT_WALLET.toLowerCase()) {
+      throw new Error('Wrong recipient');
+    }
 
-    // 4. Allow Access
-    const res = NextResponse.next();
-    res.headers.set('X-Payment-Status', 'verified');
-    return res;
+    const paidAmount = parseFloat(formatEther(tx.value));
+    if (paidAmount < parseFloat(PRICE_PER_REQUEST)) {
+      throw new Error('Insufficient payment');
+    }
 
-  } catch (err) {
-    console.error(err);
-    return new NextResponse(JSON.stringify({ error: "Invalid Payment Proof" }), { status: 403 });
+    // TODO: Add D1 replay-protection call. For demo we assume uniqueness.
+
+    const response = NextResponse.next();
+    response.headers.set('X-Access-Granted', 'true');
+    return response;
+  } catch (error) {
+    console.error(error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Invalid Payment Proof' }),
+      { status: 403 },
+    );
   }
 }
 
 export const config = {
-  matcher: '/api/secret-data/:path*',
+  matcher: '/api/premium/:path*',
 };

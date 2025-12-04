@@ -260,3 +260,10 @@ test-paywall-website/storybook-static/
 # Optional: Keep if you want to ignore these
 # test-paywall-website/.eslintcache
 # test-paywall-website/.stylelintcache
+
+
+# Ignore files and folders for webscrapper
+
+# Local env files
+webscrapper/.env
+webscrapper/.env*.local

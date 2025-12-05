@@ -1,89 +1,89 @@
-# Ignore files and folders for data-booth
+# Ignore files and folders for main
 
 # Dependencies
-data-booth/node_modules/
-data-booth/.pnp
-data-booth/.pnp.js
+main/node_modules/
+main/.pnp
+main/.pnp.js
 
 # Testing
-data-booth/coverage/
-data-booth/.nyc_output/
+main/coverage/
+main/.nyc_output/
 
 # Next.js (or build output)
-data-booth/.next/
-data-booth/out/
-data-booth/build/
-data-booth/dist/
+main/.next/
+main/out/
+main/build/
+main/dist/
 
 # Production logs
-data-booth/*.log
-data-booth/*.log.*
+main/*.log
+main/*.log.*
 
 # Miscellaneous
-data-booth/.DS_Store
-data-booth/*.pem
+main/.DS_Store
+main/*.pem
 
 # Debug logs
-data-booth/npm-debug.log*
-data-booth/yarn-debug.log*
-data-booth/yarn-error.log*
-data-booth/pnpm-debug.log*
-data-booth/lerna-debug.log*
+main/npm-debug.log*
+main/yarn-debug.log*
+main/yarn-error.log*
+main/pnpm-debug.log*
+main/lerna-debug.log*
 
 # Local env files
-data-booth/.env
-data-booth/.env*.local
-data-booth/.env.development.local
-data-booth/.env.test.local
-data-booth/.env.production.local
+main/.env
+main/.env*.local
+main/.env.development.local
+main/.env.test.local
+main/.env.production.local
 
 # Vercel
-data-booth/.vercel
+main/.vercel
 
 # TypeScript cache
-data-booth/*.tsbuildinfo
-data-booth/next-env.d.ts
+main/*.tsbuildinfo
+main/next-env.d.ts
 
 # IDE / Editor folders and swap files
-data-booth/.idea/
-data-booth/.vscode/
-data-booth/*.swp
-data-booth/*.swo
-data-booth/*~
-data-booth/.project
-data-booth/.classpath
-data-booth/.settings/
-data-booth/*.sublime-project
-data-booth/*.sublime-workspace
+main/.idea/
+main/.vscode/
+main/*.swp
+main/*.swo
+main/*~
+main/.project
+main/.classpath
+main/.settings/
+main/*.sublime-project
+main/*.sublime-workspace
 
 # OS generated files
-data-booth/.DS_Store
-data-booth/.DS_Store?
-data-booth/._*
-data-booth/.Spotlight-V100
-data-booth/.Trashes
-data-booth/ehthumbs.db
-data-booth/Thumbs.db
-data-booth/Desktop.ini
+main/.DS_Store
+main/.DS_Store?
+main/._*
+main/.Spotlight-V100
+main/.Trashes
+main/ehthumbs.db
+main/Thumbs.db
+main/Desktop.ini
 
 # Package manager
-data-booth/.pnpm-store/
-data-booth/pnpm-lock.yaml
+main/.pnpm-store/
+main/pnpm-lock.yaml
 # Note: You might want to keep pnpm-lock.yaml for consistency
 # Remove the line above if you want to commit it
 
 # Temporary files
-data-booth/*.tmp
-data-booth/*.temp
-data-booth/.cache/
-data-booth/.turbo/
+main/*.tmp
+main/*.temp
+main/.cache/
+main/.turbo/
 
 # Storybook
-data-booth/storybook-static/
+main/storybook-static/
 
 # Optional: Keep if you want to ignore these
-# data-booth/.eslintcache
-# data-booth/.stylelintcache
+# main/.eslintcache
+# main/.stylelintcache
 
 
 # Ignore files and folders for test-cloudflare-website

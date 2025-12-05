@@ -39,6 +39,10 @@ pnpm dev
 
 ## Environment Variables
 
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_KEY`): Supabase service key used server-side
+- `CLOUDFLARE_ACCOUNT_ID`: Optional default account id (user-specific stored in DB)
+- `CLOUDFLARE_API_TOKEN`: Optional default token (user-specific stored in DB)
 - `MOVEMENT_RPC_URL`: Movement blockchain RPC endpoint
 - `MOVEMENT_WALLET_ADDRESS`: Wallet address to receive payments
 - `MOVEMENT_COST_IN_MOVE`: Cost per access in MOVE tokens (default: 0.01)

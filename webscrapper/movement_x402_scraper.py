@@ -60,15 +60,13 @@ class MovementX402Scraper:
 
     def get_headers(self, payment_proof: Optional[str] = None) -> Dict[str, str]:
         headers: Dict[str, str] = {
-            "User-Agent": "Movement-x402-Scraper/1.0",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept": "application/json, text/html",
         }
 
         if payment_proof:
-            # Standard x402 approach: the proof is often included in either an
-            # Authorization header or a custom payment header.
+            # Standard x402 approach: the proof is included in the X-Payment-Hash header
             headers["X-Payment-Hash"] = payment_proof
-            headers["Authorization"] = f"Bearer {payment_proof}"
 
         return headers
 
@@ -77,22 +75,28 @@ class MovementX402Scraper:
         Execute a payment on the Movement MEVM chain according to the
         payment_details structure.
 
-        Expected keys:
-          - receiver: destination address (string)
-          - amount_wei: amount to send in wei (int or numeric string)
+        Expected keys (new format from Cloudflare Worker):
+          - payment_address: destination address (string)
+          - price_move: amount to send in MOVE (float or numeric string)
+          - chain_id: chain ID (int, optional)
         """
-        receiver = payment_details.get("receiver")
-        amount_wei_raw = payment_details.get("amount_wei", 0)
+        receiver = payment_details.get("payment_address") or payment_details.get("receiver")
+        price_move = payment_details.get("price_move")
 
         if receiver is None:
-            raise ValueError("Payment details missing 'receiver' address")
+            raise ValueError("Payment details missing 'payment_address' or 'receiver' address")
 
+        if price_move is None:
+            raise ValueError("Payment details missing 'price_move' amount")
+
+        # Convert MOVE to Wei (assuming 18 decimals)
         try:
-            amount_wei = int(amount_wei_raw)
+            price_move_float = float(price_move)
+            amount_wei = int(price_move_float * 1e18)
         except (TypeError, ValueError) as exc:
-            raise ValueError(f"Invalid 'amount_wei' value: {amount_wei_raw}") from exc
+            raise ValueError(f"Invalid 'price_move' value: {price_move}") from exc
 
-        print(f"402 Paywall detected. Sending {amount_wei} wei to {receiver} on Movement...")
+        print(f"💳 Paying {price_move_float} MOVE to {receiver}...")
 
         # Ensure we have a healthy RPC connection before building a tx
         w3 = self._ensure_web3()
@@ -105,7 +109,7 @@ class MovementX402Scraper:
             "nonce": nonce,
             "to": receiver,
             "value": amount_wei,
-            "gas": 200_000,
+            "gas": 21000,  # Standard transfer gas
             "gasPrice": gas_price,
             "chainId": w3.eth.chain_id,
         }
@@ -115,25 +119,32 @@ class MovementX402Scraper:
         tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         tx_hash_hex = w3.to_hex(tx_hash)
 
-        print(f"Payment sent! Hash: {tx_hash_hex}")
+        print(f"⏳ Payment sent ({tx_hash_hex}). Waiting for confirmation...")
 
-        # Wait for confirmation (Movement is fast; wait for 1 block confirmation)
+        # Wait for confirmation (Critical for Cloudflare to see it)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
         status = getattr(receipt, "status", None)
         if status != 1:
             raise RuntimeError(f"Transaction {tx_hash_hex} failed with status {status}")
 
+        print("✅ Confirmed.")
         return tx_hash_hex
 
     def _parse_402_payment_request(self, response: requests.Response) -> Dict[str, Any]:
         """
         Attempt to parse payment instructions from a 402 response.
 
-        By default, we assume a JSON body with at least:
-          { "receiver": "0x...", "price": 100 }
+        Expected format from Cloudflare Worker:
+          {
+            "error": "Payment Required",
+            "message": "Pay 0.01 MOVE to access this resource.",
+            "payment_address": "0x...",
+            "price_move": 0.01,
+            "chain_id": 30732
+          }
 
-        You can customize this to handle WWW-Authenticate headers or
-        other formats as needed.
+        Also supports legacy format:
+          { "receiver": "0x...", "price": 100 } (price in wei)
         """
         # Try JSON body first
         try:
@@ -141,15 +152,31 @@ class MovementX402Scraper:
         except json.JSONDecodeError:
             raise ValueError("402 response did not contain valid JSON for payment details")
 
+        # New format (Cloudflare Worker)
+        payment_address = data.get("payment_address")
+        price_move = data.get("price_move")
+        chain_id = data.get("chain_id")
+
+        if payment_address and price_move is not None:
+            return {
+                "payment_address": payment_address,
+                "price_move": price_move,
+                "chain_id": chain_id,
+            }
+
+        # Legacy format (backward compatibility)
         receiver = data.get("receiver")
         price = data.get("price")
 
-        if receiver is None or price is None:
-            raise ValueError(
-                "402 payment JSON is missing required fields 'receiver' and/or 'price'"
-            )
+        if receiver and price is not None:
+            # Legacy format: price is in wei
+            return {"receiver": receiver, "amount_wei": price}
 
-        return {"receiver": receiver, "amount_wei": price}
+        raise ValueError(
+            "402 payment JSON is missing required fields. "
+            "Expected 'payment_address' and 'price_move' (new format) "
+            "or 'receiver' and 'price' (legacy format)"
+        )
 
     def scrape(self, url: str) -> Optional[str]:
         """
@@ -167,13 +194,14 @@ class MovementX402Scraper:
 
         if response.status_code == 402:
             try:
+                print("⛔️ 402 PAYWALL DETECTED")
                 payment_req = self._parse_402_payment_request(response)
 
                 # Execute payment logic
                 proof = self.pay_for_access(payment_req)
 
                 # 3. Retry with proof
-                print("Retrying with payment proof...")
+                print("🔓 Retrying with Payment Proof...")
                 paid_response = requests.get(
                     url,
                     headers=self.get_headers(payment_proof=proof),
@@ -193,6 +221,13 @@ class MovementX402Scraper:
             except Exception as exc:
                 print(f"Error during payment flow: {exc}")
                 return None
+
+        elif response.status_code == 403:
+            print(
+                "❌ Still getting 403. Check if your Worker is actually deployed "
+                "or if standard WAF is blocking the User-Agent."
+            )
+            return None
 
         print(f"Request failed with status: {response.status_code}")
         return None

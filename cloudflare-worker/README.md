@@ -227,3 +227,4 @@ For issues or questions:
 - Review Movement blockchain transaction status
 - Verify RPC endpoint availability
 
+# bot-paywall-worker

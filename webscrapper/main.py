@@ -7,13 +7,14 @@ import os
 # CONFIGURATION
 # Primary RPC endpoint (with fallback)
 RPC_URLS = [
-    "https://30732.rpc.thirdweb.com",  # Movement Testnet (thirdweb)
-    "https://full.testnet.movementinfra.xyz/v1",  # Movement Testnet (official fallback)
+    "https://30732.rpc.thirdweb.com/196125bedfc9a540d597b407838c22d3",  # Movement Testnet (thirdweb)
+    "https://full.testnet.movementinfra.xyz/v1",  # Movement Testnet (official)
+    "https://aptos.testnet.bardock.movementlabs.xyz/v1",  # Movement Testnet (alternative)
 ]
 TARGET_URL = "https://test-cloudflare-website.adarsh.software/"
 MY_KEY =   "0xafcc93f1f5bf61dadb43da473273a900754b12714243e3aa6124dfee14341871"
 SECRET_HANDSHAKE = "open-sesame-move-2025"  # Secret header to bypass Cloudflare WAF
-MAX_RETRIES = 3
+MAX_RETRIES = 1
 RETRY_DELAY = 2  # seconds
 
 # Validate private key
@@ -39,27 +40,82 @@ class PaywallBreaker:
         print(f"🤖 Bot Wallet: {self.address}")
         self._connect_to_rpc()
     
-    def _connect_to_rpc(self):
-        """Try to connect to RPC endpoints with fallback support."""
+    def _connect_to_rpc(self, skip_url=None):
+        """Try to connect to RPC endpoints with fallback support.
+        
+        Args:
+            skip_url: Optional RPC URL to skip (useful when switching from a failing endpoint)
+        """
         for rpc_url in RPC_URLS:
+            if skip_url and rpc_url == skip_url:
+                continue
             try:
                 print(f"🔌 Attempting to connect to RPC: {rpc_url}")
-                w3 = Web3(Web3.HTTPProvider(rpc_url))
-                # Test connection by getting chain ID
-                chain_id = w3.eth.chain_id
-                if chain_id:
-                    self.w3 = w3
-                    self.rpc_url = rpc_url
-                    print(f"✅ Connected to RPC: {rpc_url} (Chain ID: {chain_id})")
-                    return
+                # Create provider with request timeout
+                provider = Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 10})
+                w3 = Web3(provider)
+                
+                # Test connection by getting chain ID (this makes an actual RPC call)
+                try:
+                    chain_id = w3.eth.chain_id
+                    if chain_id:
+                        self.w3 = w3
+                        self.rpc_url = rpc_url
+                        print(f"✅ Connected to RPC: {rpc_url} (Chain ID: {chain_id})")
+                        return
+                except Exception as chain_error:
+                    # If chain_id fails, try a simpler test - get block number
+                    try:
+                        block_num = w3.eth.block_number
+                        chain_id = 30732  # Movement testnet chain ID
+                        self.w3 = w3
+                        self.rpc_url = rpc_url
+                        print(f"✅ Connected to RPC: {rpc_url} (Chain ID: {chain_id}, Block: {block_num})")
+                        return
+                    except Exception as block_error:
+                        raise chain_error  # Raise the original error
             except Exception as e:
-                print(f"⚠️ Failed to connect to {rpc_url}: {str(e)}")
+                error_msg = str(e)
+                # Truncate long error messages
+                if len(error_msg) > 150:
+                    error_msg = error_msg[:147] + "..."
+                print(f"⚠️ Failed to connect to {rpc_url}: {error_msg}")
                 continue
         
         raise ConnectionError(
-            f"❌ Failed to connect to any RPC endpoint. Tried: {', '.join(RPC_URLS)}\n"
-            "Please check your internet connection or try again later."
+            f"❌ Failed to connect to any RPC endpoint. Tried {len(RPC_URLS)} endpoints:\n" +
+            "\n".join(f"   - {url}" for url in RPC_URLS) +
+            "\n\nPlease check your internet connection or try again later."
         )
+    
+    def _is_rpc_error(self, error):
+        """Check if an error is an RPC endpoint error."""
+        error_str = str(error)
+        return ("-32603" in error_str or 
+                "not able to process" in error_str.lower() or 
+                "'code': -32603" in error_str or
+                "RPC" in error_str)
+    
+    def _try_with_fallback_rpc(self, func, *args, **kwargs):
+        """Try to execute a function, and if it fails with RPC error, switch to fallback RPC and retry once."""
+        try:
+            return func(*args, **kwargs)
+        except (ValueError, Exception) as e:
+            if self._is_rpc_error(e):
+                # Current RPC is failing, try to switch to a fallback
+                old_rpc = self.rpc_url
+                print(f"⚠️ RPC error detected with {old_rpc}, trying fallback endpoint...")
+                try:
+                    self._connect_to_rpc(skip_url=old_rpc)
+                    print(f"✅ Switched to {self.rpc_url}, retrying operation...")
+                    # Retry the operation with new RPC
+                    return func(*args, **kwargs)
+                except Exception as fallback_error:
+                    print(f"❌ Fallback RPC also failed: {str(fallback_error)[:100]}")
+                    raise e  # Raise original error
+            else:
+                # Not an RPC error, re-raise
+                raise
     
     def _retry_rpc_call(self, func_name, *args, **kwargs):
         """Retry an RPC call with exponential backoff.
@@ -137,34 +193,82 @@ class PaywallBreaker:
         receiver = demand['payment_address']
         cost_wei = self.w3.to_wei(cost_move, 'ether')
         
-        print(f"💰 Sending {cost_move} MOVE to {receiver}...")
-        # C. Pay on Blockchain
+        # Check balance before attempting transaction
+        gas_limit = 100000  # Define gas limit upfront
+        print(f"💰 Payment required: {cost_move} MOVE")
         try:
-            # Get nonce with retry logic
-            nonce = self._retry_rpc_call('get_transaction_count', self.address)
-            gas_price = self._retry_rpc_call('gas_price')
+            # Try to get balance with fallback RPC support
+            balance_wei = self._try_with_fallback_rpc(self.w3.eth.get_balance, self.address)
+            balance_move = self.w3.from_wei(balance_wei, 'ether')
+            print(f"💵 Wallet balance: {balance_move} MOVE")
+            
+            # Estimate gas cost
+            gas_price = self._try_with_fallback_rpc(self.w3.eth.gas_price)
+            gas_cost_wei = gas_limit * gas_price
+            gas_cost_move = self.w3.from_wei(gas_cost_wei, 'ether')
+            total_needed_wei = cost_wei + gas_cost_wei
+            total_needed_move = self.w3.from_wei(total_needed_wei, 'ether')
+            
+            print(f"⛽ Estimated gas cost: {gas_cost_move} MOVE")
+            print(f"📊 Total needed: {total_needed_move} MOVE (payment: {cost_move} MOVE + gas: {gas_cost_move} MOVE)")
+            
+            if balance_wei < total_needed_wei:
+                shortage_wei = total_needed_wei - balance_wei
+                shortage_move = self.w3.from_wei(shortage_wei, 'ether')
+                print(f"❌ Insufficient balance!")
+                print(f"   Need: {total_needed_move} MOVE")
+                print(f"   Have: {balance_move} MOVE")
+                print(f"   Short: {shortage_move} MOVE")
+                raise ValueError(f"Insufficient balance. Need {total_needed_move} MOVE, have {balance_move} MOVE")
+        except ValueError as e:
+            error_str = str(e)
+            if "Insufficient balance" in error_str:
+                # Re-raise insufficient balance errors
+                raise
+            # Other ValueError (likely RPC error that fallback couldn't fix)
+            print(f"⚠️ Could not check balance: {error_str[:100]}")
+            print("   Proceeding with transaction attempt anyway...")
+            # Try to get gas price at least
+            try:
+                gas_price = self._try_with_fallback_rpc(self.w3.eth.gas_price)
+                gas_cost_wei = gas_limit * gas_price
+                gas_cost_move = self.w3.from_wei(gas_cost_wei, 'ether')
+                print(f"⛽ Estimated gas cost: {gas_cost_move} MOVE")
+            except Exception:
+                print("   Could not estimate gas cost either. Proceeding...")
+        except Exception as e:
+            error_str = str(e)
+            print(f"⚠️ Could not check balance: {error_str[:100]}")
+            print("   Proceeding with transaction attempt...")
+        
+        print(f"💸 Sending {cost_move} MOVE to {receiver}...")
+        # C. Pay on Blockchain (no retries - try once only, but can switch RPC if needed)
+        try:
+            # Get nonce (will switch RPC if current one fails)
+            nonce = self._try_with_fallback_rpc(self.w3.eth.get_transaction_count, self.address)
+            gas_price = self._try_with_fallback_rpc(self.w3.eth.gas_price)
             
             tx = {
                 'nonce': nonce,
                 'to': receiver,
                 'value': cost_wei,
-                'gas': 100000,
+                'gas': gas_limit,
                 'gasPrice': gas_price,
                 'chainId': 30732
             }
             
             signed = self.w3.eth.account.sign_transaction(tx, MY_KEY)
-            tx_hash = self._retry_rpc_call('send_raw_transaction', signed.raw_transaction)
+            tx_hash = self._try_with_fallback_rpc(self.w3.eth.send_raw_transaction, signed.raw_transaction)
             tx_hex = self.w3.to_hex(tx_hash)
             
             print(f"⏳ Tx sent: {tx_hex}. Waiting for receipt...")
-            self._retry_rpc_call('wait_for_transaction_receipt', tx_hash)
+            self._try_with_fallback_rpc(self.w3.eth.wait_for_transaction_receipt, tx_hash)
             print("✅ Payment confirmed on-chain.")
         except Exception as e:
             print(f"❌ Transaction failed: {str(e)}")
             print("   This could be due to:")
             print("   - Insufficient balance for gas + payment")
-            print("   - RPC endpoint issues (will retry automatically)")
+            print("   - RPC endpoint issues (all endpoints tried)")
             print("   - Network connectivity problems")
             raise
         # D. Retry with Proof AND The Handshake

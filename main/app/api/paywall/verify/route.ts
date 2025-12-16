@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import { transactionSimulator } from "../../../lib/transaction-simulator";
 
 type VerifyRequest = {
   txHash: string;
   receiver: string;
   price: string | number;
 };
-
-const MOVEMENT_RPC = process.env.MOVEMENT_RPC_URL || "https://full.testnet.movementinfra.xyz/v1";
 
 export async function POST(req: Request) {
   try {
@@ -26,31 +25,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ valid: false, reason: "Hash already used" }, { status: 403 });
     }
 
-    const rpcResp = await fetch(MOVEMENT_RPC, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "eth_getTransactionByHash",
-        params: [txHash],
-        id: 1,
-      }),
-    });
+    // Use dummy transaction verification instead of blockchain RPC
+    const validation = transactionSimulator.validateDummyPayment(
+      txHash,
+      priceWei,
+      receiver
+    );
 
-    if (!rpcResp.ok) {
-      return NextResponse.json({ valid: false, reason: "RPC error" }, { status: 502 });
-    }
-
-    const txData = await rpcResp.json();
-    const tx = txData?.result;
-
-    if (
-      !tx ||
-      !tx.to ||
-      tx.to.toLowerCase() !== receiver.toLowerCase() ||
-      BigInt(tx.value) < priceWei
-    ) {
-      return NextResponse.json({ valid: false, reason: "Invalid on-chain data" }, { status: 403 });
+    if (!validation.valid) {
+      return NextResponse.json({ valid: false, reason: validation.reason }, { status: 403 });
     }
 
     await kv.set(replayKey, "used", { ex: 60 * 60 * 24 });

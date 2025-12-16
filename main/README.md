@@ -1,13 +1,14 @@
-# Movement Payment Middleware
+# Movement Payment Middleware (Dummy Transaction Mode)
 
-A Next.js application with middleware that requires bots to pay via Movement blockchain before accessing protected resources.
+A Next.js application with middleware that requires bots to pay via dummy transactions before accessing protected resources. This version operates completely offline without any blockchain dependencies.
 
 ## Features
 
 - **Bot Detection**: Automatically detects bots via User-Agent patterns
-- **Payment Verification**: Verifies Movement blockchain transactions on-chain
+- **Dummy Payment Verification**: Verifies dummy transactions without blockchain network calls
 - **Replay Protection**: Uses Vercel KV to prevent reuse of payment proofs
 - **HTTP 402 Support**: Returns proper Payment Required status for bots
+- **Offline Operation**: No blockchain dependencies or network calls required
 
 ## Setup
 
@@ -30,22 +31,19 @@ pnpm dev
 
 1. **Bot Detection**: Middleware checks User-Agent for patterns like "Python", "Scraper", or "Bot"
 2. **Payment Challenge**: Bots without `X-Payment-Hash` header receive HTTP 402 with payment instructions
-3. **Payment Verification**: When a payment hash is provided:
+3. **Dummy Payment Verification**: When a payment hash is provided:
    - Checks KV store for replay protection
-   - Verifies transaction on Movement blockchain
-   - Validates receiver address and payment amount
+   - Verifies transaction using dummy transaction simulator (no blockchain calls)
+   - Validates receiver address and payment amount against dummy transaction data
    - Marks transaction as used
 4. **Access Grant**: Verified bots receive `X-Bot-Tier: Premium` header
 
 ## Environment Variables
 
-- `SUPABASE_URL`: Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_KEY`): Supabase service key used server-side
-- `CLOUDFLARE_ACCOUNT_ID`: Optional default account id (user-specific stored in DB)
-- `CLOUDFLARE_API_TOKEN`: Optional default token (user-specific stored in DB)
-- `MOVEMENT_RPC_URL`: Movement blockchain RPC endpoint
-- `MOVEMENT_WALLET_ADDRESS`: Wallet address to receive payments
-- `MOVEMENT_COST_IN_MOVE`: Cost per access in MOVE tokens (default: 0.01)
+- `DUMMY_WALLET_ADDRESS`: Dummy wallet address for testing (replaces blockchain wallet)
+- `DUMMY_COST_IN_MOVE`: Cost per access in dummy MOVE tokens (default: 0.01)
+- `DUMMY_TRANSACTION_SEED`: Seed for deterministic dummy transaction generation
+- `DUMMY_SUCCESS_RATE`: Success rate for dummy transaction simulation (0.0 to 1.0)
 - `KV_URL`: Vercel KV connection URL
 - `KV_REST_API_URL`: Vercel KV REST API URL
 - `KV_REST_API_TOKEN`: Vercel KV REST API token

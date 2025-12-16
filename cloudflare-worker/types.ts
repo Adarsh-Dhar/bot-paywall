@@ -3,7 +3,8 @@
 export interface WorkerEnv {
   MY_WALLET: string;
   PRICE_MOVE: string;
-  RPC_URL: string;
+  DUMMY_TRANSACTION_SEED?: string;
+  DUMMY_SUCCESS_RATE?: string;
   PAYWALL_DB: KVNamespace;
 }
 

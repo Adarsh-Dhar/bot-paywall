@@ -1,5 +1,4 @@
 requests
-aptos-sdk
 python-dotenv
 hypothesis
 

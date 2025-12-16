@@ -1,7 +1,7 @@
 // middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verifyPayment } from './lib/movement'
+import { verifyPayment } from './lib/dummy-payment-verification'
 import { kv } from '@vercel/kv'
 
 export async function middleware(req: NextRequest) {
@@ -19,7 +19,7 @@ export async function middleware(req: NextRequest) {
         { 
           error: "Payment Required", 
           message: "Bots must pay 0.01 MOVE to access this resource.",
-          receiver: process.env.MOVEMENT_WALLET_ADDRESS || "",
+          receiver: process.env.DUMMY_WALLET_ADDRESS || "0x1234567890123456789012345678901234567890",
           price: "10000000000000000", // 0.01 MOVE in Wei
           currency: "MOVE"
         },

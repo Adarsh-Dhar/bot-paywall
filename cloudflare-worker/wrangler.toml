@@ -3,11 +3,13 @@ main = "paywall-worker.ts"
 compatibility_date = "2025-12-06"
 account_id = "1ceff0306c65aeb052307de380ea962e"
 
-# Environment variables for the worker
+# Environment variables for dummy transaction worker
 [vars]
-MY_WALLET = "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b"
-PRICE_MOVE = "0.01"
-RPC_URL = "https://mevm.devnet.m1.movementlabs.xyz"
+DUMMY_WALLET_ADDRESS = "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b"
+DUMMY_PRICE_MOVE = "0.01"
+DUMMY_TRANSACTION_SEED = "cloudflare-worker-seed"
+DUMMY_SUCCESS_RATE = "0.9"
+DUMMY_TRANSACTION_LOGGING = "true"
 
 [[kv_namespaces]]
 binding = "PAYWALL_DB"

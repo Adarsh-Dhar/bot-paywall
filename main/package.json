@@ -15,7 +15,7 @@
     "@aptos-labs/ts-sdk": "^1.28.0",
     "@supabase/supabase-js": "^2.46.1",
     "@vercel/kv": "^1.0.1",
-    "next": "16.0.7",
+    "next": "16.0.10",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

@@ -1,5 +1,5 @@
 requests
 python-dotenv
-hypothesis
+beautifulsoup4
 
 

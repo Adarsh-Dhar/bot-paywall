@@ -1,5 +1,5 @@
 name = "paywall-worker"
-main = "paywall-worker.js"
+main = "paywall-worker.ts"
 compatibility_date = "2025-12-06"
 account_id = "1ceff0306c65aeb052307de380ea962e"
 

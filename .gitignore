@@ -267,6 +267,7 @@ test-paywall-website/storybook-static/
 # Local env files
 webscrapper/.env
 webscrapper/.env*.local
+webscrapper/venv
 
 node_modules/
 

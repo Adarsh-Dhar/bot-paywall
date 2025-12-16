@@ -3,23 +3,27 @@ from web3 import Web3
 from eth_account import Account
 import time
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # CONFIGURATION
 # Primary RPC endpoint (with fallback)
 RPC_URLS = [
-    "https://30732.rpc.thirdweb.com/196125bedfc9a540d597b407838c22d3",  # Movement Testnet (thirdweb)
-    "https://full.testnet.movementinfra.xyz/v1",  # Movement Testnet (official)
-    "https://aptos.testnet.bardock.movementlabs.xyz/v1",  # Movement Testnet (alternative)
+    "https://mevm.devnet.m1.movementlabs.xyz",  # Movement EVM devnet (latest)
+    os.getenv("MOVEMENT_RPC_URL", "https://mevm.devnet.m1.movementlabs.xyz"),  # From .env
+    "https://testnet.movementnetwork.xyz/v1",  # Fallback (may not support EVM)
 ]
-TARGET_URL = "https://test-cloudflare-website.adarsh.software/"
-MY_KEY =   "0xafcc93f1f5bf61dadb43da473273a900754b12714243e3aa6124dfee14341871"
+TARGET_URL = os.getenv("TARGET_URL", "https://test-cloudflare-website.adarsh.software/")
+MY_KEY = os.getenv("PRIVATE_KEY")
 SECRET_HANDSHAKE = "open-sesame-move-2025"  # Secret header to bypass Cloudflare WAF
-MAX_RETRIES = 1
-RETRY_DELAY = 2  # seconds
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+RETRY_DELAY = int(os.getenv("REQUEST_DELAY_SECONDS", "2"))  # seconds
 
 # Validate private key
 if not MY_KEY:
-    raise ValueError("❌ MOVEMENT_PRIVATE_KEY environment variable is not set. Please set it with: export MOVEMENT_PRIVATE_KEY=your_MOVEMENT_PRIVATE_KEY_here")
+    raise ValueError("❌ PRIVATE_KEY environment variable is not set. Please check your .env file.")
 
 # Remove 0x prefix if present
 if MY_KEY.startswith("0x"):
@@ -29,7 +33,7 @@ if MY_KEY.startswith("0x"):
 try:
     int(MY_KEY, 16)
 except ValueError:
-    raise ValueError("❌ MOVEMENT_PRIVATE_KEY is not a valid hexadecimal string. It should be 64 hex characters (with or without 0x prefix).")
+    raise ValueError("❌ PRIVATE_KEY is not a valid hexadecimal string. It should be 64 hex characters (with or without 0x prefix).")
 
 class PaywallBreaker:
     def __init__(self):

@@ -1,8 +1,8 @@
 // CLOUDFLARE WORKER CODE (The Gatekeeper)
 // This worker intercepts requests at the edge and checks for payment proofs
 
-const RPC_URL = "https://30732.rpc.thirdweb.com"; // Movement Testnet
-// You can also use: "https://full.testnet.movementinfra.xyz/v1"
+const RPC_URL = "https://mevm.devnet.m1.movementlabs.xyz"; // Movement EVM Devnet
+// Alternative: "https://testnet.movementnetwork.xyz/v1"
 
 // Configuration - These should be set via Cloudflare Worker environment variables
 // For now, they're hardcoded but should be replaced with env vars in production

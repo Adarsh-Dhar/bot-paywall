@@ -269,3 +269,5 @@ webscrapper/.env
 webscrapper/.env*.local
 
 node_modules/
+
+cloudflare-worker/.env

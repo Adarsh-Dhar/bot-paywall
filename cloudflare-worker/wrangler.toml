@@ -7,6 +7,7 @@ account_id = "1ceff0306c65aeb052307de380ea962e"
 [vars]
 ACCESS_PASSWORD = "secret123"
 LOGGING = "true"
+ORIGIN_URL = "https://test-paywall-website.adarsh.software"
 
 [[kv_namespaces]]
 binding = "PAYWALL_DB"

@@ -1,56 +1,75 @@
-'use client'
+/**
+ * ProjectCard Component
+ * Displays a single project with domain name and status badge
+ * Requirements: 6.2, 6.3, 6.4, 6.5
+ */
 
-import Link from 'next/link'
-
-interface Project {
-  id: string
-  user_id: string
-  name: string
-  website_url?: string
-  requests_count: number
-  created_at: string
-  updated_at: string
-}
+import { Project } from '@/types/gatekeeper';
 
 interface ProjectCardProps {
-  project: Project
+  project: Project;
+  onClick: () => void;
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
-  const createdDate = new Date(project.created_at).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+export function ProjectCard({ project, onClick }: ProjectCardProps) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending_ns':
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+            <span className="w-2 h-2 bg-yellow-600 rounded-full mr-2"></span>
+            Pending Nameservers
+          </span>
+        );
+      case 'protected':
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
+            Protected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+            <span className="w-2 h-2 bg-gray-600 rounded-full mr-2"></span>
+            Unknown
+          </span>
+        );
+    }
+  };
 
   return (
-    <Link href={`/dashboard/${project.id}/integrate`}>
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-blue-500 transition cursor-pointer h-full">
-        <h3 className="text-xl font-semibold text-white mb-2">{project.name}</h3>
-
-        {project.website_url && (
-          <p className="text-slate-400 text-sm mb-4 truncate">
-            <span className="text-slate-500">Website: </span>
-            {project.website_url}
+    <div
+      onClick={onClick}
+      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer p-6 border border-slate-200 hover:border-blue-300"
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-slate-900 truncate">{project.name}</h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Created {new Date(project.created_at).toLocaleDateString()}
           </p>
-        )}
-
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-400 text-sm">Requests</span>
-            <span className="text-white font-semibold">{project.requests_count.toLocaleString()}</span>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-slate-400 text-sm">Created</span>
-            <span className="text-white text-sm">{createdDate}</span>
-          </div>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-slate-700">
-          <p className="text-blue-400 text-sm font-medium hover:text-blue-300">View Integration →</p>
         </div>
       </div>
-    </Link>
-  )
+
+      <div className="flex items-center justify-between">
+        <div>{getStatusBadge(project.status)}</div>
+        <div className="text-slate-400">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
 }

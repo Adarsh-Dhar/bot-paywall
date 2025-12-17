@@ -1,124 +1,99 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { getProjects, incrementUsage } from '@/app/actions/dashboard'
-import ProjectCard from '@/app/dashboard/components/ProjectCard'
-import CreateProjectModal from '@/app/dashboard/components/CreateProjectModal'
+/**
+ * Dashboard Page
+ * Displays all user projects in a grid layout
+ * Requirements: 6.1, 6.2
+ */
 
-interface Project {
-  id: string
-  user_id: string
-  name: string
-  website_url?: string
-  requests_count: number
-  created_at: string
-  updated_at: string
-}
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getProjectsByUser } from '@/app/actions/gatekeeper';
+import { Project } from '@/types/gatekeeper';
+import { CreateProjectModal } from './components/CreateProjectModal';
+import { ProjectCard } from './components/ProjectCard';
 
 export default function DashboardPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchProjects()
-  }, [])
+    loadProjects();
+  }, []);
 
-  async function fetchProjects() {
+  async function loadProjects() {
     try {
-      setLoading(true)
-      setError(null)
-      const result = await getProjects()
-
-      if (!result.success) {
-        setError(result.error || 'Failed to fetch projects')
-        return
-      }
-
-      setProjects(result.data || [])
-
-      // Increment usage for each project to simulate traffic
-      if (result.data && result.data.length > 0) {
-        for (const project of result.data) {
-          await incrementUsage(project.id)
-        }
-        // Refresh projects after incrementing usage
-        const refreshResult = await getProjects()
-        if (refreshResult.success) {
-          setProjects(refreshResult.data || [])
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching projects:', err)
-      setError('An error occurred while fetching projects')
+      setLoading(true);
+      const data = await getProjectsByUser();
+      setProjects(data);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  const handleProjectCreated = () => {
-    setShowCreateModal(false)
-    fetchProjects()
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-12 bg-slate-700 rounded w-1/3"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-64 bg-slate-700 rounded"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+  function handleProjectCreated() {
+    setIsModalOpen(false);
+    loadProjects();
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-white">Projects</h1>
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900">Gatekeeper</h1>
+            <p className="text-slate-600 mt-2">Manage your protected domains</p>
+          </div>
           <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition"
+            onClick={() => setIsModalOpen(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            Create Project
+            + Add New Domain
           </button>
         </div>
 
-        {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-6">
-            {error}
+        {/* Projects Grid */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-slate-600">Loading projects...</div>
           </div>
-        )}
-
-        {projects.length === 0 ? (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-12 text-center">
-            <h2 className="text-2xl font-semibold text-white mb-4">No projects yet</h2>
-            <p className="text-slate-400 mb-6">Create your first project to get started</p>
+        ) : projects.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">No projects yet</h2>
+            <p className="text-slate-600 mb-6">
+              Get started by adding your first domain to protect it with Gatekeeper.
+            </p>
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition"
+              onClick={() => setIsModalOpen(true)}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Create Project
+              Add Your First Domain
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onClick={() => router.push(`/dashboard/${project.id}`)}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onSuccess={handleProjectCreated} />}
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleProjectCreated}
+      />
     </div>
-  )
+  );
 }

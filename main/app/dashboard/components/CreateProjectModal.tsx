@@ -1,151 +1,129 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { createProject } from '@/app/actions/dashboard'
+/**
+ * CreateProjectModal Component
+ * Modal for registering a new domain
+ * Requirements: 1.1, 1.2
+ */
+
+import { useState } from 'react';
+import { registerDomain } from '@/app/actions/gatekeeper';
 
 interface CreateProjectModalProps {
-  onClose: () => void
-  onSuccess: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
 }
 
-export default function CreateProjectModal({ onClose, onSuccess }: CreateProjectModalProps) {
-  const [name, setName] = useState('')
-  const [website_url, setWebsiteUrl] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [apiKey, setApiKey] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProjectModalProps) {
+  const [domain, setDomain] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isValidDomain = (value: string): boolean => {
+    const domainRegex = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+    return domainRegex.test(value);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setError(null);
+
+    if (!domain.trim()) {
+      setError('Please enter a domain name');
+      return;
+    }
+
+    if (!isValidDomain(domain)) {
+      setError('Please enter a valid domain name (e.g., example.com)');
+      return;
+    }
 
     try {
-      const formData = new FormData()
-      formData.append('name', name)
-      if (website_url) {
-        formData.append('website_url', website_url)
-      }
-
-      const result = await createProject(formData)
+      setLoading(true);
+      const result = await registerDomain(domain);
 
       if (!result.success) {
-        setError(result.error || 'Failed to create project')
-        return
+        setError(result.error || 'Failed to register domain');
+        return;
       }
 
-      // Show API key
-      setApiKey(result.apiKey || null)
-      setName('')
-      setWebsiteUrl('')
+      setDomain('');
+      onSuccess();
     } catch (err) {
-      console.error('Error creating project:', err)
-      setError('An error occurred while creating the project')
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  function handleCopyApiKey() {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  function handleAcknowledge() {
-    setApiKey(null)
-    setCopied(false)
-    onSuccess()
-  }
-
-  if (apiKey) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 max-w-md w-full">
-          <h2 className="text-2xl font-bold text-white mb-4">API Key Created</h2>
-
-          <div className="bg-slate-900 border border-slate-700 rounded p-4 mb-6">
-            <p className="text-slate-400 text-sm mb-2">Your API Key (save this securely):</p>
-            <p className="text-white font-mono text-sm break-all">{apiKey}</p>
-          </div>
-
-          <button
-            onClick={handleCopyApiKey}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded mb-3 transition"
-          >
-            {copied ? '✓ Copied!' : 'Copy API Key'}
-          </button>
-
-          <button
-            onClick={handleAcknowledge}
-            disabled={!copied}
-            className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded transition"
-          >
-            I have copied this
-          </button>
-
-          <p className="text-slate-400 text-xs mt-4 text-center">You won't be able to see this key again</p>
-        </div>
-      </div>
-    )
-  }
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-white mb-6">Create Project</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-slate-200">
+          <h2 className="text-xl font-semibold text-slate-900">Add New Domain</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-        {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded mb-4 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">Project Name *</label>
+        {/* Content */}
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-4">
+            <label htmlFor="domain" className="block text-sm font-medium text-slate-900 mb-2">
+              Domain Name
+            </label>
             <input
+              id="domain"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My Project"
-              className="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              required
+              value={domain}
+              onChange={(e) => {
+                setDomain(e.target.value);
+                setError(null);
+              }}
+              placeholder="example.com"
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={loading}
             />
+            <p className="text-xs text-slate-500 mt-1">
+              Enter your domain without www or https://
+            </p>
           </div>
 
-          <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">Website URL (optional)</label>
-            <input
-              type="url"
-              value={website_url}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
-          <div className="flex gap-3 pt-4">
+          {/* Buttons */}
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded transition"
+              disabled={loading}
+              className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded transition"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create'}
+              {loading ? 'Adding...' : 'Add Domain'}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

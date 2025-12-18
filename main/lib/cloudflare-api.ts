@@ -12,14 +12,14 @@ import {
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
 
-function getHeaders(): HeadersInit {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  if (!token) {
-    throw new Error('CLOUDFLARE_API_TOKEN environment variable is not set');
+function getHeaders(token?: string): HeadersInit {
+  const apiToken = token || process.env.CLOUDFLARE_API_TOKEN;
+  if (!apiToken) {
+    throw new Error('Cloudflare API token is required');
   }
 
   return {
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${apiToken}`,
     'Content-Type': 'application/json',
   };
 }
@@ -28,7 +28,8 @@ function getHeaders(): HeadersInit {
  * Create a new Cloudflare zone for a domain
  */
 export async function createCloudflareZone(
-  domain: string
+  domain: string,
+  token?: string
 ): Promise<CloudflareZoneResponse> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   if (!accountId) {
@@ -37,7 +38,7 @@ export async function createCloudflareZone(
 
   const response = await fetch(`${CLOUDFLARE_API_BASE}/zones`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: getHeaders(token),
     body: JSON.stringify({
       name: domain,
       account: { id: accountId },
@@ -61,11 +62,12 @@ export async function createCloudflareZone(
  * Check the status of a Cloudflare zone
  */
 export async function getCloudflareZoneStatus(
-  zoneId: string
+  zoneId: string,
+  token?: string
 ): Promise<CloudflareZoneStatusResponse> {
   const response = await fetch(`${CLOUDFLARE_API_BASE}/zones/${zoneId}`, {
     method: 'GET',
-    headers: getHeaders(),
+    headers: getHeaders(token),
   });
 
   const data = (await response.json()) as CloudflareZoneStatusResponse;
@@ -84,13 +86,14 @@ export async function getCloudflareZoneStatus(
  * Get the ruleset ID for a zone's HTTP request firewall custom phase
  */
 export async function getOrCreateRuleset(
-  zoneId: string
+  zoneId: string,
+  token?: string
 ): Promise<string> {
   const response = await fetch(
     `${CLOUDFLARE_API_BASE}/zones/${zoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`,
     {
       method: 'GET',
-      headers: getHeaders(),
+      headers: getHeaders(token),
     }
   );
 
@@ -116,7 +119,8 @@ export async function getOrCreateRuleset(
 export async function deployWAFRule(
   zoneId: string,
   rulesetId: string,
-  secretKey: string
+  secretKey: string,
+  token?: string
 ): Promise<WAFRulesetResponse> {
   const rule: WAFRule = {
     description: 'Gatekeeper: Smart Bot Block with Backdoor',
@@ -129,7 +133,7 @@ export async function deployWAFRule(
     `${CLOUDFLARE_API_BASE}/zones/${zoneId}/rulesets/${rulesetId}/rules`,
     {
       method: 'POST',
-      headers: getHeaders(),
+      headers: getHeaders(token),
       body: JSON.stringify({
         rules: [rule],
       }),

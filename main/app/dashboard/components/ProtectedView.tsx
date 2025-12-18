@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 import { obscureSecretKey } from '@/lib/secret-key-generator';
 
 interface ProtectedViewProps {
@@ -19,13 +19,13 @@ export function ProtectedView({ project }: ProtectedViewProps) {
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
 
-  const obscuredKey = obscureSecretKey(project.secret_key);
-  const displayKey = showFullKey ? project.secret_key : obscuredKey;
+  const obscuredKey = obscureSecretKey(project.secretKey);
+  const displayKey = showFullKey ? project.secretKey : obscuredKey;
 
-  const curlCommand = `curl -H "x-bot-password: ${project.secret_key}" https://${project.name}/api/data`;
+  const curlCommand = `curl -H "x-bot-password: ${project.secretKey}" https://${project.name}/api/data`;
 
   function copySecretKey() {
-    navigator.clipboard.writeText(project.secret_key);
+    navigator.clipboard.writeText(project.secretKey);
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2000);
   }

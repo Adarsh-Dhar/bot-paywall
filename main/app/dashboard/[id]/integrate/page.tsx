@@ -4,21 +4,12 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getProject } from '@/app/actions/dashboard'
 import CodeBlock from '@/app/dashboard/components/CodeBlock'
-
-interface Project {
-  id: string
-  user_id: string
-  name: string
-  website_url?: string
-  requests_count: number
-  created_at: string
-  updated_at: string
-}
+import { Project } from '@prisma/client'
 
 export default function IntegratePage() {
   const params = useParams()
   const projectId = params.id as string
-  const [project, setProject] = useState<Project | null>(null)
+  const [project, setProject] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

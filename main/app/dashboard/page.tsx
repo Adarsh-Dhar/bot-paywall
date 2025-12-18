@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProjectsByUser } from '@/app/actions/gatekeeper';
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { ProjectCard } from './components/ProjectCard';
 

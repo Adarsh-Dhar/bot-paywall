@@ -4,7 +4,7 @@
  * Requirements: 6.2, 6.3, 6.4, 6.5
  */
 
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 
 interface ProjectCardProps {
   project: Project;
@@ -47,7 +47,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-slate-900 truncate">{project.name}</h3>
           <p className="text-sm text-slate-500 mt-1">
-            Created {new Date(project.created_at).toLocaleDateString()}
+            Created {new Date(project.createdAt).toLocaleDateString()}
           </p>
         </div>
       </div>

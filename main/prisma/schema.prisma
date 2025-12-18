@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  userId    String   @unique  // Simple user ID for testing
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projects           Project[]
+  cloudflareTokens   CloudflareToken[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  userId      String
+  name        String
+  websiteUrl  String?
+  zoneId      String?
+  nameservers String[]
+  status      ProjectStatus @default(PENDING_NS)
+  secretKey   String
+  requestsCount Int         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  user    User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  apiKeys ApiKey[]
+
+  @@map("projects")
+}
+
+model CloudflareToken {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  encryptedToken String
+  accountId      String?
+  tokenName      String?
+  permissions    Json?
+  isActive       Boolean   @default(true)
+  lastVerified   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("cloudflare_tokens")
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  projectId String
+  keyHash   String
+  prefix    String
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+enum ProjectStatus {
+  PENDING_NS
+  ACTIVE
+  PROTECTED
+  ERROR
+}

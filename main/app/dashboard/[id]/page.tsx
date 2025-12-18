@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getProjectById, verifyAndConfigure } from '@/app/actions/gatekeeper';
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 import { PendingNameserversView } from '../components/PendingNameserversView';
 import { ProtectedView } from '../components/ProtectedView';
 
@@ -110,7 +110,7 @@ export default function ProjectSetupPage() {
 
   return (
     <>
-      {project.status === 'pending_ns' && (
+      {project.status === 'PENDING_NS' && (
         <PendingNameserversView
           project={project}
           onVerify={handleVerify}
@@ -118,11 +118,11 @@ export default function ProjectSetupPage() {
         />
       )}
 
-      {project.status === 'protected' && (
+      {project.status === 'PROTECTED' && (
         <ProtectedView project={project} />
       )}
 
-      {error && project.status === 'pending_ns' && (
+      {error && project.status === 'PENDING_NS' && (
         <div className="fixed bottom-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
           <p className="text-sm text-red-700">{error}</p>
         </div>

@@ -1,6 +1,6 @@
 # Gatekeeper Bot Firewall
 
-Intelligent bot detection and domain protection using Cloudflare WAF rules.
+Intelligent bot detection and domain protection using Cloudflare WAF rules with Prisma + PostgreSQL + Docker.
 
 ## Features
 
@@ -9,6 +9,8 @@ Intelligent bot detection and domain protection using Cloudflare WAF rules.
 - 🔑 **Secret Key Authentication** - Protect access with secret keys
 - 📊 **Project Management** - Manage multiple protected domains
 - 🔄 **Automatic Verification** - Auto-detect nameserver updates
+- 🐳 **Docker Setup** - Local PostgreSQL + Redis containers
+- 🔒 **Secure Token Storage** - Encrypted Cloudflare API tokens
 
 ## Quick Start
 
@@ -16,38 +18,47 @@ Intelligent bot detection and domain protection using Cloudflare WAF rules.
 
 - Node.js 18+
 - pnpm
+- Docker & Docker Compose
 - Clerk account (for authentication)
-- Supabase account (for database)
 - Cloudflare account (for domain protection)
 
-### Environment Setup
+### Setup
 
-1. Copy `.env.example` to `.env.local`:
+1. **Clone and install**:
 ```bash
-cp .env.example .env.local
+cd main
+pnpm install
 ```
 
-2. Add your credentials:
+2. **Setup database**:
+```bash
+./scripts/setup.sh
+```
+
+3. **Configure environment**:
+```bash
+cp .env.example .env
+```
+
+Add your credentials:
 ```env
+# Database
+DATABASE_URL="postgresql://gatekeeper_user:gatekeeper_password@localhost:5432/gatekeeper"
+
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
 CLERK_SECRET_KEY=your_clerk_secret
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
 # Cloudflare
 CLOUDFLARE_API_TOKEN=your_cloudflare_token
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
+
+# Token Encryption
+TOKEN_ENCRYPTION_KEY=your_32_byte_hex_key
 ```
 
-### Installation
-
+4. **Start development**:
 ```bash
-cd main
-pnpm install
 pnpm dev
 ```
 
@@ -67,9 +78,11 @@ Visit `http://localhost:3000`
 - `deployWAFRule()` - Deploy bot detection rule
 - `getOrCreateRuleset()` - Manage WAF rulesets
 
-### Database Schema
-- `projects` - Protected domains and their status
-- `api_keys` - API keys for projects (dashboard)
+### Database Schema (Prisma)
+- `User` - User accounts (linked to Clerk)
+- `Project` - Protected domains and their status
+- `CloudflareToken` - Encrypted user API tokens
+- `ApiKey` - API keys for projects (dashboard)
 
 ## Workflow
 
@@ -110,14 +123,43 @@ Action: `managed_challenge` (shows CAPTCHA)
 
 These endpoints are no longer supported. Use Gatekeeper domain protection instead.
 
+## Database Management
+
+```bash
+# Generate Prisma client
+pnpm db:generate
+
+# Push schema changes
+pnpm db:push
+
+# Create migrations
+pnpm db:migrate
+
+# Open database GUI
+pnpm db:studio
+
+# Seed database
+pnpm db:seed
+```
+
+## Docker Management
+
+```bash
+# Start containers
+pnpm docker:up
+
+# Stop containers
+pnpm docker:down
+
+# View logs
+pnpm docker:logs
+```
+
 ## Testing
 
 ```bash
 # Run all tests
 pnpm test
-
-# Run specific test suite
-pnpm test __tests__/integration/supabase-clerk-integration.test.ts
 
 # Run property-based tests
 pnpm test:properties
@@ -127,7 +169,7 @@ pnpm test:properties
 
 ### Production Checklist
 - [ ] All environment variables configured
-- [ ] Supabase database initialized
+- [ ] PostgreSQL database deployed
 - [ ] Cloudflare API token has correct permissions
 - [ ] Clerk production keys configured
 - [ ] Tests passing
@@ -135,6 +177,7 @@ pnpm test:properties
 
 ### Deploy to Vercel
 ```bash
+# Update DATABASE_URL to production PostgreSQL
 vercel deploy
 ```
 
@@ -157,14 +200,19 @@ vercel deploy
 - Check Cloudflare dashboard for errors
 
 ### Sign-in not working
-- Verify Clerk credentials in `.env.local`
+- Verify Clerk credentials in `.env`
 - Check Clerk dashboard for API keys
 - Clear browser cookies and try again
 
+### Database connection issues
+- Ensure Docker containers are running: `pnpm docker:up`
+- Check container logs: `pnpm docker:logs`
+- Verify DATABASE_URL in `.env`
+
 ## Documentation
 
-- [Gatekeeper Setup Guide](./GATEKEEPER_SETUP.md)
-- [Setup Complete](./SETUP_COMPLETE.md)
+- [Prisma Migration Guide](./PRISMA_MIGRATION_COMPLETE.md)
+- [Cloudflare Token Setup](./CLOUDFLARE_TOKEN_SETUP.md)
 
 ## License
 

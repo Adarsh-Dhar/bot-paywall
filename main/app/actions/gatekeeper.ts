@@ -5,19 +5,20 @@
  * Core server-side operations for domain registration and verification
  */
 
-import { auth } from '@clerk/nextjs/server';
-import { supabaseAdmin } from '@/lib/supabase-client';
+import { auth } from '@/lib/mock-auth';
+import { prisma } from '@/lib/prisma';
 import {
   createCloudflareZone,
   getCloudflareZoneStatus,
   getOrCreateRuleset,
   deployWAFRule,
 } from '@/lib/cloudflare-api';
+import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
 import { generateSecretKey } from '@/lib/secret-key-generator';
+import { Project } from '@prisma/client';
 import {
   RegisterDomainResponse,
   VerifyAndConfigureResponse,
-  Project,
 } from '@/types/gatekeeper';
 
 /**
@@ -57,8 +58,17 @@ export async function registerDomain(
     // Generate secret key
     const secretKey = generateSecretKey();
 
+    // Get user's Cloudflare token
+    const userToken = await getUserCloudflareToken();
+    if (!userToken) {
+      return {
+        success: false,
+        error: 'Cloudflare API token not found. Please connect your Cloudflare account first.',
+      };
+    }
+
     // Call Cloudflare API to create zone
-    const cfResponse = await createCloudflareZone(domain);
+    const cfResponse = await createCloudflareZone(domain, userToken);
 
     if (!cfResponse.result) {
       return {
@@ -70,27 +80,27 @@ export async function registerDomain(
     const zoneId = cfResponse.result.id;
     const nameservers = cfResponse.result.nameservers;
 
-    // Insert project record into database
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .insert({
-        user_id: userId,
-        name: domain,
-        zone_id: zoneId,
-        nameservers: nameservers,
-        status: 'pending_ns',
-        secret_key: secretKey,
-      })
-      .select()
-      .single();
+    // Ensure user exists in database
+    await prisma.user.upsert({
+      where: { userId: userId },
+      update: {},
+      create: {
+        userId: userId,
+        email: 'test@example.com',
+      },
+    });
 
-    if (error) {
-      console.error('Database insertion error:', error);
-      return {
-        success: false,
-        error: 'Failed to save project to database',
-      };
-    }
+    // Insert project record into database
+    const project = await prisma.project.create({
+      data: {
+        userId,
+        name: domain,
+        zoneId: zoneId,
+        nameservers: nameservers,
+        status: 'PENDING_NS',
+        secretKey: secretKey,
+      },
+    });
 
     return {
       success: true,
@@ -125,36 +135,38 @@ export async function verifyAndConfigure(
     }
 
     // Fetch project from database
-    const { data: project, error: fetchError } = await supabaseAdmin
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .single();
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: userId,
+      },
+    });
 
-    if (fetchError || !project) {
+    if (!project) {
       return {
         status: 'error',
-        message: 'Project not found',
+        message: 'Project not found or unauthorized',
       };
     }
 
-    // Verify user ownership
-    if (project.user_id !== userId) {
-      return {
-        status: 'error',
-        message: 'Unauthorized: You do not own this project',
-      };
-    }
-
-    if (!project.zone_id) {
+    if (!project.zoneId) {
       return {
         status: 'error',
         message: 'Zone ID not found for this project',
       };
     }
 
+    // Get user's Cloudflare token
+    const userToken = await getUserCloudflareToken();
+    if (!userToken) {
+      return {
+        status: 'error',
+        message: 'Cloudflare API token not found. Please connect your Cloudflare account first.',
+      };
+    }
+
     // Check zone status with Cloudflare
-    const zoneStatus = await getCloudflareZoneStatus(project.zone_id);
+    const zoneStatus = await getCloudflareZoneStatus(project.zoneId, userToken);
 
     if (!zoneStatus.result || zoneStatus.result.status !== 'active') {
       return {
@@ -165,8 +177,8 @@ export async function verifyAndConfigure(
 
     // Zone is active, deploy WAF rule
     try {
-      const rulesetId = await getOrCreateRuleset(project.zone_id);
-      await deployWAFRule(project.zone_id, rulesetId, project.secret_key);
+      const rulesetId = await getOrCreateRuleset(project.zoneId, userToken);
+      await deployWAFRule(project.zoneId, rulesetId, project.secretKey, userToken);
     } catch (wafError) {
       console.error('WAF deployment error:', wafError);
       return {
@@ -176,18 +188,10 @@ export async function verifyAndConfigure(
     }
 
     // Update project status to 'protected'
-    const { error: updateError } = await supabaseAdmin
-      .from('projects')
-      .update({ status: 'protected' })
-      .eq('id', projectId);
-
-    if (updateError) {
-      console.error('Status update error:', updateError);
-      return {
-        status: 'error',
-        message: 'Failed to update project status',
-      };
-    }
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { status: 'PROTECTED' },
+    });
 
     return {
       status: 'success',
@@ -214,18 +218,12 @@ export async function getProjectsByUser(): Promise<Project[]> {
       return [];
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const projects = await prisma.project.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    if (error) {
-      console.error('Error fetching projects:', error);
-      return [];
-    }
-
-    return data || [];
+    return projects;
   } catch (error) {
     console.error('getProjectsByUser error:', error);
     return [];
@@ -243,19 +241,14 @@ export async function getProjectById(projectId: string): Promise<Project | null>
       return null;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .eq('user_id', userId)
-      .single();
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: userId,
+      },
+    });
 
-    if (error || !data) {
-      console.error('Error fetching project:', error);
-      return null;
-    }
-
-    return data;
+    return project;
   } catch (error) {
     console.error('getProjectById error:', error);
     return null;

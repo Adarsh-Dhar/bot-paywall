@@ -1,7 +1,7 @@
 'use server'
 
-import { auth } from '@clerk/nextjs/server'
-import { supabase } from '@/lib/supabase'
+import { auth } from '@/lib/mock-auth'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 /**
@@ -42,24 +42,23 @@ export async function getProjects() {
       }
     }
 
-    const { data, error } = await supabase
-      .from('projects')
-      .select('id, user_id, name, website_url, requests_count, created_at, updated_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching projects:', error)
-      return {
-        success: false,
-        error: 'Failed to fetch projects',
-        statusCode: 500,
-      }
-    }
+    const projects = await prisma.project.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        websiteUrl: true,
+        requestsCount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
     return {
       success: true,
-      data: data || [],
+      data: projects,
       statusCode: 200,
     }
   } catch (error) {
@@ -87,32 +86,33 @@ export async function getProject(projectId: string) {
       }
     }
 
-    const { data, error } = await supabase
-      .from('projects')
-      .select('id, user_id, name, website_url, requests_count, created_at, updated_at')
-      .eq('id', projectId)
-      .eq('user_id', userId)
-      .single()
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: userId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        websiteUrl: true,
+        requestsCount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return {
-          success: false,
-          error: 'Project not found',
-          statusCode: 404,
-        }
-      }
-      console.error('Error fetching project:', error)
+    if (!project) {
       return {
         success: false,
-        error: 'Failed to fetch project',
-        statusCode: 500,
+        error: 'Project not found',
+        statusCode: 404,
       }
     }
 
     return {
       success: true,
-      data,
+      data: project,
       statusCode: 200,
     }
   } catch (error) {
@@ -157,48 +157,43 @@ export async function createProject(formData: FormData) {
     const rawApiKey = generateApiKey()
     const keyHash = await hashApiKey(rawApiKey)
 
-    // Create project
-    const { data: projectData, error: projectError } = await supabase
-      .from('projects')
-      .insert({
-        user_id: userId,
-        name: name.trim(),
-        website_url: website_url?.trim() || null,
-        requests_count: 0,
+    // Ensure user exists in database
+    await prisma.user.upsert({
+      where: { userId: userId },
+      update: {},
+      create: {
+        userId: userId,
+        email: 'test@example.com',
+      },
+    });
+
+    // Create project with API key in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const project = await tx.project.create({
+        data: {
+          userId,
+          name: name.trim(),
+          websiteUrl: website_url?.trim() || null,
+          requestsCount: 0,
+          status: 'PENDING_NS',
+          secretKey: rawApiKey, // Using the API key as secret key for now
+        },
       })
-      .select()
-      .single()
 
-    if (projectError) {
-      console.error('Error creating project:', projectError)
-      return {
-        success: false,
-        error: 'Failed to create project',
-        statusCode: 500,
-      }
-    }
+      await tx.apiKey.create({
+        data: {
+          projectId: project.id,
+          keyHash: keyHash,
+          prefix: 'gk_live_',
+        },
+      })
 
-    // Create API key record
-    const { error: keyError } = await supabase.from('api_keys').insert({
-      project_id: projectData.id,
-      key_hash: keyHash,
-      prefix: 'gk_live_',
+      return project
     })
-
-    if (keyError) {
-      console.error('Error creating API key:', keyError)
-      // Delete the project if key creation fails
-      await supabase.from('projects').delete().eq('id', projectData.id)
-      return {
-        success: false,
-        error: 'Failed to create API key',
-        statusCode: 500,
-      }
-    }
 
     return {
       success: true,
-      projectId: projectData.id,
+      projectId: result.id,
       apiKey: rawApiKey, // Return raw key only once
       statusCode: 201,
     }
@@ -228,15 +223,19 @@ export async function incrementUsage(projectId: string) {
       }
     }
 
-    // Verify user owns the project
-    const { data: project, error: fetchError } = await supabase
-      .from('projects')
-      .select('id, user_id, requests_count')
-      .eq('id', projectId)
-      .eq('user_id', userId)
-      .single()
+    // Verify user owns the project and increment usage
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: userId,
+      },
+      select: {
+        id: true,
+        requestsCount: true,
+      },
+    })
 
-    if (fetchError || !project) {
+    if (!project) {
       return {
         success: false,
         error: 'Unauthorized to access this project',
@@ -246,28 +245,18 @@ export async function incrementUsage(projectId: string) {
 
     // Generate random increment (1-50)
     const increment = Math.floor(Math.random() * 50) + 1
-    const newCount = project.requests_count + increment
+    const newCount = project.requestsCount + increment
 
     // Update requests_count
-    const { data, error } = await supabase
-      .from('projects')
-      .update({ requests_count: newCount })
-      .eq('id', projectId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error incrementing usage:', error)
-      return {
-        success: false,
-        error: 'Failed to increment usage',
-        statusCode: 500,
-      }
-    }
+    const updatedProject = await prisma.project.update({
+      where: { id: projectId },
+      data: { requestsCount: newCount },
+      select: { requestsCount: true },
+    })
 
     return {
       success: true,
-      requests_count: data.requests_count,
+      requests_count: updatedProject.requestsCount,
       statusCode: 200,
     }
   } catch (error) {

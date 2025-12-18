@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 
 interface PendingNameserversViewProps {
   project: Project;

@@ -1,3 +1,8 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import CloudflareConnectionStatus from '@/components/CloudflareConnectionStatus';
+
 const codePreview = String.raw`// Gatekeeper WAF Rule
 const rule = {
   description: "Gatekeeper: Block Bad Bots, Allow VIPs",
@@ -17,6 +22,16 @@ const deploymentLogs: string[] = [];
 const navItems = ["Dashboard", "Domains", "Protection", "Analytics", "Settings"];
 
 export default function Home() {
+  const router = useRouter();
+
+  const handleSignIn = () => {
+    router.push('/sign-in');
+  };
+
+  const handleAddDomain = () => {
+    router.push('/domains/add');
+  };
+
   return (
     <div className="min-h-screen bg-transparent text-zinc-50">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-10">
@@ -59,7 +74,7 @@ export default function Home() {
                 <p className="mt-1 text-zinc-400">
                   Protect your domain with intelligent bot detection in minutes.
                 </p>
-                <button className="mt-4 w-full rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-3 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
+                <button onClick={handleAddDomain} className="mt-4 w-full rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-3 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
                   Get Started
                 </button>
               </div>
@@ -78,7 +93,7 @@ export default function Home() {
               <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
                 Documentation
               </button>
-              <button className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
+              <button onClick={handleAddDomain} className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
                 Add Domain
               </button>
             </div>
@@ -100,20 +115,14 @@ export default function Home() {
                 </span>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <button className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white transition hover:border-[#f5c518]/60 hover:bg-white/10">
+                <button onClick={handleSignIn} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white transition hover:border-[#f5c518]/60 hover:bg-white/10">
                   <div>
                     <p>Sign In with Clerk</p>
                     <p className="text-xs font-normal text-zinc-400">Email or OAuth</p>
                   </div>
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 </button>
-                <button className="flex items-center justify-between rounded-xl border border-[#f5c518]/40 bg-[#f5c518]/15 px-4 py-3 text-left text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518]">
-                  <div>
-                    <p>Connect Cloudflare</p>
-                    <p className="text-xs font-normal text-[#f5c518]/90">API Token</p>
-                  </div>
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                </button>
+                <CloudflareConnectionStatus />
               </div>
             </div>
 
@@ -150,7 +159,7 @@ export default function Home() {
                 <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Protected Domains</p>
                 <h3 className="text-lg font-semibold text-white">Your protected domains</h3>
               </div>
-              <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
+              <button onClick={handleAddDomain} className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
                 + Add Domain
               </button>
             </div>

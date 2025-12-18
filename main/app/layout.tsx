@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Movement Payment Middleware",
-  description: "Bot paywall using Movement blockchain",
+  title: "Gatekeeper Bot Firewall",
+  description: "Protect your domains with intelligent bot detection",
 };
 
 export default function RootLayout({

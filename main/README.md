@@ -1,62 +1,171 @@
-# Movement Payment Middleware (Dummy Transaction Mode)
+# Gatekeeper Bot Firewall
 
-A Next.js application with middleware that requires bots to pay via dummy transactions before accessing protected resources. This version operates completely offline without any blockchain dependencies.
+Intelligent bot detection and domain protection using Cloudflare WAF rules.
 
 ## Features
 
-- **Bot Detection**: Automatically detects bots via User-Agent patterns
-- **Dummy Payment Verification**: Verifies dummy transactions without blockchain network calls
-- **Replay Protection**: Uses Vercel KV to prevent reuse of payment proofs
-- **HTTP 402 Support**: Returns proper Payment Required status for bots
-- **Offline Operation**: No blockchain dependencies or network calls required
+- 🔐 **Domain Registration** - Register domains with Cloudflare
+- 🤖 **Bot Detection** - Intelligent bot detection with WAF rules
+- 🔑 **Secret Key Authentication** - Protect access with secret keys
+- 📊 **Project Management** - Manage multiple protected domains
+- 🔄 **Automatic Verification** - Auto-detect nameserver updates
 
-## Setup
+## Quick Start
 
-1. Install dependencies:
+### Prerequisites
+
+- Node.js 18+
+- pnpm
+- Clerk account (for authentication)
+- Supabase account (for database)
+- Cloudflare account (for domain protection)
+
+### Environment Setup
+
+1. Copy `.env.example` to `.env.local`:
 ```bash
-pnpm install
+cp .env.example .env.local
 ```
 
-2. Configure environment variables:
-   - Copy `.env.example` to `.env` (or use the existing `.env`)
-   - Fill in your Vercel KV credentials from [Vercel Dashboard](https://vercel.com/dashboard/stores)
-   - The Movement wallet address is already configured
+2. Add your credentials:
+```env
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
+CLERK_SECRET_KEY=your_clerk_secret
 
-3. Run the development server:
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Cloudflare
+CLOUDFLARE_API_TOKEN=your_cloudflare_token
+CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
+```
+
+### Installation
+
 ```bash
+cd main
+pnpm install
 pnpm dev
 ```
 
-## How It Works
+Visit `http://localhost:3000`
 
-1. **Bot Detection**: Middleware checks User-Agent for patterns like "Python", "Scraper", or "Bot"
-2. **Payment Challenge**: Bots without `X-Payment-Hash` header receive HTTP 402 with payment instructions
-3. **Dummy Payment Verification**: When a payment hash is provided:
-   - Checks KV store for replay protection
-   - Verifies transaction using dummy transaction simulator (no blockchain calls)
-   - Validates receiver address and payment amount against dummy transaction data
-   - Marks transaction as used
-4. **Access Grant**: Verified bots receive `X-Bot-Tier: Premium` header
+## Architecture
 
-## Environment Variables
+### Server Actions
+- `registerDomain()` - Create Cloudflare zone and save project
+- `verifyAndConfigure()` - Verify nameservers and deploy WAF rule
+- `getProjectsByUser()` - Fetch user's protected domains
+- `getProjectById()` - Get single project details
 
-- `DUMMY_WALLET_ADDRESS`: Dummy wallet address for testing (replaces blockchain wallet)
-- `DUMMY_COST_IN_MOVE`: Cost per access in dummy MOVE tokens (default: 0.01)
-- `DUMMY_TRANSACTION_SEED`: Seed for deterministic dummy transaction generation
-- `DUMMY_SUCCESS_RATE`: Success rate for dummy transaction simulation (0.0 to 1.0)
-- `KV_URL`: Vercel KV connection URL
-- `KV_REST_API_URL`: Vercel KV REST API URL
-- `KV_REST_API_TOKEN`: Vercel KV REST API token
+### Cloudflare Integration
+- `createCloudflareZone()` - Create DNS zone
+- `getCloudflareZoneStatus()` - Check zone activation status
+- `deployWAFRule()` - Deploy bot detection rule
+- `getOrCreateRuleset()` - Manage WAF rulesets
+
+### Database Schema
+- `projects` - Protected domains and their status
+- `api_keys` - API keys for projects (dashboard)
+
+## Workflow
+
+### Phase 1: Domain Registration
+1. User enters domain name
+2. System creates Cloudflare zone
+3. Generates secret key for bot authentication
+4. Saves project to database
+5. Shows nameservers to user
+
+### Phase 2: Nameserver Update
+1. User updates nameservers at registrar
+2. User clicks "Verify Now"
+3. System checks Cloudflare zone status
+4. If active, deploys WAF rule
+5. Updates project status to "protected"
+
+### Phase 3: Protection Active
+- All requests go through Cloudflare
+- WAF rule blocks bots without secret key
+- Legitimate users pass through
+- Requests with correct `x-bot-password` header allowed
+
+## WAF Rule Logic
+
+The deployed rule blocks requests that match ALL of:
+- Looks like a bot (curl, python, bot in user-agent, or Cloudflare bot detection)
+- AND doesn't have the correct secret key in `x-bot-password` header
+- AND is not a verified bot (Google, Bing, etc.)
+
+Action: `managed_challenge` (shows CAPTCHA)
+
+## API Endpoints
+
+### Deprecated Endpoints
+- `POST /api/paywall/deploy` - Returns 410 Gone
+- `POST /api/paywall/verify` - Returns 410 Gone
+
+These endpoints are no longer supported. Use Gatekeeper domain protection instead.
 
 ## Testing
 
-Test with a bot-like User-Agent:
 ```bash
-curl -H "User-Agent: Python/3.9" http://localhost:3000
+# Run all tests
+pnpm test
+
+# Run specific test suite
+pnpm test __tests__/integration/supabase-clerk-integration.test.ts
+
+# Run property-based tests
+pnpm test:properties
 ```
 
-Test with payment proof:
+## Deployment
+
+### Production Checklist
+- [ ] All environment variables configured
+- [ ] Supabase database initialized
+- [ ] Cloudflare API token has correct permissions
+- [ ] Clerk production keys configured
+- [ ] Tests passing
+- [ ] Error handling verified
+
+### Deploy to Vercel
 ```bash
-curl -H "User-Agent: Python/3.9" -H "X-Payment-Hash: 0x..." http://localhost:3000
+vercel deploy
 ```
 
+## Troubleshooting
+
+### Domain registration fails
+- Verify Cloudflare API token is correct
+- Check Cloudflare account ID
+- Ensure token has DNS edit permissions
+- Check domain isn't already in Cloudflare
+
+### Nameserver verification fails
+- Nameserver changes take 5 minutes to 48 hours
+- Verify changes at your registrar
+- Use `nslookup` to check: `nslookup example.com`
+
+### WAF rule deployment fails
+- Zone might not be fully active yet
+- Try again in a few minutes
+- Check Cloudflare dashboard for errors
+
+### Sign-in not working
+- Verify Clerk credentials in `.env.local`
+- Check Clerk dashboard for API keys
+- Clear browser cookies and try again
+
+## Documentation
+
+- [Gatekeeper Setup Guide](./GATEKEEPER_SETUP.md)
+- [Setup Complete](./SETUP_COMPLETE.md)
+
+## License
+
+MIT

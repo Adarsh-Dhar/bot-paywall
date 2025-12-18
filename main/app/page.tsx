@@ -1,64 +1,20 @@
-const codePreview = String.raw`export default {
-  async fetch(request, env) {
-    const PRICE_MOVE = env.PRICE_MOVE || "0.05";
-    const RECEIVER = env.RECEIVER_WALLET;
-    const TARGET_URL = env.TARGET_URL;
-
-    const paymentHash = request.headers.get("X-Payment-Hash");
-    if (!paymentHash) return new Response("Payment required", { status: 402 });
-
-    const isValid = await env.EDGE_GUARD.verify(paymentHash, RECEIVER, PRICE_MOVE);
-    if (!isValid) return new Response("Invalid or replayed", { status: 403 });
-
-    return fetch(TARGET_URL, request);
-  },
+const codePreview = String.raw`// Gatekeeper WAF Rule
+const rule = {
+  description: "Gatekeeper: Block Bad Bots, Allow VIPs",
+  expression: "(cf.client.bot or http.user_agent contains \"curl\" or http.user_agent contains \"python\") and (http.request.headers[\"x-bot-password\"][0] ne \"YOUR_SECRET_KEY\")",
+  action: "managed_challenge",
+  enabled: true
 };`;
 
-const paywalls = [
-  {
-    name: "Blog",
-    url: "blog.movement.dev",
-    price: "0.05 MOVE",
-    status: "Active",
-    lastDeployed: "2h ago",
-  },
-  {
-    name: "Docs",
-    url: "docs.edgeguard.dev",
-    price: "0.01 MOVE",
-    status: "Active",
-    lastDeployed: "Yesterday",
-  },
-  {
-    name: "Dashboard",
-    url: "dash.client.xyz",
-    price: "0.10 MOVE",
-    status: "Paused",
-    lastDeployed: "3d ago",
-  },
-];
+const protectedDomains: Array<{ name: string; status: string; nameservers: string; lastUpdated: string }> = [];
 
-const transactions = [
-  { hash: "0x9f12...ab7c", amount: "1.20 MOVE", time: "2m ago", payer: "0x33a...91c" },
-  { hash: "0x7a45...d002", amount: "0.05 MOVE", time: "12m ago", payer: "0x58b...8aa" },
-  { hash: "0x4b90...12ff", amount: "0.50 MOVE", time: "1h ago", payer: "0x1cc...d31" },
-];
+const botAttempts: Array<{ domain: string; botType: string; time: string; action: string }> = [];
 
-const blockedAttempts = [
-  { source: "blog.movement.dev", reason: "Replay hash", time: "3m ago" },
-  { source: "dash.client.xyz", reason: "Expired proof", time: "19m ago" },
-  { source: "docs.edgeguard.dev", reason: "Mismatched wallet", time: "1h ago" },
-];
+const blockedAttempts: Array<{ source: string; reason: string; time: string }> = [];
 
-const deploymentLogs = [
-  "> Generating script...",
-  "> Authenticating with Cloudflare...",
-  "> Uploading Worker...",
-  "> Binding secrets...",
-  "> Success! Paywall is live.",
-];
+const deploymentLogs: string[] = [];
 
-const navItems = ["Dashboard", "Paywalls", "Wizard", "Analytics", "Settings"];
+const navItems = ["Dashboard", "Domains", "Protection", "Analytics", "Settings"];
 
 export default function Home() {
   return (
@@ -70,11 +26,11 @@ export default function Home() {
             <div className="relative space-y-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#f5c518]/30 bg-[#f5c518]/15 text-lg font-semibold text-[#f5c518]">
-                  EG
+                  GK
                 </div>
                 <div>
-                  <p className="text-sm text-zinc-400">Edge Guard</p>
-                  <p className="text-lg font-semibold">Control Center</p>
+                  <p className="text-sm text-zinc-400">Gatekeeper</p>
+                  <p className="text-lg font-semibold">Bot Firewall</p>
                 </div>
               </div>
               <div className="divider" />
@@ -99,12 +55,12 @@ export default function Home() {
               </nav>
               <div className="divider" />
               <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-zinc-300">
-                <p className="font-semibold text-white">Deploy to Edge</p>
+                <p className="font-semibold text-white">Add Domain</p>
                 <p className="mt-1 text-zinc-400">
-                  Ship a new paywall in under 30 seconds with Cloudflare Workers.
+                  Protect your domain with intelligent bot detection in minutes.
                 </p>
                 <button className="mt-4 w-full rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-3 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
-                  New Deployment
+                  Get Started
                 </button>
               </div>
             </div>
@@ -114,16 +70,16 @@ export default function Home() {
         <main className="flex-1 space-y-8">
           <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm text-zinc-400">Edge Guard · Movement</p>
-              <h1 className="text-3xl font-semibold text-white">Developer Dashboard</h1>
-              <p className="text-sm text-zinc-500">Last synced 2 min ago • All systems normal</p>
+              <p className="text-sm text-zinc-400">Gatekeeper · Bot Firewall</p>
+              <h1 className="text-3xl font-semibold text-white">Protection Dashboard</h1>
+              <p className="text-sm text-zinc-500">All domains protected • 0 threats blocked today</p>
             </div>
             <div className="flex flex-wrap gap-3">
               <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
-                Docs
+                Documentation
               </button>
               <button className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
-                Deploy to Edge
+                Add Domain
               </button>
             </div>
           </header>
@@ -133,10 +89,10 @@ export default function Home() {
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Step 0</p>
-                  <h2 className="mt-2 text-xl font-semibold">Authenticate & Onboard</h2>
+                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Getting Started</p>
+                  <h2 className="mt-2 text-xl font-semibold">Sign In & Setup</h2>
                   <p className="mt-1 text-sm text-zinc-400">
-                    OAuth with Cloudflare and verify payout wallet to start deploying.
+                    Authenticate with Clerk and connect your Cloudflare account.
                   </p>
                 </div>
                 <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-zinc-300">
@@ -146,17 +102,17 @@ export default function Home() {
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <button className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-semibold text-white transition hover:border-[#f5c518]/60 hover:bg-white/10">
                   <div>
-                    <p>Login with Cloudflare</p>
-                    <p className="text-xs font-normal text-zinc-400">OAuth · Worker permissions</p>
+                    <p>Sign In with Clerk</p>
+                    <p className="text-xs font-normal text-zinc-400">Email or OAuth</p>
                   </div>
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 </button>
                 <button className="flex items-center justify-between rounded-xl border border-[#f5c518]/40 bg-[#f5c518]/15 px-4 py-3 text-left text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518]">
                   <div>
-                    <p>Connect Wallet</p>
-                    <p className="text-xs font-normal text-[#f5c518]/90">Metamask / Razor</p>
+                    <p>Connect Cloudflare</p>
+                    <p className="text-xs font-normal text-[#f5c518]/90">API Token</p>
                   </div>
-                  <span className="mono text-xs text-white/70">0x33a...91c</span>
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 </button>
               </div>
             </div>
@@ -165,24 +121,24 @@ export default function Home() {
               <div className="glow" />
               <div className="relative flex items-center justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Stats</p>
-                  <h2 className="mt-2 text-xl font-semibold">Revenue & Unlocks</h2>
-                  <p className="mt-1 text-sm text-zinc-400">LIVE across all deployed paywalls</p>
+                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Protection Stats</p>
+                  <h2 className="mt-2 text-xl font-semibold">Threats & Domains</h2>
+                  <p className="mt-1 text-sm text-zinc-400">Real-time protection metrics</p>
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
-                  MOVE network
+                  Live
                 </div>
               </div>
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-[#121420] p-4 shadow-inner">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Total Revenue</p>
-                  <p className="mt-2 text-3xl font-semibold text-white">143.20 MOVE</p>
-                  <p className="mt-1 text-xs text-emerald-400">+12.4% vs yesterday</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Threats Blocked</p>
+                  <p className="mt-2 text-3xl font-semibold text-white">0</p>
+                  <p className="mt-1 text-xs text-emerald-400">All systems normal</p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-[#121420] p-4 shadow-inner">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Total Unlocks</p>
-                  <p className="mt-2 text-3xl font-semibold text-white">4,218</p>
-                  <p className="mt-1 text-xs text-emerald-400">+182 today</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Protected Domains</p>
+                  <p className="mt-2 text-3xl font-semibold text-white">0</p>
+                  <p className="mt-1 text-xs text-zinc-400">Add your first domain</p>
                 </div>
               </div>
             </div>
@@ -191,85 +147,84 @@ export default function Home() {
           <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 card-surface">
             <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
               <div>
-                <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Active Paywalls</p>
-                <h3 className="text-lg font-semibold text-white">Your deployed workers</h3>
+                <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Protected Domains</p>
+                <h3 className="text-lg font-semibold text-white">Your protected domains</h3>
               </div>
               <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
-                + Create Paywall
+                + Add Domain
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.16em] text-zinc-400">
-                  <tr>
-                    <th className="px-6 py-3 font-medium">Website</th>
-                    <th className="px-6 py-3 font-medium">Target URL</th>
-                    <th className="px-6 py-3 font-medium">Price</th>
-                    <th className="px-6 py-3 font-medium">Status</th>
-                    <th className="px-6 py-3 font-medium">Last Deployed</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {paywalls.map((item) => (
-                    <tr key={item.url} className="hover:bg-white/5">
-                      <td className="px-6 py-4 font-semibold text-white">{item.name}</td>
-                      <td className="px-6 py-4 text-zinc-300">{item.url}</td>
-                      <td className="px-6 py-4 text-zinc-200">{item.price}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            item.status === "Active"
-                              ? "bg-emerald-400/15 text-emerald-300"
-                              : "bg-amber-400/15 text-amber-200"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-zinc-400">{item.lastDeployed}</td>
+            {protectedDomains.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                <p className="text-sm text-zinc-400">No domains added yet</p>
+                <p className="mt-1 text-xs text-zinc-500">Add your first domain to get started with bot protection</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.16em] text-zinc-400">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">Domain</th>
+                      <th className="px-6 py-3 font-medium">Status</th>
+                      <th className="px-6 py-3 font-medium">Nameservers</th>
+                      <th className="px-6 py-3 font-medium">Protection</th>
+                      <th className="px-6 py-3 font-medium">Last Updated</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {protectedDomains.map((item) => (
+                      <tr key={item.name} className="hover:bg-white/5">
+                        <td className="px-6 py-4 font-semibold text-white">{item.name}</td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              item.status === "Protected"
+                                ? "bg-emerald-400/15 text-emerald-300"
+                                : "bg-amber-400/15 text-amber-200"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-zinc-300">{item.nameservers}</td>
+                        <td className="px-6 py-4 text-zinc-200">
+                          {item.status === "Protected" ? "Active" : "Pending"}
+                        </td>
+                        <td className="px-6 py-4 text-zinc-400">{item.lastUpdated}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           <section className="grid gap-5 xl:grid-cols-2" id="wizard">
             <div className="space-y-4">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
-                <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Step 1 · Configuration</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">Wallet, price, target zone</h3>
-                <p className="text-sm text-zinc-400">Auto-fill from wallet connect; zones pulled from Cloudflare.</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Step 1 · Domain Setup</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">Register your domain</h3>
+                <p className="text-sm text-zinc-400">Enter your domain and we'll create a Cloudflare zone.</p>
                 <div className="mt-5 space-y-4">
                   <div>
-                    <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Receiving wallet</label>
-                    <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                      <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                      <p className="mono text-sm text-white">0x33a...91c</p>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-zinc-400">
-                        Connected
-                      </span>
-                    </div>
+                    <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Domain name</label>
+                    <input
+                      type="text"
+                      placeholder="your-domain.com"
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 transition focus:border-[#f5c518]/60 focus:outline-none focus:ring-1 focus:ring-[#f5c518]/40"
+                    />
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-[1fr_140px_140px]">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
                     <div>
-                      <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Target zone</label>
-                      <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white">
-                        <span>blog.mysite.com</span>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-[#f5c518]">Cloudflare</span>
+                      <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Nameserver 1</label>
+                      <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-400">
+                        <span>ns1.cloudflare.com</span>
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Price</label>
-                      <input
-                        defaultValue="0.05"
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none ring-[#f5c518]/40 focus:ring"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Currency</label>
-                      <div className="mt-2 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white">
-                        MOVE
+                      <label className="text-xs uppercase tracking-[0.14em] text-zinc-400">Nameserver 2</label>
+                      <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-400">
+                        <span>ns2.cloudflare.com</span>
                       </div>
                     </div>
                   </div>
@@ -277,12 +232,12 @@ export default function Home() {
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
-                <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Step 2 · Code preview</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">Generated Worker script</h3>
-                <p className="text-sm text-zinc-400">Read-only; variables injected from config and secrets.</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Step 2 · WAF Rule</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">Bot protection rule</h3>
+                <p className="text-sm text-zinc-400">Automatically deployed when nameservers are verified.</p>
                 <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-[#0c0f17]">
                   <div className="flex items-center justify-between border-b border-white/5 px-4 py-2 text-xs text-zinc-400">
-                    <span className="mono text-[#f5c518]">paywall-worker.js</span>
+                    <span className="mono text-[#f5c518]">waf-rule.json</span>
                     <span>syntax • highlighted</span>
                   </div>
                   <pre className="overflow-x-auto bg-gradient-to-br from-[#0c0f17] via-[#0b0d14] to-[#0c0f17] p-4 text-xs leading-6 text-zinc-200">
@@ -302,18 +257,24 @@ export default function Home() {
                 <div className="mt-5 rounded-xl border border-white/10 bg-black/40 p-4 font-mono text-sm text-zinc-200 shadow-inner">
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-xs uppercase tracking-[0.16em] text-zinc-400">Console</span>
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    <span className="h-2 w-2 rounded-full bg-zinc-600" />
                   </div>
-                  <div className="space-y-2">
-                    {deploymentLogs.map((log) => (
-                      <div key={log} className="flex items-start gap-2">
-                        <span className="text-[#f5c518]">$</span>
-                        <span>{log}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {deploymentLogs.length === 0 ? (
+                    <div className="flex items-center justify-center py-6 text-center">
+                      <p className="text-xs text-zinc-500">Logs will appear here after deployment</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {deploymentLogs.map((log) => (
+                        <div key={log} className="flex items-start gap-2">
+                          <span className="text-[#f5c518]">$</span>
+                          <span>{log}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-4 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  <p className="mt-3 text-xs text-emerald-400">Status: Success • Worker live</p>
+                  <p className="mt-3 text-xs text-zinc-400">Status: Ready to deploy</p>
                 </div>
                 <button className="mt-4 w-full rounded-xl border border-[#f5c518]/60 bg-[#f5c518]/20 px-4 py-3 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518]">
                   Deploy to Edge
@@ -323,17 +284,24 @@ export default function Home() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
                 <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Replay monitor</p>
                 <h3 className="mt-2 text-xl font-semibold text-white">Blocked attempts</h3>
-                <div className="mt-4 space-y-3">
-                  {blockedAttempts.map((item) => (
-                    <div key={item.time} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-sm">
-                      <div>
-                        <p className="font-semibold text-white">{item.source}</p>
-                        <p className="text-xs text-zinc-400">{item.reason}</p>
+                {blockedAttempts.length === 0 ? (
+                  <div className="mt-4 flex flex-col items-center justify-center py-8 text-center">
+                    <p className="text-sm text-zinc-400">No blocked attempts</p>
+                    <p className="mt-1 text-xs text-zinc-500">Blocked requests will appear here</p>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {blockedAttempts.map((item) => (
+                      <div key={item.time} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-sm">
+                        <div>
+                          <p className="font-semibold text-white">{item.source}</p>
+                          <p className="text-xs text-zinc-400">{item.reason}</p>
+                        </div>
+                        <span className="text-xs text-zinc-500">{item.time}</span>
                       </div>
-                      <span className="text-xs text-zinc-500">{item.time}</span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -342,37 +310,46 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/5 card-surface">
               <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Transaction Log</p>
-                  <h3 className="text-lg font-semibold text-white">Incoming payments</h3>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Bot Activity</p>
+                  <h3 className="text-lg font-semibold text-white">Recent bot attempts</h3>
                 </div>
                 <button className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
                   Export CSV
                 </button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.16em] text-zinc-400">
-                    <tr>
-                      <th className="px-6 py-3 font-medium">Tx Hash</th>
-                      <th className="px-6 py-3 font-medium">Amount</th>
-                      <th className="px-6 py-3 font-medium">Time</th>
-                      <th className="px-6 py-3 font-medium">Payer</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {transactions.map((tx) => (
-                      <tr key={tx.hash} className="hover:bg-white/5">
-                        <td className="px-6 py-4 font-semibold text-[#f5c518] underline decoration-dotted underline-offset-4">
-                          {tx.hash}
-                        </td>
-                        <td className="px-6 py-4 text-white">{tx.amount}</td>
-                        <td className="px-6 py-4 text-zinc-300">{tx.time}</td>
-                        <td className="px-6 py-4 mono text-sm text-zinc-200">{tx.payer}</td>
+              {botAttempts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                  <p className="text-sm text-zinc-400">No bot activity detected</p>
+                  <p className="mt-1 text-xs text-zinc-500">Bot attempts will appear here once domains are protected</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.16em] text-zinc-400">
+                      <tr>
+                        <th className="px-6 py-3 font-medium">Domain</th>
+                        <th className="px-6 py-3 font-medium">Bot Type</th>
+                        <th className="px-6 py-3 font-medium">Time</th>
+                        <th className="px-6 py-3 font-medium">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {botAttempts.map((attempt) => (
+                        <tr key={attempt.time} className="hover:bg-white/5">
+                          <td className="px-6 py-4 font-semibold text-white">{attempt.domain}</td>
+                          <td className="px-6 py-4 text-zinc-300">{attempt.botType}</td>
+                          <td className="px-6 py-4 text-zinc-400">{attempt.time}</td>
+                          <td className="px-6 py-4">
+                            <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-200">
+                              {attempt.action}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -410,41 +387,26 @@ export default function Home() {
               <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">API Keys</p>
               <h3 className="mt-2 text-xl font-semibold text-white">Programmatic verification</h3>
               <p className="text-sm text-zinc-400">Use keys to verify hashes server-side.</p>
-              <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-3">
-                  <span className="mono text-sm text-zinc-300">sk_live_9f12_xxx</span>
-                  <span className="rounded-full border border-emerald-400/40 bg-emerald-400/15 px-2 py-1 text-[11px] font-semibold text-emerald-300">
-                    Active
-                  </span>
-                  <button className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
-                    Copy
-                  </button>
-                </div>
-                <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
-                  Rotate key
+              <div className="mt-4 flex flex-col items-center justify-center py-8 text-center">
+                <p className="text-sm text-zinc-400">No API keys generated</p>
+                <p className="mt-1 text-xs text-zinc-500">Generate your first API key to get started</p>
+                <button className="mt-4 rounded-lg border border-[#f5c518]/60 bg-[#f5c518]/15 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518]">
+                  Generate Key
                 </button>
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
               <p className="text-xs uppercase tracking-[0.18em] text-[#f5c518]">Billing</p>
-              <h3 className="mt-2 text-xl font-semibold text-white">SaaS plan</h3>
-              <p className="text-sm text-zinc-400">Protect 5 sites · $10/mo • Upgrade anytime.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">Current</p>
-                  <p className="mt-1 text-lg font-semibold text-white">Starter</p>
-                  <p className="text-sm text-zinc-400">5 paywalls</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">Usage</p>
-                  <p className="mt-1 text-lg font-semibold text-white">3 / 5</p>
-                  <p className="text-sm text-emerald-400">On track</p>
-                </div>
+              <h3 className="mt-2 text-xl font-semibold text-white">Subscription</h3>
+              <p className="text-sm text-zinc-400">Manage your billing and plan details.</p>
+              <div className="mt-4 flex flex-col items-center justify-center py-8 text-center">
+                <p className="text-sm text-zinc-400">No active subscription</p>
+                <p className="mt-1 text-xs text-zinc-500">Choose a plan to start protecting your domains</p>
+                <button className="mt-4 rounded-lg border border-[#f5c518]/60 bg-[#f5c518]/15 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518]">
+                  View Plans
+                </button>
               </div>
-              <button className="mt-4 w-full rounded-lg border border-[#f5c518]/60 bg-[#f5c518]/15 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518]">
-                Manage billing
-              </button>
             </div>
           </section>
         </main>

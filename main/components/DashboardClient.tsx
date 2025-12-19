@@ -70,11 +70,14 @@ export default function DashboardClient({
                 {navItems.map((item, idx) => (
                   <div
                     key={item}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
+                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors cursor-pointer ${
                       idx === 0
                         ? "bg-white/10 text-white border border-white/10"
                         : "hover:bg-white/5 text-zinc-300"
                     }`}
+                    onClick={() => {
+                      if (idx === 1) router.push('/domains');
+                    }}
                   >
                     <span>{item}</span>
                     {idx === 0 && (
@@ -109,6 +112,12 @@ export default function DashboardClient({
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <button 
+                onClick={() => router.push('/domains')}
+                className="rounded-lg border border-emerald-400/40 bg-emerald-400/20 px-4 py-2 text-sm font-semibold text-emerald-400 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-400/25"
+              >
+                Manage Domains
+              </button>
               <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
                 Documentation
               </button>

@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import { auth } from '@/lib/mock-auth';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
-import { deployWAFRule, getOrCreateRuleset } from '@/lib/cloudflare-api';
+import { deployWAFRule } from '@/lib/cloudflare-api';
 
 const deploySkipRuleSchema = z.object({
   domain: z.string().min(1, 'Domain is required'),
@@ -61,20 +61,16 @@ export async function deploySkipRule(
       };
     }
 
-    // Get or create ruleset for the zone
-    const rulesetId = await getOrCreateRuleset(validatedInput.zoneId, userToken);
-
-    // Deploy the WAF skip rule
+    // Deploy the WAF skip rule using the direct approach
     const result = await deployWAFRule(
       validatedInput.zoneId,
-      rulesetId,
       validatedInput.secretKey,
       userToken
     );
 
     return {
       success: true,
-      message: `Skip rule deployed successfully for ${validatedInput.domain}. Requests with X-Partner-Key header will bypass bot protection.`,
+      message: `Skip rule deployed successfully for ${validatedInput.domain}. Requests with X-Bot-Auth header will bypass bot protection.`,
       ruleId: result.result?.id,
     };
   } catch (error) {
@@ -114,11 +110,11 @@ export async function testSkipRule(
   try {
     const testUrl = `https://${domain}`;
     
-    // Make a test request with the X-Partner-Key header
+    // Make a test request with the X-Bot-Auth header
     const response = await fetch(testUrl, {
       method: 'HEAD',
       headers: {
-        'X-Partner-Key': secretKey,
+        'X-Bot-Auth': secretKey,
         'User-Agent': 'Gatekeeper-Test-Bot/1.0',
       },
     });
@@ -126,7 +122,7 @@ export async function testSkipRule(
     if (response.ok) {
       return {
         success: true,
-        message: 'Skip rule is working! Request with X-Partner-Key header was allowed through.',
+        message: 'Skip rule is working! Request with X-Bot-Auth header was allowed through.',
       };
     } else {
       return {

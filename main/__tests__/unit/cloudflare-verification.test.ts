@@ -7,7 +7,7 @@ import { verifyProjectStatus } from '@/app/actions/cloudflare-verification';
 import { auth } from '@/lib/mock-auth';
 import { prisma } from '@/lib/prisma';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
-import { getCloudflareZoneStatus, getOrCreateRuleset, deployWAFRule } from '@/lib/cloudflare-api';
+import { getCloudflareZoneStatus, deployWAFRule } from '@/lib/cloudflare-api';
 
 // Mock dependencies
 jest.mock('@/lib/mock-auth');
@@ -25,7 +25,7 @@ jest.mock('@/lib/cloudflare-api');
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockGetUserCloudflareToken = getUserCloudflareToken as jest.MockedFunction<typeof getUserCloudflareToken>;
 const mockGetCloudflareZoneStatus = getCloudflareZoneStatus as jest.MockedFunction<typeof getCloudflareZoneStatus>;
-const mockGetOrCreateRuleset = getOrCreateRuleset as jest.MockedFunction<typeof getOrCreateRuleset>;
+
 const mockDeployWAFRule = deployWAFRule as jest.MockedFunction<typeof deployWAFRule>;
 
 describe('verifyProjectStatus', () => {
@@ -123,14 +123,12 @@ describe('verifyProjectStatus', () => {
         nameservers: ['ns1.cloudflare.com', 'ns2.cloudflare.com'],
       },
     });
-    mockGetOrCreateRuleset.mockResolvedValue('ruleset-123');
     mockDeployWAFRule.mockResolvedValue(undefined);
     (prisma.project.update as jest.Mock).mockResolvedValue(mockProject);
 
     const result = await verifyProjectStatus('project-123');
 
-    expect(mockGetOrCreateRuleset).toHaveBeenCalledWith('zone-123', 'mock-token');
-    expect(mockDeployWAFRule).toHaveBeenCalledWith('zone-123', 'ruleset-123', mockProject.secretKey, 'mock-token');
+    expect(mockDeployWAFRule).toHaveBeenCalledWith('zone-123', mockProject.secretKey, 'mock-token');
     expect(prisma.project.update).toHaveBeenCalledWith({
       where: { id: 'project-123' },
       data: { status: 'PROTECTED' },
@@ -153,7 +151,7 @@ describe('verifyProjectStatus', () => {
         nameservers: ['ns1.cloudflare.com', 'ns2.cloudflare.com'],
       },
     });
-    mockGetOrCreateRuleset.mockRejectedValue(new Error('WAF deployment failed'));
+    mockDeployWAFRule.mockRejectedValue(new Error('WAF deployment failed'));
 
     const result = await verifyProjectStatus('project-123');
 

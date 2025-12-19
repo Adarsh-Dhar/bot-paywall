@@ -14,31 +14,21 @@ RETRY_DELAY = int(os.getenv("RETRY_DELAY", "1"))
 
 
 class WebScraper:
-    def __init__(self, url: str, password: str):
+    def __init__(self, url: str):
         self.url = url
-        self.password = password
         self.session = requests.Session()
         self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-            "X-Access-Password": password
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         })
 
     def fetch(self) -> Optional[str]:
-        """Fetch the webpage with password authentication and retry logic."""
+        """Fetch the webpage with retry logic."""
         for attempt in range(MAX_RETRIES):
             try:
                 print(f"Fetching {self.url} (attempt {attempt + 1}/{MAX_RETRIES})...")
                 response = self.session.get(self.url, timeout=REQUEST_TIMEOUT)
-                
-                if response.status_code == 401:
-                    print("❌ Authentication required. Please provide a password.")
-                    return None
-                elif response.status_code == 403:
-                    print("❌ Access denied. Invalid password.")
-                    return None
-                
                 response.raise_for_status()
-                print(f"✅ Successfully authenticated and fetched: {response.status_code}")
+                print(f"✅ Successfully fetched: {response.status_code}")
                 return response.text
             except requests.RequestException as e:
                 print(f"❌ Error: {e}")
@@ -67,10 +57,7 @@ class WebScraper:
 
 
 if __name__ == "__main__":
-    # Prompt for password
-    password = input("🔐 Enter the access password: ")
-    
-    scraper = WebScraper(TARGET_URL, password)
+    scraper = WebScraper(TARGET_URL)
     data = scraper.scrape()
     
     if data:

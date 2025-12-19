@@ -10,7 +10,6 @@ import { auth } from '@/lib/mock-auth';
 import { prisma } from '@/lib/prisma';
 import {
   getCloudflareZoneStatus,
-  getOrCreateRuleset,
   deployWAFRule,
 } from '@/lib/cloudflare-api';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
@@ -92,19 +91,16 @@ export async function verifyProjectStatus(
     if (zoneStatus.result.status === 'active') {
       // Case B: Status is 'active' - The Trigger - Requirements: 9.4, 9.5
       try {
-        // Step 1: Get ruleset ID
-        const rulesetId = await getOrCreateRuleset(project.zoneId, userToken);
+        // Deploy WAF rule directly using the simplified approach
+        await deployWAFRule(project.zoneId, project.secretKey, userToken);
         
-        // Step 2: Deploy WAF rule with smart backdoor payload
-        await deployWAFRule(project.zoneId, rulesetId, project.secretKey, userToken);
-        
-        // Step 3: Update project status to 'protected'
+        // Update project status to 'protected'
         await prisma.project.update({
           where: { id: projectId },
           data: { status: 'PROTECTED' },
         });
 
-        // Step 4: Return success response
+        // Return success response
         return {
           status: 'PROTECTED',
           message: 'Domain active & Firewall injected.',

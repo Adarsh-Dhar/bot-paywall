@@ -8,7 +8,7 @@ import { verifyProjectStatus } from '@/app/actions/cloudflare-verification';
 import { auth } from '@/lib/mock-auth';
 import { prisma } from '@/lib/prisma';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
-import { getCloudflareZoneStatus, getOrCreateRuleset, deployWAFRule } from '@/lib/cloudflare-api';
+import { getCloudflareZoneStatus, deployWAFRule } from '@/lib/cloudflare-api';
 
 // Mock dependencies
 jest.mock('@/lib/mock-auth');
@@ -26,7 +26,7 @@ jest.mock('@/lib/cloudflare-api');
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockGetUserCloudflareToken = getUserCloudflareToken as jest.MockedFunction<typeof getUserCloudflareToken>;
 const mockGetCloudflareZoneStatus = getCloudflareZoneStatus as jest.MockedFunction<typeof getCloudflareZoneStatus>;
-const mockGetOrCreateRuleset = getOrCreateRuleset as jest.MockedFunction<typeof getOrCreateRuleset>;
+
 const mockDeployWAFRule = deployWAFRule as jest.MockedFunction<typeof deployWAFRule>;
 
 describe('Cloudflare Verification Property Tests', () => {
@@ -72,7 +72,7 @@ describe('Cloudflare Verification Property Tests', () => {
           });
 
           if (zoneStatus === 'active') {
-            mockGetOrCreateRuleset.mockResolvedValue('ruleset-123');
+
             mockDeployWAFRule.mockResolvedValue(undefined);
             (prisma.project.update as jest.Mock).mockResolvedValue(mockProject);
           }
@@ -130,7 +130,7 @@ describe('Cloudflare Verification Property Tests', () => {
               nameservers: ['ns1.cloudflare.com', 'ns2.cloudflare.com'],
             },
           });
-          mockGetOrCreateRuleset.mockResolvedValue('ruleset-123');
+
           mockDeployWAFRule.mockResolvedValue(undefined);
           (prisma.project.update as jest.Mock).mockResolvedValue(mockProject);
 
@@ -146,8 +146,7 @@ describe('Cloudflare Verification Property Tests', () => {
 
           // Verify that Cloudflare API was called with the retrieved data
           expect(mockGetCloudflareZoneStatus).toHaveBeenCalledWith(zoneId, 'mock-token');
-          expect(mockGetOrCreateRuleset).toHaveBeenCalledWith(zoneId, 'mock-token');
-          expect(mockDeployWAFRule).toHaveBeenCalledWith(zoneId, 'ruleset-123', secretKey, 'mock-token');
+          expect(mockDeployWAFRule).toHaveBeenCalledWith(zoneId, secretKey, 'mock-token');
 
           // Should return success when all data is available
           expect(result.status).toBe('PROTECTED');

@@ -83,68 +83,34 @@ export async function getCloudflareZoneStatus(
 }
 
 /**
- * Get the ruleset ID for a zone's HTTP request firewall custom phase
- */
-export async function getOrCreateRuleset(
-  zoneId: string,
-  token?: string
-): Promise<string> {
-  const response = await fetch(
-    `${CLOUDFLARE_API_BASE}/zones/${zoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`,
-    {
-      method: 'GET',
-      headers: getHeaders(token),
-    }
-  );
-
-  const data = (await response.json()) as WAFRulesetResponse;
-
-  if (!response.ok || !data.success) {
-    console.error('Cloudflare ruleset error:', data);
-    throw new Error(
-      data.errors?.[0]?.message || 'Failed to get ruleset'
-    );
-  }
-
-  if (!data.result?.id) {
-    throw new Error('No ruleset ID returned from Cloudflare');
-  }
-
-  return data.result.id;
-}
-
-/**
- * Deploy a WAF skip rule to a zone
+ * Deploy a WAF skip rule to a zone using the direct approach
+ * This matches the curl command format exactly
  */
 export async function deployWAFRule(
   zoneId: string,
-  rulesetId: string,
   secretKey: string,
   token?: string
-): Promise<WAFRulesetResponse> {
-  const rule: WAFSkipRule = {
-    description: 'Gatekeeper: Partner Key Bypass',
-    expression: `(http.request.headers["X-Partner-Key"] eq "${secretKey}")`,
+): Promise<any> {
+  const rule = {
+    description: 'Bypass Bot Fight Mode with Password',
+    expression: `(http.request.headers["X-Bot-Auth"] eq "${secretKey}")`,
     action: 'skip',
     action_parameters: {
-      ruleset: 'current',
-      phases: ['http_request_sbfm', 'http_ratelimit'],
+      phases: ['http_request_sbfm'],
     },
     enabled: true,
   };
 
   const response = await fetch(
-    `${CLOUDFLARE_API_BASE}/zones/${zoneId}/rulesets/${rulesetId}/rules`,
+    `${CLOUDFLARE_API_BASE}/zones/${zoneId}/rulesets/phases/http_request_firewall_custom/rules`,
     {
       method: 'POST',
       headers: getHeaders(token),
-      body: JSON.stringify({
-        rules: [rule],
-      }),
+      body: JSON.stringify(rule),
     }
   );
 
-  const data = (await response.json()) as WAFRulesetResponse;
+  const data = await response.json();
 
   if (!response.ok || !data.success) {
     console.error('Cloudflare WAF skip rule deployment error:', data);

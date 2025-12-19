@@ -8,6 +8,8 @@ account_id = "1ceff0306c65aeb052307de380ea962e"
 ACCESS_PASSWORD = "secret123"
 LOGGING = "true"
 ORIGIN_URL = "https://test-paywall-website.adarsh.software"
+ZONE_ID = "11685346bf13dc3ffebc9cc2866a8105"
+API_TOKEN = "oWN3t2VfMulCIBh7BzrScK87xlKmPRp6a1ttKVsB"
 
 [[kv_namespaces]]
 binding = "PAYWALL_DB"

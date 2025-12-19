@@ -30,7 +30,7 @@ describe('ProjectCard Component', () => {
     const mockOnClick = jest.fn();
     render(<ProjectCard project={mockProject} onClick={mockOnClick} />);
 
-    expect(screen.getByText('Pending Nameservers')).toBeInTheDocument();
+    expect(screen.getByText('⚠ Pending Setup')).toBeInTheDocument();
   });
 
   test('should render protected status badge for protected status', () => {
@@ -38,7 +38,7 @@ describe('ProjectCard Component', () => {
     const protectedProject = { ...mockProject, status: 'protected' as const };
     render(<ProjectCard project={protectedProject} onClick={mockOnClick} />);
 
-    expect(screen.getByText('Protected')).toBeInTheDocument();
+    expect(screen.getByText('✅ Secure & Active')).toBeInTheDocument();
   });
 
   test('should have yellow badge styling for pending_ns', () => {

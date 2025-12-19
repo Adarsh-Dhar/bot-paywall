@@ -33,10 +33,14 @@ export interface CloudflareZoneStatusResponse {
   }>;
 }
 
-export interface WAFRule {
+export interface WAFSkipRule {
   description: string;
   expression: string;
-  action: 'managed_challenge' | 'block' | 'allow';
+  action: 'skip';
+  action_parameters: {
+    ruleset: 'current';
+    phases: string[];
+  };
   enabled: boolean;
 }
 
@@ -44,7 +48,7 @@ export interface WAFRulesetResponse {
   success: boolean;
   result?: {
     id: string;
-    rules: WAFRule[];
+    rules: WAFSkipRule[];
   };
   errors?: Array<{
     code: number;

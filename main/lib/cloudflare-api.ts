@@ -7,7 +7,7 @@ import {
   CloudflareZoneResponse,
   CloudflareZoneStatusResponse,
   WAFRulesetResponse,
-  WAFRule,
+  WAFSkipRule,
 } from '@/types/gatekeeper';
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
@@ -114,7 +114,7 @@ export async function getOrCreateRuleset(
 }
 
 /**
- * Deploy a WAF rule to a zone
+ * Deploy a WAF skip rule to a zone
  */
 export async function deployWAFRule(
   zoneId: string,
@@ -122,10 +122,14 @@ export async function deployWAFRule(
   secretKey: string,
   token?: string
 ): Promise<WAFRulesetResponse> {
-  const rule: WAFRule = {
-    description: 'Gatekeeper: Smart Bot Block with Backdoor',
-    expression: `(cf.client.bot or http.user_agent contains "curl" or http.user_agent contains "python" or http.user_agent contains "bot") and (http.request.headers["x-bot-password"][0] ne "${secretKey}")`,
-    action: 'managed_challenge',
+  const rule: WAFSkipRule = {
+    description: 'Gatekeeper: Partner Key Bypass',
+    expression: `(http.request.headers["X-Partner-Key"] eq "${secretKey}")`,
+    action: 'skip',
+    action_parameters: {
+      ruleset: 'current',
+      phases: ['http_request_sbfm', 'http_ratelimit'],
+    },
     enabled: true,
   };
 
@@ -143,9 +147,9 @@ export async function deployWAFRule(
   const data = (await response.json()) as WAFRulesetResponse;
 
   if (!response.ok || !data.success) {
-    console.error('Cloudflare WAF rule deployment error:', data);
+    console.error('Cloudflare WAF skip rule deployment error:', data);
     throw new Error(
-      data.errors?.[0]?.message || 'Failed to deploy WAF rule'
+      data.errors?.[0]?.message || 'Failed to deploy WAF skip rule'
     );
   }
 

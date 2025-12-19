@@ -5,18 +5,21 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PendingNameserversView } from '@/app/dashboard/components/PendingNameserversView';
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 
 describe('PendingNameserversView Component', () => {
   const mockProject: Project = {
     id: 'project-123',
-    user_id: 'user-123',
+    userId: 'user-123',
     name: 'example.com',
-    zone_id: 'zone-123',
+    websiteUrl: null,
+    zoneId: 'zone-123',
     nameservers: ['ns1.cloudflare.com', 'ns2.cloudflare.com'],
-    status: 'pending_ns',
-    secret_key: 'gk_live_' + 'a'.repeat(32),
-    created_at: '2024-01-01T00:00:00Z',
+    status: 'PENDING_NS',
+    secretKey: 'gk_live_' + 'a'.repeat(32),
+    requestsCount: 0,
+    createdAt: new Date('2024-01-01T00:00:00Z'),
+    updatedAt: new Date('2024-01-01T00:00:00Z'),
   };
 
   const mockOnVerify = jest.fn();
@@ -71,7 +74,7 @@ describe('PendingNameserversView Component', () => {
       />
     );
 
-    expect(screen.getByText('Copy Nameservers')).toBeInTheDocument();
+    expect(screen.getByText('Copy All Nameservers')).toBeInTheDocument();
   });
 
   test('should display instructions', () => {
@@ -98,7 +101,7 @@ describe('PendingNameserversView Component', () => {
       />
     );
 
-    expect(screen.getByText('I have updated them, Verify Now')).toBeInTheDocument();
+    expect(screen.getByText('Verify Setup')).toBeInTheDocument();
   });
 
   test('should call onVerify when verify button is clicked', () => {
@@ -110,7 +113,7 @@ describe('PendingNameserversView Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('I have updated them, Verify Now'));
+    fireEvent.click(screen.getByText('Verify Setup'));
     expect(mockOnVerify).toHaveBeenCalled();
   });
 
@@ -153,7 +156,7 @@ describe('PendingNameserversView Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Copy Nameservers'));
+    fireEvent.click(screen.getByText('Copy All Nameservers'));
 
     expect(mockClipboard.writeText).toHaveBeenCalledWith(
       'ns1.cloudflare.com\nns2.cloudflare.com'
@@ -174,7 +177,7 @@ describe('PendingNameserversView Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Copy Nameservers'));
+    fireEvent.click(screen.getByText('Copy All Nameservers'));
 
     expect(screen.getByText('Copied!')).toBeInTheDocument();
   });

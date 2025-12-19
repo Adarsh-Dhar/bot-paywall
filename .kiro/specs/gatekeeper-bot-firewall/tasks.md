@@ -36,7 +36,7 @@
     - Fetch project from database and verify user ownership
     - Call Cloudflare API to check zone status
     - If zone is not active, return pending status
-    - If zone is active, deploy WAF rule via Cloudflare API
+    - If zone is active, deploy WAF skip rule via Cloudflare API
     - Update project status to 'protected' in database
     - Return success or error response
     - _Requirements: 3.1, 3.3, 3.4, 4.1_
@@ -45,18 +45,18 @@
     - **Feature: gatekeeper-bot-firewall, Property 4: Status Transition Validity**
     - **Validates: Requirements 3.2, 3.3, 3.4**
 
-  - [x] 3.3 Write property test for WAF rule expression correctness (valid password)
-    - **Feature: gatekeeper-bot-firewall, Property 8: WAF Rule Expression Correctness for Valid Password**
-    - **Validates: Requirements 4.4, 8.2, 8.4**
+  - [x] 3.3 Write property test for WAF skip rule expression correctness (valid partner key)
+    - **Feature: gatekeeper-bot-firewall, Property 8: WAF Skip Rule Expression Correctness for Valid Partner Key**
+    - **Validates: Requirements 4.3, 10.2, 10.4**
 
-  - [x] 3.4 Write property test for WAF rule expression correctness (invalid password)
-    - **Feature: gatekeeper-bot-firewall, Property 9: WAF Rule Expression Correctness for Invalid Password**
-    - **Validates: Requirements 4.3, 8.3, 8.5**
+  - [x] 3.4 Write property test for WAF skip rule expression correctness (invalid partner key)
+    - **Feature: gatekeeper-bot-firewall, Property 9: WAF Skip Rule Expression Correctness for Invalid Partner Key**
+    - **Validates: Requirements 4.4, 4.5, 10.3, 10.5**
 
   - [x] 3.5 Write unit tests for verifyAndConfigure
     - Test zone status check
     - Test pending zone handling
-    - Test WAF rule deployment
+    - Test WAF skip rule deployment
     - Test status update
     - Test user authorization
     - _Requirements: 3.1, 3.3, 3.4, 4.1_
@@ -219,8 +219,8 @@
     - **Feature: gatekeeper-bot-firewall, Property 7: Project Data Completeness**
     - **Validates: Requirements 7.1**
 
-  - [x] 10.4 Write property test for WAF rule configuration
-    - **Feature: gatekeeper-bot-firewall, Property 10: Bot Detection Rule Configuration**
+  - [x] 10.4 Write property test for WAF skip rule configuration
+    - **Feature: gatekeeper-bot-firewall, Property 10: Skip Rule Configuration**
     - **Validates: Requirements 4.1, 4.2**
 
   - [x] 10.5 Write property test for database consistency after update
@@ -234,7 +234,7 @@
   - [x] 12.1 Add error handling for Cloudflare API failures
     - Handle zone creation failures
     - Handle zone status check failures
-    - Handle WAF rule deployment failures
+    - Handle WAF skip rule deployment failures
     - Return appropriate error messages to UI
     - _Requirements: 1.5, 3.5_
 
@@ -254,6 +254,7 @@
     - Test Cloudflare API error scenarios
     - Test domain validation errors
     - Test missing environment variables
+    - Test WAF skip rule deployment failures
     - _Requirements: 1.5, 3.5, 1.2_
 
 - [x] 13. Implement middleware and authentication
@@ -290,4 +291,80 @@
     - _Requirements: 1.2, 1.4, 6.1, 3.3, 3.4, 5.1_
 
 - [x] 16. Final Checkpoint - All tests passing
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 17. Create dedicated cloudflare-verification module
+  - [ ] 17.1 Create actions/cloudflare-verification.ts file
+    - Implement verifyProjectStatus function with improved logic flow
+    - Fetch project data including zone_id, api_token (decrypted), and secret_key
+    - Handle Cloudflare zone status cases (pending vs active)
+    - Deploy WAF skip rules with X-Partner-Key validation when zone is active
+    - Return appropriate status messages for each case
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+  - [ ] 17.2 Write property test for verification status response correctness
+    - **Feature: gatekeeper-bot-firewall, Property 16: Verification Status Response Correctness**
+    - **Validates: Requirements 9.3, 9.5**
+
+  - [ ] 17.3 Write property test for verification module data retrieval
+    - **Feature: gatekeeper-bot-firewall, Property 18: Verification Module Data Retrieval**
+    - **Validates: Requirements 9.2**
+
+  - [ ] 17.4 Write unit tests for cloudflare-verification module
+    - Test verifyProjectStatus with pending zone
+    - Test verifyProjectStatus with active zone
+    - Test WAF skip rule deployment logic
+    - Test error handling for API failures
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [ ] 18. Update UI components for improved verification flow
+  - [ ] 18.1 Update ProjectCard component status badges
+    - Change pending_ns badge to show "⚠ Pending Setup"
+    - Change protected badge to show "✅ Secure & Active"
+    - Fix enum value mismatch (PENDING_NS vs pending_ns)
+    - _Requirements: 8.1, 8.2_
+
+  - [ ] 18.2 Update PendingNameserversView component
+    - Add copy icons next to nameservers for easy copying
+    - Change button text from "Verify Now" to "Verify Setup"
+    - Update button to call verifyProjectStatus instead of verifyAndConfigure
+    - Add loading spinner during verification
+    - Add error handling for 401/403 API errors (show "Auth Error")
+    - _Requirements: 8.1, 8.2, 8.3, 8.7_
+
+  - [ ] 18.3 Update ProtectedView component
+    - Add "View Integration Code" button linking to integration page
+    - Hide "Verify" button when status is protected
+    - Add confetti animation on successful verification transition
+    - _Requirements: 8.4, 8.5, 8.6_
+
+  - [ ] 18.4 Write property test for status badge display correctness
+    - **Feature: gatekeeper-bot-firewall, Property 17: Status Badge Display Correctness**
+    - **Validates: Requirements 8.1, 8.2**
+
+  - [ ] 18.5 Write unit tests for updated UI components
+    - Test updated status badge text and styling
+    - Test copy icons functionality
+    - Test "Verify Setup" button behavior
+    - Test loading states and error handling
+    - Test confetti animation trigger
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7_
+
+- [ ] 19. Fix database enum consistency
+  - [ ] 19.1 Update database schema or code to fix enum mismatch
+    - Ensure consistent use of either PENDING_NS/PROTECTED or pending_ns/protected
+    - Update all references throughout codebase
+    - _Requirements: 7.1_
+
+  - [ ] 19.2 Update project setup page routing
+    - Update conditional rendering to use correct enum values
+    - Update verifyProjectStatus integration
+    - _Requirements: 8.2, 8.3_
+
+  - [ ] 19.3 Write unit tests for enum consistency
+    - Test that database values match UI expectations
+    - Test status transitions work correctly
+    - _Requirements: 7.1, 7.4_
+
+- [ ] 20. Checkpoint - Ensure all verification improvements work
   - Ensure all tests pass, ask the user if questions arise.

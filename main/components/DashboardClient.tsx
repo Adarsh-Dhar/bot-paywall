@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import CloudflareConnectionStatus from '@/components/CloudflareConnectionStatus';
+import ZoneStatusDisplay from '@/components/ZoneStatusDisplay';
+import TokenVerificationStatus from '@/components/TokenVerificationStatus';
 
 const codePreview = String.raw`// Gatekeeper WAF Rule
 const rule = {
@@ -43,8 +45,8 @@ export default function DashboardClient({
     router.push('/sign-in');
   };
 
-  const handleAddDomain = () => {
-    router.push('/domains/add');
+  const handleConnectCloudflare = () => {
+    router.push('/connect-cloudflare');
   };
 
   return (
@@ -85,12 +87,12 @@ export default function DashboardClient({
               </nav>
               <div className="divider" />
               <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-zinc-300">
-                <p className="font-semibold text-white">Add Domain</p>
+                <p className="font-semibold text-white">Connect Cloudflare</p>
                 <p className="mt-1 text-zinc-400">
-                  Protect your domain with intelligent bot detection in minutes.
+                  Connect your Cloudflare account to enable bot protection.
                 </p>
-                <button onClick={handleAddDomain} className="mt-4 w-full rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-3 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
-                  Get Started
+                <button onClick={handleConnectCloudflare} className="mt-4 w-full rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-3 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
+                  Connect Now
                 </button>
               </div>
             </div>
@@ -110,8 +112,8 @@ export default function DashboardClient({
               <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
                 Documentation
               </button>
-              <button onClick={handleAddDomain} className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
-                Add Domain
+              <button onClick={handleConnectCloudflare} className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
+                Connect Cloudflare
               </button>
             </div>
           </header>
@@ -172,57 +174,28 @@ export default function DashboardClient({
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 card-surface">
-            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Protected Domains</p>
-                <h3 className="text-lg font-semibold text-white">Your protected domains</h3>
+          <TokenVerificationStatus />
+
+          <section className="grid gap-6 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 card-surface">
+              <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Bot Protection Status</p>
+                  <h3 className="text-lg font-semibold text-white">Gatekeeper is ready</h3>
+                </div>
               </div>
-              <button onClick={handleAddDomain} className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#f5c518]/50 hover:bg-[#f5c518]/15 hover:text-[#f5c518]">
-                + Add Domain
-              </button>
-            </div>
-            {protectedDomains.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-                <p className="text-sm text-zinc-400">No domains added yet</p>
-                <p className="mt-1 text-xs text-zinc-500">Add your first domain to get started with bot protection</p>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-zinc-300 mb-2">Your bot firewall is active and protecting your domains</p>
+                <p className="text-xs text-zinc-500">Gatekeeper automatically detects and challenges suspicious bot traffic</p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-white/5 text-left text-xs uppercase tracking-[0.16em] text-zinc-400">
-                    <tr>
-                      <th className="px-6 py-3 font-medium">Domain</th>
-                      <th className="px-6 py-3 font-medium">Status</th>
-                      <th className="px-6 py-3 font-medium">Nameservers</th>
-                      <th className="px-6 py-3 font-medium">Requests</th>
-                      <th className="px-6 py-3 font-medium">Last Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {protectedDomains.map((domain) => (
-                      <tr key={domain.id} className="hover:bg-white/5">
-                        <td className="px-6 py-4 font-semibold text-white">{domain.name}</td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              domain.status === "Active"
-                                ? "bg-emerald-400/15 text-emerald-300"
-                                : "bg-amber-400/15 text-amber-200"
-                            }`}
-                          >
-                            {domain.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-zinc-300">{domain.nameservers}</td>
-                        <td className="px-6 py-4 text-zinc-200">{domain.requestsCount.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-zinc-400">{domain.lastUpdated}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            </div>
+
+            <ZoneStatusDisplay />
           </section>
         </main>
       </div>

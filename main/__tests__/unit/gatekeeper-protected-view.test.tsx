@@ -5,18 +5,21 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProtectedView } from '@/app/dashboard/components/ProtectedView';
-import { Project } from '@/types/gatekeeper';
+import { Project } from '@prisma/client';
 
 describe('ProtectedView Component', () => {
   const mockProject: Project = {
     id: 'project-123',
-    user_id: 'user-123',
+    userId: 'user-123',
     name: 'example.com',
-    zone_id: 'zone-123',
+    websiteUrl: null,
+    zoneId: 'zone-123',
     nameservers: ['ns1.cloudflare.com', 'ns2.cloudflare.com'],
-    status: 'protected',
-    secret_key: 'gk_live_' + 'a'.repeat(32),
-    created_at: '2024-01-01T00:00:00Z',
+    status: 'PROTECTED',
+    secretKey: 'gk_live_' + 'a'.repeat(32),
+    requestsCount: 0,
+    createdAt: new Date('2024-01-01T00:00:00Z'),
+    updatedAt: new Date('2024-01-01T00:00:00Z'),
   };
 
   beforeEach(() => {
@@ -59,7 +62,7 @@ describe('ProtectedView Component', () => {
 
     fireEvent.click(screen.getByText('Show'));
 
-    expect(screen.getByText(mockProject.secret_key)).toBeInTheDocument();
+    expect(screen.getByText(mockProject.secretKey)).toBeInTheDocument();
     expect(screen.getByText('Hide')).toBeInTheDocument();
   });
 
@@ -89,7 +92,7 @@ describe('ProtectedView Component', () => {
 
     fireEvent.click(screen.getByText('Copy Password'));
 
-    expect(mockClipboard.writeText).toHaveBeenCalledWith(mockProject.secret_key);
+    expect(mockClipboard.writeText).toHaveBeenCalledWith(mockProject.secretKey);
   });
 
   test('should show copied confirmation', () => {
@@ -114,7 +117,7 @@ describe('ProtectedView Component', () => {
   test('should display curl command with correct domain and secret key', () => {
     render(<ProtectedView project={mockProject} />);
 
-    const expectedCommand = `curl -H "x-bot-password: ${mockProject.secret_key}" https://${mockProject.name}/api/data`;
+    const expectedCommand = `curl -H "x-bot-password: ${mockProject.secretKey}" https://${mockProject.name}/api/data`;
     expect(screen.getByText(expectedCommand)).toBeInTheDocument();
   });
 
@@ -135,7 +138,7 @@ describe('ProtectedView Component', () => {
     const copyButtons = screen.getAllByText('Copy Snippet');
     fireEvent.click(copyButtons[0]);
 
-    const expectedCommand = `curl -H "x-bot-password: ${mockProject.secret_key}" https://${mockProject.name}/api/data`;
+    const expectedCommand = `curl -H "x-bot-password: ${mockProject.secretKey}" https://${mockProject.name}/api/data`;
     expect(mockClipboard.writeText).toHaveBeenCalledWith(expectedCommand);
   });
 

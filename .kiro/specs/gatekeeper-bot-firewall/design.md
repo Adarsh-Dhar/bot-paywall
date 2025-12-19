@@ -6,7 +6,7 @@ Gatekeeper is a SaaS dashboard that automates bot protection for user domains th
 
 1. **Domain Registration**: Users register a domain, which triggers automatic Cloudflare zone creation and secret key generation
 2. **Nameserver Verification**: Users update their registrar's nameservers and verify completion through the dashboard
-3. **Protection Activation**: Once verified, the system deploys a custom WAF rule that blocks bots unless they provide the secret password
+3. **Protection Bypass Activation**: Once verified, the system deploys a custom WAF skip rule that allows authorized applications to bypass bot protection using the X-Partner-Key header
 
 The architecture separates concerns into database layer (Supabase), API integration layer (Cloudflare), server actions (Next.js), and UI components (React/Shadcn).
 
@@ -15,7 +15,7 @@ The architecture separates concerns into database layer (Supabase), API integrat
 ### High-Level Flow
 
 ```
-User Registration → Cloudflare Zone Creation → Nameserver Display → Verification → WAF Rule Deployment → Protected Status
+User Registration → Cloudflare Zone Creation → Nameserver Display → Verification → WAF Skip Rule Deployment → Protected Status
 ```
 
 ### Component Layers
@@ -23,7 +23,7 @@ User Registration → Cloudflare Zone Creation → Nameserver Display → Verifi
 1. **Frontend Layer**: React components using Shadcn/UI for dashboard and setup views
 2. **Server Actions Layer**: Next.js server actions for Cloudflare API calls and database operations
 3. **Database Layer**: Supabase PostgreSQL for project persistence
-4. **External API Layer**: Cloudflare API for zone management and WAF rules
+4. **External API Layer**: Cloudflare API for zone management and WAF skip rules
 
 ### Authentication & Authorization
 
@@ -85,7 +85,28 @@ Body: {
 }
 ```
 
-#### Action B: verifyAndConfigure(projectId: string)
+#### Action B: verifyProjectStatus(projectId: string) - New Dedicated Module
+
+**Location:** `actions/cloudflare-verification.ts`
+
+**Input:**
+- projectId: string (UUID)
+
+**Process:**
+1. Fetch project from database including zone_id, encrypted api_token, and secret_key
+2. Verify user ownership
+3. Decrypt user's Cloudflare API token
+4. Call Cloudflare API: GET /zones/{zone_id}
+5. Handle status cases:
+   - Case A: Status is 'pending' → Return { status: 'pending_ns', message: 'Waiting for Nameserver update.' }
+   - Case B: Status is 'active' → Deploy WAF rules and update to 'protected'
+6. For active zones:
+   - Get ruleset ID via POST /zones/{zone_id}/rulesets/phases/http_request_firewall_custom/entrypoint
+   - Deploy WAF rule with smart backdoor payload
+   - Update project status to 'protected'
+   - Return { status: 'protected', message: 'Domain active & Firewall injected.' }
+
+#### Action C: verifyAndConfigure(projectId: string) - Legacy (Deprecated)
 
 **Input:**
 - projectId: string (UUID)
@@ -95,7 +116,7 @@ Body: {
 2. Verify user ownership
 3. Call Cloudflare API: GET /zones/{zone_id}
 4. Check if zone status is "active"
-5. If active, deploy WAF rule via POST /zones/{zone_id}/rulesets
+5. If active, deploy WAF skip rule via POST /zones/{zone_id}/rulesets/phases/http_request_firewall_custom/rules
 6. Update project status to 'protected'
 7. Return success or pending status
 
@@ -116,15 +137,19 @@ GET https://api.cloudflare.com/client/v4/zones/{zone_id}
 Headers: Authorization: Bearer {CLOUDFLARE_API_TOKEN}
 ```
 
-Deploy WAF Rule:
+Deploy WAF Skip Rule:
 ```
-POST https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_firewall_custom/entrypoint
+POST https://api.cloudflare.com/client/v4/zones/{zone_id}/rulesets/phases/http_request_firewall_custom/rules
 Headers: Authorization: Bearer {CLOUDFLARE_API_TOKEN}
 Body: {
   "rules": [{
-    "description": "Gatekeeper: Smart Bot Block with Backdoor",
-    "expression": "(cf.client.bot or http.user_agent contains \"curl\" or http.user_agent contains \"python\" or http.user_agent contains \"bot\") and (http.request.headers[\"x-bot-password\"][0] ne \"SECRET_KEY\")",
-    "action": "managed_challenge",
+    "description": "Gatekeeper: Partner Key Bypass",
+    "expression": "(http.request.headers[\"X-Partner-Key\"] eq \"CLIENT_SECRET_123\")",
+    "action": "skip",
+    "action_parameters": {
+      "ruleset": "current",
+      "phases": ["http_request_sbfm", "http_ratelimit"]
+    },
     "enabled": true
   }]
 }
@@ -137,7 +162,7 @@ Body: {
 **Component: ProjectGrid**
 - Displays all user projects in a responsive grid
 - Each card shows domain name and status badge
-- Status badges: Yellow (pending_ns), Green (protected)
+- Status badges: Yellow with "⚠ Pending Setup" (pending_ns), Green with "✅ Secure & Active" (protected)
 - "Add New Domain" button opens CreateProjectModal
 
 **Component: CreateProjectModal**
@@ -152,17 +177,21 @@ Body: {
 **Component: PendingNameserversView**
 - Displays when status is 'pending_ns'
 - Shows warning banner: "Action Required"
-- Large, copy-paste friendly nameserver display
+- Large, copy-paste friendly nameserver display with copy icons
 - Clear instructions for registrar update
-- "I have updated them, Verify Now" button triggers verifyAndConfigure
+- "Verify Setup" button triggers verifyProjectStatus (new function)
+- Loading spinner during verification
+- Error handling for 401/403 Cloudflare API errors (displays "Auth Error")
 
 **Component: ProtectedView**
 - Displays when status is 'protected'
 - Success banner: "Site is Live & Secure"
 - Secret key display in obscured format (gk_live_••••)
 - Copy button for full secret key
-- Integration code snippet showing curl example
+- "View Integration Code" button linking to integration page
+- Integration code snippet showing curl example with X-Partner-Key header
 - Displays domain and secret key in example
+- Confetti animation on successful verification transition
 
 ## Data Models
 
@@ -195,13 +224,17 @@ interface CloudflareZoneResponse {
 }
 ```
 
-### WAF Rule Payload
+### WAF Skip Rule Payload
 
 ```typescript
-interface WAFRule {
+interface WAFSkipRule {
   description: string;
   expression: string;
-  action: 'managed_challenge' | 'block' | 'allow';
+  action: 'skip';
+  action_parameters: {
+    ruleset: 'current';
+    phases: string[];
+  };
   enabled: boolean;
 }
 ```
@@ -252,21 +285,21 @@ A property is a characteristic or behavior that should hold true across all vali
 
 **Validates: Requirements 7.1**
 
-### Property 8: WAF Rule Expression Correctness for Valid Password
+### Property 8: WAF Skip Rule Expression Correctness for Valid Partner Key
 
-*For any* request with the x-bot-password header value matching the project's secret_key, the WAF rule expression SHALL evaluate to false, allowing the request through without managed_challenge.
+*For any* request with the X-Partner-Key header value matching the project's secret_key, the WAF skip rule expression SHALL evaluate to true, triggering the skip action to bypass Super Bot Fight Mode and Rate Limiting phases.
 
-**Validates: Requirements 4.4, 8.2, 8.4**
+**Validates: Requirements 4.3, 10.2, 10.4**
 
-### Property 9: WAF Rule Expression Correctness for Invalid Password
+### Property 9: WAF Skip Rule Expression Correctness for Invalid Partner Key
 
-*For any* request identified as a bot (cf.client.bot = true) without the x-bot-password header or with an incorrect header value, the WAF rule expression SHALL evaluate to true, triggering a managed_challenge action.
+*For any* request without the X-Partner-Key header or with an incorrect header value, the WAF skip rule expression SHALL evaluate to false, allowing normal bot protection rules to apply.
 
-**Validates: Requirements 4.3, 8.3, 8.5**
+**Validates: Requirements 4.4, 4.5, 10.3, 10.5**
 
-### Property 10: Bot Detection Rule Configuration
+### Property 10: Skip Rule Configuration
 
-*For any* project with status 'protected', the deployed WAF rule SHALL contain the bot detection expression including cf.client.bot, user agent checks, and the x-bot-password header validation.
+*For any* project with status 'protected', the deployed WAF skip rule SHALL contain the X-Partner-Key header validation expression and skip action parameters targeting http_request_sbfm and http_ratelimit phases.
 
 **Validates: Requirements 4.1, 4.2**
 
@@ -284,7 +317,7 @@ A property is a characteristic or behavior that should hold true across all vali
 
 ### Property 13: Integration Snippet Correctness
 
-*For any* protected project, the displayed integration code snippet SHALL contain the correct domain name and the project's secret_key in the curl command example.
+*For any* protected project, the displayed integration code snippet SHALL contain the correct domain name and the project's secret_key in the curl command example using the X-Partner-Key header.
 
 **Validates: Requirements 5.5**
 
@@ -300,13 +333,31 @@ A property is a characteristic or behavior that should hold true across all vali
 
 **Validates: Requirements 7.5**
 
+### Property 16: Verification Status Response Correctness
+
+*For any* call to verifyProjectStatus with a pending Cloudflare zone, the system SHALL return status 'pending_ns' with message 'Waiting for Nameserver update.', and for any active zone, it SHALL return status 'protected' with message 'Domain active & Firewall injected.'
+
+**Validates: Requirements 9.3, 9.5**
+
+### Property 17: Status Badge Display Correctness
+
+*For any* project card displayed on the dashboard, projects with status 'pending_ns' SHALL display "⚠ Pending Setup" and projects with status 'protected' SHALL display "✅ Secure & Active".
+
+**Validates: Requirements 6.3, 6.4**
+
+### Property 18: Verification Module Data Retrieval
+
+*For any* project passed to verifyProjectStatus, the system SHALL successfully retrieve zone_id, api_token, and secret_key from the database before proceeding with Cloudflare API calls.
+
+**Validates: Requirements 9.2**
+
 ## Error Handling
 
 ### Cloudflare API Errors
 
 - **Zone Creation Failure**: Return error message to user, do not create database record
 - **Zone Status Check Failure**: Return pending status with retry message
-- **WAF Rule Deployment Failure**: Log error, return error message, maintain 'active' status (not 'protected')
+- **WAF Skip Rule Deployment Failure**: Log error, return error message, maintain 'active' status (not 'protected')
 
 ### Database Errors
 
@@ -341,8 +392,8 @@ Property-based tests verify universal properties using fast-check library:
 - **Property 3**: Generate status transitions, verify only valid transitions occur
 - **Property 4**: Generate projects, verify secret key persistence across queries
 - **Property 5**: Generate Cloudflare responses, verify nameserver consistency
-- **Property 6**: Generate requests with various password headers, verify WAF expression logic
-- **Property 7**: Generate bot detection scenarios, verify managed_challenge triggers
+- **Property 6**: Generate requests with various X-Partner-Key headers, verify WAF skip expression logic
+- **Property 7**: Generate partner key scenarios, verify skip action triggers correctly
 - **Property 8**: Generate status updates, verify database consistency
 
 ### Testing Framework

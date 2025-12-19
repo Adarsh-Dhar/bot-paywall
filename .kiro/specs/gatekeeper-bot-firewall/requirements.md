@@ -10,11 +10,12 @@ Gatekeeper is a SaaS dashboard that enables users to protect their domains from 
 - **Cloudflare Zone**: A Cloudflare account resource representing a domain
 - **Zone ID**: Unique identifier for a Cloudflare Zone
 - **Nameservers**: DNS servers that route domain traffic (provided by Cloudflare)
-- **Secret Key**: A unique 32-character password (e.g., "gk_live_...") that allows bots to bypass the firewall
-- **WAF Rule**: Web Application Firewall rule that blocks or challenges requests
-- **Managed Challenge**: A CAPTCHA challenge presented to suspected bots
-- **Bot Detection**: Cloudflare's bot detection based on user agent and behavior patterns
-- **Backdoor**: The mechanism allowing authenticated bots to bypass protection using the secret key
+- **Secret Key**: A unique 32-character password (e.g., "CLIENT_SECRET_123") that allows applications to bypass bot protection
+- **WAF Skip Rule**: Web Application Firewall rule that skips protection phases for authorized requests
+- **X-Partner-Key Header**: HTTP header containing the secret key for bypassing bot protection
+- **Super Bot Fight Mode**: Cloudflare's advanced bot detection and mitigation system (phase: http_request_sbfm)
+- **Rate Limiting**: Cloudflare's request rate limiting protection (phase: http_ratelimit)
+- **Partner Key**: The mechanism allowing authorized applications to bypass protection using the X-Partner-Key header
 - **Project**: A user's domain protection configuration stored in the database
 
 ## Requirements
@@ -57,15 +58,15 @@ Gatekeeper is a SaaS dashboard that enables users to protect their domains from 
 
 ### Requirement 4
 
-**User Story:** As a user, I want the firewall to automatically block bots unless they provide the correct password, so that my site is protected from automated attacks.
+**User Story:** As a user, I want the firewall to automatically skip bot protection for requests with the correct partner key, so that my authorized applications can bypass bot detection entirely.
 
 #### Acceptance Criteria
 
-1. WHEN a zone becomes active THEN the system SHALL deploy a custom WAF rule to the Cloudflare zone
-2. WHEN the WAF rule is deployed THEN the system SHALL configure it to detect bots using Cloudflare's bot detection
-3. WHEN a request is identified as a bot AND the x-bot-password header does not match the secret key THEN the system SHALL present a managed challenge
-4. WHEN a request is identified as a bot AND the x-bot-password header matches the secret key THEN the system SHALL allow the request through
-5. WHEN a legitimate user is challenged THEN the system SHALL allow them to proceed after solving the CAPTCHA
+1. WHEN a zone becomes active THEN the system SHALL deploy a custom WAF skip rule to the Cloudflare zone targeting the http_request_firewall_custom phase
+2. WHEN the WAF skip rule is deployed THEN the system SHALL configure it to detect requests with the X-Partner-Key header matching the secret key
+3. WHEN a request contains the X-Partner-Key header with the correct secret key THEN the system SHALL skip the current ruleset and bypass Super Bot Fight Mode and Rate Limiting phases
+4. WHEN a request contains the X-Partner-Key header with an incorrect secret key THEN the system SHALL not skip protection and apply normal bot detection rules
+5. WHEN a request does not contain the X-Partner-Key header THEN the system SHALL apply normal bot detection and protection rules
 
 ### Requirement 5
 
@@ -87,8 +88,8 @@ Gatekeeper is a SaaS dashboard that enables users to protect their domains from 
 
 1. WHEN a user navigates to the dashboard THEN the system SHALL display a grid of all projects belonging to that user
 2. WHEN projects are displayed THEN the system SHALL show the domain name and current status for each project
-3. WHEN a project is in pending_ns status THEN the system SHALL display a yellow status badge
-4. WHEN a project is in protected status THEN the system SHALL display a green status badge
+3. WHEN a project is in pending_ns status THEN the system SHALL display a yellow status badge with "⚠ Pending Setup" text
+4. WHEN a project is in protected status THEN the system SHALL display a green status badge with "✅ Secure & Active" text
 5. WHEN a user clicks on a project card THEN the system SHALL navigate to the project's setup view
 
 ### Requirement 7
@@ -105,12 +106,38 @@ Gatekeeper is a SaaS dashboard that enables users to protect their domains from 
 
 ### Requirement 8
 
-**User Story:** As a developer, I want to use the Gatekeeper API to protect my domain, so that I can integrate bot protection into my application.
+**User Story:** As a user, I want an improved verification flow with better status handling, so that I can easily track and manage my domain protection setup.
 
 #### Acceptance Criteria
 
-1. WHEN a developer includes the x-bot-password header in a request THEN the system SHALL validate it against the stored secret key
-2. WHEN the x-bot-password header matches the secret key THEN the system SHALL allow the request to bypass bot detection
-3. WHEN the x-bot-password header is missing or incorrect THEN the system SHALL apply the standard bot detection rules
-4. WHEN a request includes the correct password THEN the system SHALL not present a managed challenge
-5. WHEN a request includes an incorrect password THEN the system SHALL present a managed challenge to the user
+1. WHEN a project is in pending_ns status THEN the system SHALL show nameservers with a copy icon for easy copying
+2. WHEN a project is in pending_ns status THEN the system SHALL display a "Verify Setup" button that triggers verifyProjectStatus
+3. WHEN a user clicks "Verify Setup" THEN the system SHALL show a loading spinner during verification
+4. WHEN verification succeeds and status becomes protected THEN the system SHALL trigger a confetti animation and refresh the card
+5. WHEN a project is in protected status THEN the system SHALL show a "View Integration Code" button linking to the integration page
+6. WHEN a project is in protected status THEN the system SHALL hide the "Verify" button as it is no longer needed
+7. WHEN Cloudflare API returns 401/403 errors THEN the system SHALL flag the project as "Auth Error" in the UI
+
+### Requirement 9
+
+**User Story:** As a system architect, I want a dedicated cloudflare-verification module, so that verification logic is properly organized and maintainable.
+
+#### Acceptance Criteria
+
+1. WHEN the system needs to verify project status THEN it SHALL use a dedicated verifyProjectStatus function in actions/cloudflare-verification.ts
+2. WHEN verifyProjectStatus is called THEN it SHALL fetch project data including zone_id, api_token, and secret_key from the database
+3. WHEN the Cloudflare zone status is 'pending' THEN the system SHALL return status 'pending_ns' with message 'Waiting for Nameserver update.'
+4. WHEN the Cloudflare zone status is 'active' THEN the system SHALL deploy WAF rules and update project status to 'protected'
+5. WHEN WAF rules are deployed THEN the system SHALL return status 'protected' with message 'Domain active & Firewall injected.'
+
+### Requirement 10
+
+**User Story:** As a developer, I want to use the Gatekeeper API to bypass bot protection for my applications, so that I can integrate seamless access without challenges.
+
+#### Acceptance Criteria
+
+1. WHEN a developer includes the X-Partner-Key header in a request THEN the system SHALL validate it against the stored secret key
+2. WHEN the X-Partner-Key header matches the secret key THEN the system SHALL skip bot protection phases entirely including Super Bot Fight Mode and Rate Limiting
+3. WHEN the X-Partner-Key header is missing or incorrect THEN the system SHALL apply the standard bot detection and protection rules
+4. WHEN a request includes the correct partner key THEN the system SHALL bypass all bot detection without any challenges
+5. WHEN a request includes an incorrect partner key THEN the system SHALL apply normal Cloudflare bot protection rules

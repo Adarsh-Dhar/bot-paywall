@@ -17,7 +17,7 @@ const customJestConfig = {
     '<rootDir>/__tests__/generators/',
     '<rootDir>/node_modules/'
   ],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
   collectCoverageFrom: [

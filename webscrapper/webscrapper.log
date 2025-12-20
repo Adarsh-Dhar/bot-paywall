@@ -999,3 +999,141 @@ Documentation
 2025-12-20 08:59:19,071 - ERROR - ❌ Error: 403 Client Error: Forbidden for url: https://paywall-worker.dharadarsh0.workers.dev/
 2025-12-20 08:59:19,071 - ERROR - Failed to fetch HTML content
 2025-12-20 08:59:19,072 - ERROR - Failed to scrape the website.
+2025-12-20 16:19:53,500 - INFO - Starting WebScraper application
+2025-12-20 16:19:53,501 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 16:19:53,502 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 16:19:54,726 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 16:19:54,727 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 16:19:54,727 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 16:19:54,727 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 16:19:54,728 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 16:19:54,728 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 16:19:55,230 - INFO - 📝 Creating transaction...
+2025-12-20 16:19:55,752 - INFO - ✍️ Signing transaction...
+2025-12-20 16:19:56,060 - INFO - 📡 Broadcasting transaction...
+2025-12-20 16:19:57,069 - INFO - ✅ Payment completed successfully!
+2025-12-20 16:19:57,071 - INFO - 📋 Transaction ID: 0xf2fb1ad08d5878c631a4148f8115bfa2e9d48e95bb95f3a77d9cfe4b207028b8
+2025-12-20 16:19:57,071 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 16:19:57,071 - INFO - 📍 To Address: default_payment_address
+2025-12-20 16:19:57,071 - INFO - ⏰ Payment time recorded: 2025-12-20 16:19:57.068317
+2025-12-20 16:19:57,072 - INFO - 🔍 Verifying payment with system: 0xf2fb1ad08d5878c631a4148f8115bfa2e9d48e95bb95f3a77d9cfe4b207028b8
+2025-12-20 16:19:57,098 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x102d2fc20>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 16:19:57,098 - ERROR - ❌ Payment verification failed for expired whitelist
+2025-12-20 16:19:57,098 - ERROR - ❌ Payment/renewal failed, cannot proceed
+2025-12-20 16:19:57,099 - ERROR - Failed to fetch HTML content
+2025-12-20 16:19:57,099 - ERROR - Failed to scrape the website.
+2025-12-20 16:43:20,116 - INFO - Starting WebScraper application
+2025-12-20 16:43:20,119 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 16:43:20,119 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 16:43:22,697 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 16:43:22,707 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 16:43:22,708 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 16:43:22,708 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 16:43:22,710 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 16:43:22,711 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 16:43:23,216 - INFO - 📝 Creating transaction...
+2025-12-20 16:43:23,755 - INFO - ✍️ Signing transaction...
+2025-12-20 16:43:24,061 - INFO - 📡 Broadcasting transaction...
+2025-12-20 16:43:25,077 - INFO - ✅ Payment completed successfully!
+2025-12-20 16:43:25,079 - INFO - 📋 Transaction ID: 0xa620056f1900bf26523db27cb73bb570b69ebf3a578bd32aee99be1520fb606c
+2025-12-20 16:43:25,079 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 16:43:25,080 - INFO - 📍 To Address: default_payment_address
+2025-12-20 16:43:25,080 - INFO - ⏰ Payment time recorded: 2025-12-20 16:43:25.074803
+2025-12-20 16:43:25,080 - INFO - 🔍 Verifying payment with system: 0xa620056f1900bf26523db27cb73bb570b69ebf3a578bd32aee99be1520fb606c
+2025-12-20 16:43:27,228 - ERROR - ❌ Payment verification request failed: 500
+2025-12-20 16:43:27,230 - ERROR - ❌ Payment verification failed for expired whitelist
+2025-12-20 16:43:27,231 - ERROR - ❌ Payment/renewal failed, cannot proceed
+2025-12-20 16:43:27,231 - ERROR - Failed to fetch HTML content
+2025-12-20 16:43:27,231 - ERROR - Failed to scrape the website.
+2025-12-20 18:17:39,000 - INFO - Starting WebScraper application
+2025-12-20 18:17:39,164 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 18:17:39,169 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 18:17:42,219 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 18:17:42,230 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 18:17:42,231 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 18:17:42,232 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 18:17:42,235 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 18:17:42,238 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 18:17:42,747 - INFO - 📝 Creating transaction...
+2025-12-20 18:17:43,849 - INFO - ✍️ Signing transaction...
+2025-12-20 18:17:44,320 - INFO - 📡 Broadcasting transaction...
+2025-12-20 18:17:45,455 - INFO - ✅ Payment completed successfully!
+2025-12-20 18:17:45,457 - INFO - 📋 Transaction ID: 0x88d4f823ce652ad22fb85d86dd140396bcd9acfb9668973ac509c2b8d1154a2f
+2025-12-20 18:17:45,457 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 18:17:45,457 - INFO - 📍 To Address: default_payment_address
+2025-12-20 18:17:45,458 - INFO - ⏰ Payment time recorded: 2025-12-20 18:17:45.453206
+2025-12-20 18:17:45,460 - INFO - 🔍 Verifying payment with system: 0x88d4f823ce652ad22fb85d86dd140396bcd9acfb9668973ac509c2b8d1154a2f
+2025-12-20 18:17:50,443 - ERROR - ❌ Payment verification request failed: 403
+2025-12-20 18:17:50,492 - ERROR - ❌ Payment verification failed for expired whitelist
+2025-12-20 18:17:50,501 - ERROR - ❌ Payment/renewal failed, cannot proceed
+2025-12-20 18:17:50,509 - ERROR - Failed to fetch HTML content
+2025-12-20 18:17:50,509 - ERROR - Failed to scrape the website.
+2025-12-20 18:24:23,648 - INFO - Starting WebScraper application
+2025-12-20 18:24:23,649 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 18:24:23,650 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 18:24:25,021 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 18:24:25,021 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 18:24:25,022 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 18:24:25,022 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 18:24:25,022 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 18:24:25,022 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 18:24:25,531 - INFO - 📝 Creating transaction...
+2025-12-20 18:24:26,048 - INFO - ✍️ Signing transaction...
+2025-12-20 18:24:26,359 - INFO - 📡 Broadcasting transaction...
+2025-12-20 18:24:27,445 - INFO - ✅ Payment completed successfully!
+2025-12-20 18:24:27,461 - INFO - 📋 Transaction ID: 0x61017a5780a4844ea8dbcbadf1c339776102f99457eee32ea38609ffa2fe7914
+2025-12-20 18:24:27,461 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 18:24:27,461 - INFO - 📍 To Address: default_payment_address
+2025-12-20 18:24:27,461 - INFO - ⏰ Payment time recorded: 2025-12-20 18:24:27.437965
+2025-12-20 18:24:27,461 - INFO - 🔍 Verifying payment with system: 0x61017a5780a4844ea8dbcbadf1c339776102f99457eee32ea38609ffa2fe7914
+2025-12-20 18:24:30,021 - ERROR - ❌ Payment verification request failed: 403
+2025-12-20 18:24:30,022 - ERROR - ❌ Payment verification failed for expired whitelist
+2025-12-20 18:24:30,023 - ERROR - ❌ Payment/renewal failed, cannot proceed
+2025-12-20 18:24:30,025 - ERROR - Failed to fetch HTML content
+2025-12-20 18:24:30,026 - ERROR - Failed to scrape the website.
+2025-12-20 18:33:00,264 - INFO - Starting WebScraper application
+2025-12-20 18:33:00,346 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 18:33:00,346 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 18:33:02,727 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 18:33:02,991 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 18:33:02,991 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 18:33:02,992 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 18:33:02,992 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 18:33:02,992 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 18:33:03,499 - INFO - 📝 Creating transaction...
+2025-12-20 18:33:04,004 - INFO - ✍️ Signing transaction...
+2025-12-20 18:33:04,344 - INFO - 📡 Broadcasting transaction...
+2025-12-20 18:33:05,375 - INFO - ✅ Payment completed successfully!
+2025-12-20 18:33:05,378 - INFO - 📋 Transaction ID: 0x6a9edf3fd40822df87c91de4ea485013b8fbb7cfd1092638497a786f571c9103
+2025-12-20 18:33:05,380 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 18:33:05,381 - INFO - 📍 To Address: default_payment_address
+2025-12-20 18:33:05,381 - INFO - ⏰ Payment time recorded: 2025-12-20 18:33:05.373995
+2025-12-20 18:33:05,381 - INFO - 🔍 Verifying payment with system: 0x6a9edf3fd40822df87c91de4ea485013b8fbb7cfd1092638497a786f571c9103
+2025-12-20 18:33:08,709 - ERROR - ❌ Payment verification request failed: 403
+2025-12-20 18:33:08,711 - ERROR - ❌ Payment verification failed for expired whitelist
+2025-12-20 18:33:08,711 - ERROR - ❌ Payment/renewal failed, cannot proceed
+2025-12-20 18:33:08,712 - ERROR - Failed to fetch HTML content
+2025-12-20 18:33:08,712 - ERROR - Failed to scrape the website.
+2025-12-20 20:51:00,680 - INFO - Starting WebScraper application
+2025-12-20 20:51:00,681 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 20:51:00,681 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 20:51:02,142 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 20:51:02,142 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 20:51:02,142 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 20:51:02,142 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 20:51:02,142 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 20:51:02,142 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 20:51:02,647 - INFO - 📝 Creating transaction...
+2025-12-20 20:51:03,148 - INFO - ✍️ Signing transaction...
+2025-12-20 20:51:03,450 - INFO - 📡 Broadcasting transaction...
+2025-12-20 20:51:04,451 - INFO - ✅ Payment completed successfully!
+2025-12-20 20:51:04,451 - INFO - 📋 Transaction ID: 0x6c55871e8bcfeb77d15354689e300fee4083d13779eed3fb2026037aba34ef87
+2025-12-20 20:51:04,451 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 20:51:04,452 - INFO - 📍 To Address: default_payment_address
+2025-12-20 20:51:04,452 - INFO - ⏰ Payment time recorded: 2025-12-20 20:51:04.451570
+2025-12-20 20:51:04,452 - INFO - 🔍 Verifying payment with system: 0x6c55871e8bcfeb77d15354689e300fee4083d13779eed3fb2026037aba34ef87
+2025-12-20 20:51:34,466 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Read timed out. (read timeout=30)
+2025-12-20 20:51:34,467 - ERROR - ❌ Payment verification failed for expired whitelist
+2025-12-20 20:51:34,467 - ERROR - ❌ Payment/renewal failed, cannot proceed
+2025-12-20 20:51:34,467 - ERROR - Failed to fetch HTML content
+2025-12-20 20:51:34,467 - ERROR - Failed to scrape the website.

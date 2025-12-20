@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ServiceInitializer from "@/components/ServiceInitializer";
 
+// Initialize server-side services
+import "@/lib/startup";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

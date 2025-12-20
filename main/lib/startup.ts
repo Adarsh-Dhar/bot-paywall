@@ -21,10 +21,13 @@ export async function initializeServices(): Promise<void> {
   }
 }
 
-// Auto-initialize in production
-if (process.env.NODE_ENV === 'production') {
+// Auto-initialize in both development and production
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
   initializeServices().catch(error => {
     console.error('Failed to initialize services:', error);
-    process.exit(1);
+    // Don't exit in development to allow for debugging
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
   });
 }

@@ -23,6 +23,20 @@ export class CloudflareClientImpl implements CloudflareClient {
    * Creates a new access rule (whitelist) for the specified IP
    */
   async createAccessRule(ip: string, mode: 'whitelist'): Promise<AccessRule> {
+    // In development mode, return a mock response
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] Mock creating Cloudflare access rule for IP: ${ip}`);
+      return {
+        id: `mock-rule-${Date.now()}`,
+        mode: 'whitelist',
+        configuration: {
+          target: 'ip',
+          value: ip
+        },
+        notes: 'Mock rule for development'
+      };
+    }
+
     // Validate and format IP address for Cloudflare
     if (!validateIPAddress(ip)) {
       throw new Error(`Invalid IP address format: ${ip}`);
@@ -62,6 +76,12 @@ export class CloudflareClientImpl implements CloudflareClient {
    * Deletes an existing access rule by ID
    */
   async deleteAccessRule(ruleId: string): Promise<void> {
+    // In development mode, just log the action
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] Mock deleting Cloudflare access rule: ${ruleId}`);
+      return;
+    }
+
     const url = `${this.baseUrl}/zones/${this.zoneId}/firewall/access_rules/rules/${ruleId}`;
 
     try {
@@ -79,6 +99,23 @@ export class CloudflareClientImpl implements CloudflareClient {
    * Lists access rules, optionally filtered by IP address
    */
   async listAccessRules(ip?: string): Promise<AccessRule[]> {
+    // In development mode, return mock rules
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] Mock listing Cloudflare access rules for IP: ${ip || 'all'}`);
+      if (ip) {
+        return [{
+          id: `mock-rule-${ip.replace(/\./g, '-')}`,
+          mode: 'whitelist',
+          configuration: {
+            target: 'ip',
+            value: ip
+          },
+          notes: 'Mock rule for development'
+        }];
+      }
+      return [];
+    }
+
     let url = `${this.baseUrl}/zones/${this.zoneId}/firewall/access_rules/rules`;
     
     if (ip) {
@@ -243,6 +280,12 @@ export class CloudflareClientImpl implements CloudflareClient {
    * Tests the API connection and permissions
    */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
+    // In development mode, always return success
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV MODE] Mock Cloudflare connection test - success');
+      return { success: true };
+    }
+
     try {
       const validation = this.validateConfiguration();
       if (!validation.valid) {

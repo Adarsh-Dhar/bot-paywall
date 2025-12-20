@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processManualPayment } from '@/lib/automated-bot-payment-system';
+import { processManualPayment, getBotPaymentSystem, startBotPaymentSystem } from '@/lib/automated-bot-payment-system';
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure bot payment system is initialized
+    if (!getBotPaymentSystem()) {
+      console.log('Bot payment system not initialized, starting it now...');
+      await startBotPaymentSystem({
+        enableConsoleLogging: true,
+        enableFileLogging: false,
+        cleanupDelayMs: 60000, // 60 seconds
+        monitoringCheckInterval: 5000, // 5 seconds
+        configuredClientIP: '210.212.2.133', // Use the specific client IP
+        webscrapperPath: process.cwd().replace('/main', '') + '/webscrapper' // Fix the path
+      });
+      console.log('Bot payment system initialized successfully');
+    }
+
     const body = await request.json();
     const { transactionId, clientIP, expectedAmount, expectedCurrency } = body;
 

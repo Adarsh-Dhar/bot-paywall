@@ -459,22 +459,34 @@ export class BotPaymentSystemApplication {
   private async validateConfiguration(): Promise<void> {
     const errors: string[] = [];
 
-    // Validate Cloudflare configuration
-    if (!this.config.cloudflareApiToken) {
-      errors.push('Cloudflare API token is required');
+    // Skip Cloudflare validation in development mode for testing
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (!isDevelopment) {
+      // Validate Cloudflare configuration
+      if (!this.config.cloudflareApiToken) {
+        errors.push('Cloudflare API token is required');
+      }
+
+      if (!this.config.cloudflareZoneId) {
+        errors.push('Cloudflare Zone ID is required');
+      }
+
+      // Test Cloudflare connection
+      const cloudflareTest = await (this.cloudflareClient as CloudflareClientImpl).testConnection();
+      if (!cloudflareTest.success) {
+        errors.push(`Cloudflare connection failed: ${cloudflareTest.error}`);
+      }
+    } else {
+      await this.loggingService.log({
+        timestamp: new Date(),
+        level: 'info',
+        component: 'BotPaymentSystem',
+        message: 'Development mode: Skipping Cloudflare validation'
+      });
     }
 
-    if (!this.config.cloudflareZoneId) {
-      errors.push('Cloudflare Zone ID is required');
-    }
-
-    // Test Cloudflare connection
-    const cloudflareTest = await (this.cloudflareClient as CloudflareClientImpl).testConnection();
-    if (!cloudflareTest.success) {
-      errors.push(`Cloudflare connection failed: ${cloudflareTest.error}`);
-    }
-
-    // Validate webscraper path
+    // Validate webscraper path (always validate this)
     const webscrapperPathValid = await this.botExecutionMonitor.validateWebscrapperPath();
     if (!webscrapperPathValid) {
       errors.push(`Webscraper path does not exist: ${this.config.webscrapperPath}`);

@@ -1137,3 +1137,185 @@ Documentation
 2025-12-20 20:51:34,467 - ERROR - ❌ Payment/renewal failed, cannot proceed
 2025-12-20 20:51:34,467 - ERROR - Failed to fetch HTML content
 2025-12-20 20:51:34,467 - ERROR - Failed to scrape the website.
+2025-12-20 23:25:09,571 - INFO - Starting WebScraper application
+2025-12-20 23:25:09,572 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:25:09,572 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 23:25:10,676 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 23:25:10,676 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:25:10,676 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:25:10,676 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:25:10,676 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:25:10,676 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:25:11,182 - INFO - 📝 Creating transaction...
+2025-12-20 23:25:11,687 - INFO - ✍️ Signing transaction...
+2025-12-20 23:25:11,993 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:25:12,995 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:25:12,995 - INFO - 📋 Transaction ID: 0x6e528f8693ad043d1fe4608f4a703ac4d8becb68b27e9ccb68903106430dc699
+2025-12-20 23:25:12,995 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:25:12,996 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:25:12,996 - INFO - ⏰ Payment time recorded: 2025-12-20 23:25:12.994983
+2025-12-20 23:25:12,996 - INFO - 🔍 Verifying payment with system: 0x6e528f8693ad043d1fe4608f4a703ac4d8becb68b27e9ccb68903106430dc699
+2025-12-20 23:25:13,005 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x10469c3e0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:25:13,006 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:25:13,006 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:25:13,006 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:25:13,006 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:25:20,296 - INFO - ✅ IP whitelisting completed
+2025-12-20 23:25:20,297 - INFO - 🎉 Expired whitelist renewal completed successfully
+2025-12-20 23:25:20,298 - INFO - 🔄 Retrying request after successful payment/renewal...
+2025-12-20 23:25:21,192 - ERROR - ❌ Error: 403 Client Error: Forbidden for url: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:25:21,193 - INFO - ⏳ Retrying in 1 seconds...
+2025-12-20 23:25:22,195 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 2/3)...
+2025-12-20 23:25:22,971 - INFO - 🚫 Access denied - may indicate expired whitelist
+2025-12-20 23:25:22,971 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:25:22,972 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:25:22,972 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:25:22,972 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:25:22,972 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:25:23,475 - INFO - 📝 Creating transaction...
+2025-12-20 23:25:23,981 - INFO - ✍️ Signing transaction...
+2025-12-20 23:25:24,286 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:25:25,291 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:25:25,292 - INFO - 📋 Transaction ID: 0xd148d02695fc4f32487b23af5aee872df4297375cf5d306e681af37250d9b116
+2025-12-20 23:25:25,292 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:25:25,292 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:25:25,292 - INFO - ⏰ Payment time recorded: 2025-12-20 23:25:25.291829
+2025-12-20 23:25:25,292 - INFO - 🔍 Verifying payment with system: 0xd148d02695fc4f32487b23af5aee872df4297375cf5d306e681af37250d9b116
+2025-12-20 23:25:25,301 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x104577ec0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:25:25,301 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:25:25,302 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:25:25,302 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:25:25,302 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:25:32,611 - INFO - ✅ IP whitelisting completed
+2025-12-20 23:25:32,613 - INFO - 🎉 Expired whitelist renewal completed successfully
+2025-12-20 23:25:32,613 - INFO - 🔄 Retrying request after successful payment/renewal...
+2025-12-20 23:25:33,610 - ERROR - ❌ Error: 403 Client Error: Forbidden for url: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:25:33,611 - INFO - ⏳ Retrying in 1 seconds...
+2025-12-20 23:25:34,616 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 3/3)...
+2025-12-20 23:25:35,415 - INFO - 🚫 Access denied - may indicate expired whitelist
+2025-12-20 23:25:35,415 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:25:35,415 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:25:35,416 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:25:35,416 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:25:35,416 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:25:35,934 - INFO - 📝 Creating transaction...
+2025-12-20 23:25:36,435 - INFO - ✍️ Signing transaction...
+2025-12-20 23:25:36,740 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:25:37,746 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:25:37,746 - INFO - 📋 Transaction ID: 0xbe9b83832ef5a09ecb557fa6e9e25bd2f75ee5a9ebbda5421cabe0e23b84f14c
+2025-12-20 23:25:37,746 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:25:37,746 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:25:37,746 - INFO - ⏰ Payment time recorded: 2025-12-20 23:25:37.746069
+2025-12-20 23:25:37,746 - INFO - 🔍 Verifying payment with system: 0xbe9b83832ef5a09ecb557fa6e9e25bd2f75ee5a9ebbda5421cabe0e23b84f14c
+2025-12-20 23:25:37,751 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x104577e30>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:25:37,751 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:25:37,751 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:25:37,751 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:25:37,751 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:25:45,046 - INFO - ✅ IP whitelisting completed
+2025-12-20 23:25:45,048 - INFO - 🎉 Expired whitelist renewal completed successfully
+2025-12-20 23:25:45,048 - INFO - 🔄 Retrying request after successful payment/renewal...
+2025-12-20 23:25:45,932 - ERROR - ❌ Error: 403 Client Error: Forbidden for url: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:25:45,933 - ERROR - Failed to fetch HTML content
+2025-12-20 23:25:45,933 - ERROR - Failed to scrape the website.
+2025-12-20 23:40:29,890 - INFO - Starting WebScraper application
+2025-12-20 23:40:29,890 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:40:29,890 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 23:40:31,007 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 23:40:31,007 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:40:31,007 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:40:31,007 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:40:31,007 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:40:31,007 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:40:31,511 - INFO - 📝 Creating transaction...
+2025-12-20 23:40:32,015 - INFO - ✍️ Signing transaction...
+2025-12-20 23:40:32,319 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:40:33,323 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:40:33,323 - INFO - 📋 Transaction ID: 0x91285303c6ef0dd28df9c0ec3677cb933817ce966541dbbe6e9b5ca4ab73ec85
+2025-12-20 23:40:33,323 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:40:33,323 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:40:33,323 - INFO - ⏰ Payment time recorded: 2025-12-20 23:40:33.323041
+2025-12-20 23:40:33,324 - INFO - 🔍 Verifying payment with system: 0x91285303c6ef0dd28df9c0ec3677cb933817ce966541dbbe6e9b5ca4ab73ec85
+2025-12-20 23:40:33,329 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x10238c410>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:40:33,329 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:40:33,330 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:40:33,330 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:40:33,330 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:40:40,625 - INFO - ✅ IP whitelisting completed
+2025-12-20 23:40:40,627 - INFO - 🎉 Expired whitelist renewal completed successfully
+2025-12-20 23:40:40,627 - INFO - 🔄 Retrying request after successful payment/renewal...
+2025-12-20 23:40:41,666 - ERROR - ❌ Error: 403 Client Error: Forbidden for url: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:40:41,666 - INFO - ⏳ Retrying in 1 seconds...
+2025-12-20 23:40:42,672 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 2/3)...
+2025-12-20 23:40:43,491 - INFO - 🚫 Access denied - may indicate expired whitelist
+2025-12-20 23:40:43,493 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:40:43,493 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:40:43,493 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:40:43,493 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:40:43,493 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:40:43,997 - INFO - 📝 Creating transaction...
+2025-12-20 23:40:44,502 - INFO - ✍️ Signing transaction...
+2025-12-20 23:40:44,807 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:40:45,811 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:40:45,811 - INFO - 📋 Transaction ID: 0x026fd554a7b1e379827ecab79c30430eb86c3a933ceaa45956dc32e52d81f210
+2025-12-20 23:40:45,812 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:40:45,812 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:40:45,812 - INFO - ⏰ Payment time recorded: 2025-12-20 23:40:45.811275
+2025-12-20 23:40:45,812 - INFO - 🔍 Verifying payment with system: 0x026fd554a7b1e379827ecab79c30430eb86c3a933ceaa45956dc32e52d81f210
+2025-12-20 23:40:45,822 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x101212ba0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:40:45,822 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:40:45,822 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:40:45,822 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:40:45,822 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:50:58,835 - INFO - Starting WebScraper application
+2025-12-20 23:50:58,835 - INFO - Starting scrape of https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:50:58,835 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 1/3)...
+2025-12-20 23:50:59,880 - INFO - 🔄 Whitelist expired, new payment required
+2025-12-20 23:50:59,880 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:50:59,880 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:50:59,880 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:50:59,881 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:50:59,881 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:51:00,386 - INFO - 📝 Creating transaction...
+2025-12-20 23:51:00,888 - INFO - ✍️ Signing transaction...
+2025-12-20 23:51:01,194 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:51:02,197 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:51:02,197 - INFO - 📋 Transaction ID: 0x2be87ea8c60ea97b59fb16b4bf70e8a87c4b2aa1200d1207a2c3ce5a224c12eb
+2025-12-20 23:51:02,197 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:51:02,198 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:51:02,198 - INFO - ⏰ Payment time recorded: 2025-12-20 23:51:02.197367
+2025-12-20 23:51:02,198 - INFO - 🔍 Verifying payment with system: 0x2be87ea8c60ea97b59fb16b4bf70e8a87c4b2aa1200d1207a2c3ce5a224c12eb
+2025-12-20 23:51:02,204 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x10413fce0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:51:02,204 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:51:02,204 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:51:02,204 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:51:02,204 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:51:09,500 - INFO - ✅ IP whitelisting completed
+2025-12-20 23:51:09,503 - INFO - 🎉 Expired whitelist renewal completed successfully
+2025-12-20 23:51:09,503 - INFO - 🔄 Retrying request after successful payment/renewal...
+2025-12-20 23:51:10,374 - ERROR - ❌ Error: 403 Client Error: Forbidden for url: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:51:10,374 - INFO - ⏳ Retrying in 1 seconds...
+2025-12-20 23:51:11,379 - INFO - Fetching https://paywall-worker.dharadarsh0.workers.dev/ (attempt 2/3)...
+2025-12-20 23:51:12,297 - INFO - 🚫 Access denied - may indicate expired whitelist
+2025-12-20 23:51:12,298 - INFO - ⏰ Expired whitelist detected, handling renewal
+2025-12-20 23:51:12,298 - INFO - ⏰ Handling expired whitelist - initiating new payment flow
+2025-12-20 23:51:12,298 - INFO - 🔄 Simulating X402 payment requirement for expired whitelist
+2025-12-20 23:51:12,299 - INFO - 💰 Initiating X402 payment: 0.01 MOVE to default_payment_address
+2025-12-20 23:51:12,299 - INFO - 🔗 Connecting to MOVE blockchain...
+2025-12-20 23:51:12,804 - INFO - 📝 Creating transaction...
+2025-12-20 23:51:13,308 - INFO - ✍️ Signing transaction...
+2025-12-20 23:51:13,613 - INFO - 📡 Broadcasting transaction...
+2025-12-20 23:51:14,619 - INFO - ✅ Payment completed successfully!
+2025-12-20 23:51:14,619 - INFO - 📋 Transaction ID: 0x7675eb41b54da6e58482f3a0235525fce5279f0414e999e24d57154129ab2799
+2025-12-20 23:51:14,620 - INFO - 💸 Amount: 0.01 MOVE
+2025-12-20 23:51:14,620 - INFO - 📍 To Address: default_payment_address
+2025-12-20 23:51:14,620 - INFO - ⏰ Payment time recorded: 2025-12-20 23:51:14.619489
+2025-12-20 23:51:14,620 - INFO - 🔍 Verifying payment with system: 0x7675eb41b54da6e58482f3a0235525fce5279f0414e999e24d57154129ab2799
+2025-12-20 23:51:14,627 - ERROR - ❌ Error verifying payment: HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /api/x402-payment/verify (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x10413fc20>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-12-20 23:51:14,627 - INFO - 🔧 Main server not available, using mock verification for development
+2025-12-20 23:51:14,627 - INFO - ✅ Mock payment verification successful (development mode)
+2025-12-20 23:51:14,628 - INFO - ⏳ Waiting for IP whitelisting (timeout: 30s)...
+2025-12-20 23:51:14,628 - INFO - ⏳ Still waiting for whitelisting... (0s elapsed)
+2025-12-20 23:51:21,917 - INFO - ✅ IP whitelisting completed
+2025-12-20 23:51:21,918 - INFO - 🎉 Expired whitelist renewal completed successfully
+2025-12-20 23:51:21,918 - INFO - 🔄 Retrying request after successful payment/renewal...

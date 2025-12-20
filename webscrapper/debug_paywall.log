@@ -1,0 +1,208 @@
+2025-12-20 23:43:04,487 - INFO - 🚀 Starting Paywall Debug Analysis
+2025-12-20 23:43:04,488 - INFO - Timestamp: 2025-12-20 23:43:04.488012
+2025-12-20 23:43:04,488 - INFO - 🔍 Starting comprehensive paywall analysis...
+2025-12-20 23:43:04,489 - INFO - 
+================================================================================
+2025-12-20 23:43:04,489 - INFO - TEST 1: Basic Request
+2025-12-20 23:43:04,490 - INFO - ================================================================================
+2025-12-20 23:43:04,520 - DEBUG - Starting new HTTPS connection (1): paywall-worker.dharadarsh0.workers.dev:443
+2025-12-20 23:43:05,668 - DEBUG - https://paywall-worker.dharadarsh0.workers.dev:443 "GET / HTTP/11" 403 None
+2025-12-20 23:43:05,670 - INFO - ============================================================
+2025-12-20 23:43:05,670 - INFO - RESPONSE ANALYSIS: Basic Request
+2025-12-20 23:43:05,671 - INFO - ============================================================
+2025-12-20 23:43:05,671 - INFO - Status Code: 403
+2025-12-20 23:43:05,671 - INFO - Reason: Forbidden
+2025-12-20 23:43:05,671 - INFO - URL: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:43:05,671 - INFO - 
+Response Headers:
+2025-12-20 23:43:05,671 - INFO -   Date: Sat, 20 Dec 2025 18:12:03 GMT
+2025-12-20 23:43:05,671 - INFO -   Content-Type: application/json
+2025-12-20 23:43:05,671 - INFO -   Transfer-Encoding: chunked
+2025-12-20 23:43:05,671 - INFO -   Connection: keep-alive
+2025-12-20 23:43:05,671 - INFO -   X-Bot-Protection: active
+2025-12-20 23:43:05,672 - INFO -   Vary: accept-encoding
+2025-12-20 23:43:05,672 - INFO -   Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=YA8XkLpCY9oLXBB7XsfzwNIZUy%2BzgAlcfur71ZD%2FaGhI4BsJxpB07xbPLr4WJbr1%2Fbqa1KVQ1Czsg2THAqoB%2BmcbFYRTesfb%2FD8x0qXw05YF6TFIXYeHzsTxWGEH2BhV7pUGwC1T"}]}
+2025-12-20 23:43:05,672 - INFO -   Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+2025-12-20 23:43:05,672 - INFO -   Content-Encoding: zstd
+2025-12-20 23:43:05,672 - INFO -   Server: cloudflare
+2025-12-20 23:43:05,672 - INFO -   CF-RAY: 9b111b0f4c427f25-MAA
+2025-12-20 23:43:05,672 - INFO -   alt-svc: h3=":443"; ma=86400
+2025-12-20 23:43:05,672 - INFO - 
+Content Length: 228 characters
+2025-12-20 23:43:05,672 - INFO - Content Preview (first 500 chars):
+2025-12-20 23:43:05,672 - INFO - {"error":"Access Denied","message":"Bot access is not allowed. This site is protected against automated scraping.","blocked_user_agent":"python-requests/2.32.5","client_ip":"210.212.2.133","timestamp":"2025-12-20T18:12:03.969Z"}
+2025-12-20 23:43:05,672 - INFO - 
+No X402/Payment headers found
+2025-12-20 23:43:05,672 - INFO - 
+❌ No WWW-Authenticate header
+2025-12-20 23:43:05,672 - WARNING - ⚠️ Got 403 - may indicate IP-based blocking or different auth method
+2025-12-20 23:43:05,672 - INFO - 
+================================================================================
+2025-12-20 23:43:05,673 - INFO - TEST 2: Request with Bot User Agent
+2025-12-20 23:43:05,673 - INFO - ================================================================================
+2025-12-20 23:43:05,676 - DEBUG - Starting new HTTPS connection (1): paywall-worker.dharadarsh0.workers.dev:443
+2025-12-20 23:43:07,030 - DEBUG - https://paywall-worker.dharadarsh0.workers.dev:443 "GET / HTTP/11" 403 None
+2025-12-20 23:43:07,034 - INFO - ============================================================
+2025-12-20 23:43:07,034 - INFO - RESPONSE ANALYSIS: Bot User Agent Request
+2025-12-20 23:43:07,034 - INFO - ============================================================
+2025-12-20 23:43:07,034 - INFO - Status Code: 403
+2025-12-20 23:43:07,034 - INFO - Reason: Forbidden
+2025-12-20 23:43:07,035 - INFO - URL: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:43:07,035 - INFO - 
+Response Headers:
+2025-12-20 23:43:07,035 - INFO -   Date: Sat, 20 Dec 2025 18:12:05 GMT
+2025-12-20 23:43:07,035 - INFO -   Content-Type: application/json
+2025-12-20 23:43:07,036 - INFO -   Transfer-Encoding: chunked
+2025-12-20 23:43:07,036 - INFO -   Connection: keep-alive
+2025-12-20 23:43:07,036 - INFO -   X-Bot-Protection: active
+2025-12-20 23:43:07,036 - INFO -   Vary: accept-encoding
+2025-12-20 23:43:07,036 - INFO -   Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=ppaTcgRuEe72UkKpKgcn8BTSC%2BGyCqWMLm8N8ErShGWZuU4mJw%2FSlTzLMF64CBSlVW0iqIMMYUFHlh3nHn7tUMS0Y6qfh8dTxFZoXO4tPqtD8%2BTk9vlnZ4NZoWsurMgmZ71flPpT"}]}
+2025-12-20 23:43:07,036 - INFO -   Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+2025-12-20 23:43:07,036 - INFO -   Content-Encoding: zstd
+2025-12-20 23:43:07,036 - INFO -   Server: cloudflare
+2025-12-20 23:43:07,036 - INFO -   CF-RAY: 9b111b18f8df7f16-MAA
+2025-12-20 23:43:07,036 - INFO -   alt-svc: h3=":443"; ma=86400
+2025-12-20 23:43:07,036 - INFO - 
+Content Length: 233 characters
+2025-12-20 23:43:07,037 - INFO - Content Preview (first 500 chars):
+2025-12-20 23:43:07,037 - INFO - {"error":"Access Denied","message":"Bot access is not allowed. This site is protected against automated scraping.","blocked_user_agent":"Python-WebScraper/1.0 (Bot)","client_ip":"210.212.2.133","timestamp":"2025-12-20T18:12:05.361Z"}
+2025-12-20 23:43:07,037 - INFO - 
+No X402/Payment headers found
+2025-12-20 23:43:07,037 - INFO - 
+❌ No WWW-Authenticate header
+2025-12-20 23:43:07,037 - INFO - 
+================================================================================
+2025-12-20 23:43:07,037 - INFO - TEST 3: Request with IP Headers
+2025-12-20 23:43:07,037 - INFO - ================================================================================
+2025-12-20 23:43:07,040 - DEBUG - Starting new HTTPS connection (1): paywall-worker.dharadarsh0.workers.dev:443
+2025-12-20 23:43:07,203 - DEBUG - https://paywall-worker.dharadarsh0.workers.dev:443 "GET / HTTP/11" 403 None
+2025-12-20 23:43:07,208 - INFO - ============================================================
+2025-12-20 23:43:07,208 - INFO - RESPONSE ANALYSIS: IP Headers Request
+2025-12-20 23:43:07,208 - INFO - ============================================================
+2025-12-20 23:43:07,208 - INFO - Status Code: 403
+2025-12-20 23:43:07,208 - INFO - Reason: Forbidden
+2025-12-20 23:43:07,208 - INFO - URL: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:43:07,208 - INFO - 
+Response Headers:
+2025-12-20 23:43:07,208 - INFO -   Date: Sat, 20 Dec 2025 18:12:05 GMT
+2025-12-20 23:43:07,208 - INFO -   Content-Type: text/html; charset=UTF-8
+2025-12-20 23:43:07,208 - INFO -   Transfer-Encoding: chunked
+2025-12-20 23:43:07,209 - INFO -   Connection: keep-alive
+2025-12-20 23:43:07,209 - INFO -   Cache-Control: private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+2025-12-20 23:43:07,209 - INFO -   Expires: Thu, 01 Jan 1970 00:00:01 GMT
+2025-12-20 23:43:07,209 - INFO -   Referrer-Policy: same-origin
+2025-12-20 23:43:07,209 - INFO -   X-Frame-Options: SAMEORIGIN
+2025-12-20 23:43:07,209 - INFO -   Vary: accept-encoding
+2025-12-20 23:43:07,209 - INFO -   Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=JEIK9CwcRYkOYFZMl1MNA2cs37rGktd%2By6MGdgYt53asnzLFe1BKzc6ZqL5nwcA1tdKyQF0OG9ZDvJcG7HvMRjjJZ1uRJskhb0aTaPMIGVL8%2BqO5W5VvfCNF7GnNwFOr0c1M5Scv"}]}
+2025-12-20 23:43:07,209 - INFO -   Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+2025-12-20 23:43:07,209 - INFO -   Content-Encoding: zstd
+2025-12-20 23:43:07,209 - INFO -   Server: cloudflare
+2025-12-20 23:43:07,209 - INFO -   CF-RAY: 9b111b1efa189bf3-MAA
+2025-12-20 23:43:07,210 - INFO -   alt-svc: h3=":443"; ma=86400
+2025-12-20 23:43:07,210 - INFO - 
+Content Length: 8182 characters
+2025-12-20 23:43:07,210 - INFO - Content Preview (first 500 chars):
+2025-12-20 23:43:07,210 - INFO - <!doctype html>
+<!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js ie7 oldie" lang="en-US"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js ie8 oldie" lang="en-US"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js" lang="en-US">
+    <!--<![endif]-->
+    <head>
+        <title>DNS points to prohibited IP | paywall-worker.dharadarsh0.workers.dev | Cloudflare</title>
+        <meta charset="UTF-8" />
+<meta http-equiv="Content-Type" 
+2025-12-20 23:43:07,210 - INFO - 
+No X402/Payment headers found
+2025-12-20 23:43:07,211 - INFO - 
+❌ No WWW-Authenticate header
+2025-12-20 23:43:07,211 - INFO - 
+================================================================================
+2025-12-20 23:43:07,211 - INFO - TEST 4: Request with Payment Simulation Headers
+2025-12-20 23:43:07,211 - INFO - ================================================================================
+2025-12-20 23:43:07,213 - DEBUG - Starting new HTTPS connection (1): paywall-worker.dharadarsh0.workers.dev:443
+2025-12-20 23:43:08,190 - DEBUG - https://paywall-worker.dharadarsh0.workers.dev:443 "GET / HTTP/11" 403 None
+2025-12-20 23:43:08,194 - INFO - ============================================================
+2025-12-20 23:43:08,194 - INFO - RESPONSE ANALYSIS: Payment Simulation Request
+2025-12-20 23:43:08,194 - INFO - ============================================================
+2025-12-20 23:43:08,194 - INFO - Status Code: 403
+2025-12-20 23:43:08,194 - INFO - Reason: Forbidden
+2025-12-20 23:43:08,194 - INFO - URL: https://paywall-worker.dharadarsh0.workers.dev/
+2025-12-20 23:43:08,194 - INFO - 
+Response Headers:
+2025-12-20 23:43:08,194 - INFO -   Date: Sat, 20 Dec 2025 18:12:06 GMT
+2025-12-20 23:43:08,195 - INFO -   Content-Type: application/json
+2025-12-20 23:43:08,195 - INFO -   Transfer-Encoding: chunked
+2025-12-20 23:43:08,195 - INFO -   Connection: keep-alive
+2025-12-20 23:43:08,195 - INFO -   X-Bot-Protection: active
+2025-12-20 23:43:08,195 - INFO -   Vary: accept-encoding
+2025-12-20 23:43:08,195 - INFO -   Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Ux%2FyL%2FQyDJcKX5hA885XNwOd4oxkxuMJvqeZuOQEkUqtMcGxTfAmvyJG3fXUN%2FQwheCrSconp%2FY3W4OD280crDnohcZkO95DfZpG%2FCMKxRAP597KI22nmi%2FxeeYL8pxYmDidXESp"}]}
+2025-12-20 23:43:08,195 - INFO -   Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+2025-12-20 23:43:08,195 - INFO -   Content-Encoding: zstd
+2025-12-20 23:43:08,195 - INFO -   Server: cloudflare
+2025-12-20 23:43:08,195 - INFO -   CF-RAY: 9b111b1ffba57ee6-MAA
+2025-12-20 23:43:08,195 - INFO -   alt-svc: h3=":443"; ma=86400
+2025-12-20 23:43:08,195 - INFO - 
+Content Length: 233 characters
+2025-12-20 23:43:08,195 - INFO - Content Preview (first 500 chars):
+2025-12-20 23:43:08,195 - INFO - {"error":"Access Denied","message":"Bot access is not allowed. This site is protected against automated scraping.","blocked_user_agent":"Python-WebScraper/1.0 (Bot)","client_ip":"210.212.2.133","timestamp":"2025-12-20T18:12:06.585Z"}
+2025-12-20 23:43:08,196 - INFO - 
+No X402/Payment headers found
+2025-12-20 23:43:08,196 - INFO - 
+❌ No WWW-Authenticate header
+2025-12-20 23:43:08,196 - INFO - 
+================================================================================
+2025-12-20 23:43:08,196 - INFO - TEST 5: Cloudflare Worker Analysis
+2025-12-20 23:43:08,196 - INFO - ================================================================================
+2025-12-20 23:43:08,199 - DEBUG - Starting new HTTPS connection (1): paywall-worker.dharadarsh0.workers.dev:443
+2025-12-20 23:43:09,183 - DEBUG - https://paywall-worker.dharadarsh0.workers.dev:443 "GET / HTTP/11" 403 None
+2025-12-20 23:43:09,187 - INFO - 🔍 Cloudflare headers detected:
+2025-12-20 23:43:09,188 - INFO -   CF-RAY: 9b111b266d1c7ed0-MAA
+2025-12-20 23:43:09,190 - INFO - 
+================================================================================
+2025-12-20 23:43:09,190 - INFO - PAYMENT SYSTEM INTEGRATION TEST
+2025-12-20 23:43:09,191 - INFO - ================================================================================
+2025-12-20 23:43:09,191 - INFO - Payment System Configuration:
+2025-12-20 23:43:09,191 - INFO -   Bot Payment System URL: http://localhost:3000/api/x402-payment
+2025-12-20 23:43:09,191 - INFO -   Payment Amount: 0.01 MOVE
+2025-12-20 23:43:09,191 - INFO -   Whitelist Duration: 60 seconds
+2025-12-20 23:43:09,191 - INFO -   Client IP: 210.212.2.133
+2025-12-20 23:43:09,191 - INFO - 
+Testing bot payment system connectivity: http://localhost:3000/api/x402-payment/verify
+2025-12-20 23:43:09,193 - DEBUG - Starting new HTTP connection (1): localhost:3000
+2025-12-20 23:43:09,193 - WARNING - ⚠️ Bot payment system not reachable (expected in development)
+2025-12-20 23:43:09,193 - INFO - 
+================================================================================
+2025-12-20 23:43:09,193 - INFO - SOLUTION ANALYSIS
+2025-12-20 23:43:09,194 - INFO - ================================================================================
+2025-12-20 23:43:09,194 - INFO - Based on the analysis, here are potential issues and solutions:
+2025-12-20 23:43:09,194 - INFO - 
+1. 403 Forbidden Response Analysis:
+2025-12-20 23:43:09,194 - INFO -    - If getting 403 instead of 402, the paywall might:
+2025-12-20 23:43:09,194 - INFO -      a) Use IP-based blocking instead of X402
+2025-12-20 23:43:09,194 - INFO -      b) Require specific headers or authentication
+2025-12-20 23:43:09,194 - INFO -      c) Have different payment verification method
+2025-12-20 23:43:09,194 - INFO - 
+2. Payment Verification Issues:
+2025-12-20 23:43:09,194 - INFO -    - Our payment system works correctly (mock mode)
+2025-12-20 23:43:09,194 - INFO -    - But paywall might not recognize our payments because:
+2025-12-20 23:43:09,194 - INFO -      a) Different payment verification endpoint
+2025-12-20 23:43:09,194 - INFO -      b) Different transaction format expected
+2025-12-20 23:43:09,194 - INFO -      c) Missing integration with actual payment system
+2025-12-20 23:43:09,194 - INFO - 
+3. Recommended Solutions:
+2025-12-20 23:43:09,194 - INFO -    a) Check if paywall expects different headers
+2025-12-20 23:43:09,194 - INFO -    b) Verify payment system integration
+2025-12-20 23:43:09,194 - INFO -    c) Test with actual bot payment system running
+2025-12-20 23:43:09,194 - INFO -    d) Check Cloudflare Worker configuration
+2025-12-20 23:43:09,194 - INFO - 
+4. Next Steps:
+2025-12-20 23:43:09,194 - INFO -    - Start the bot payment system (localhost:3000)
+2025-12-20 23:43:09,194 - INFO -    - Configure real MOVE transactions if needed
+2025-12-20 23:43:09,194 - INFO -    - Check paywall worker source code for requirements
+2025-12-20 23:43:09,194 - INFO - 
+================================================================================
+2025-12-20 23:43:09,194 - INFO - DEBUG ANALYSIS COMPLETE
+2025-12-20 23:43:09,194 - INFO - ================================================================================
+2025-12-20 23:43:09,194 - INFO - Check debug_paywall.log for detailed analysis

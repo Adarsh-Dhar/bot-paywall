@@ -196,8 +196,10 @@ if __name__ == "__main__":
         print(f"Total text content: {len(data['full_text_content'])} characters")
         print(f"\nDetailed content has been logged to 'webscrapper.log'")
         
-        # Also save full content to a separate file
-        with open(f"scraped_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt", "w", encoding="utf-8") as f:
+        # Also save full content to organized folder
+        os.makedirs("scraped_content", exist_ok=True)
+        filename = f"scraped_content/scraped_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(f"URL: {data['url']}\n")
             f.write(f"Title: {data['title']}\n")
             f.write(f"Scraped at: {data['timestamp']}\n")
@@ -206,7 +208,7 @@ if __name__ == "__main__":
             f.write("=" * 80 + "\n")
             f.write(data['full_text_content'])
         
-        print(f"Full text content saved to: scraped_content_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        print(f"Full text content saved to: {filename}")
     else:
         logger.error("Failed to scrape the website.")
         print("❌ Failed to scrape the website.")

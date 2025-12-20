@@ -1,5 +1,5 @@
-// CLOUDFLARE WORKER CODE (The Gatekeeper) - FULL BOT BLOCKING MODE
-// This worker blocks all bots completely - no payments, no bypass
+// CLOUDFLARE WORKER CODE (The Gatekeeper) - X402 PAYMENT MODE
+// This worker implements X402 payment flow for bot access
 
 // Configuration from environment variables
 function getConfig(env) {
@@ -7,8 +7,193 @@ function getConfig(env) {
     logging: env?.LOGGING === "true",
     originUrl: env?.ORIGIN_URL || "https://test-paywall-website.adarsh.software",
     zoneId: env?.ZONE_ID || "11685346bf13dc3ffebc9cc2866a8105",
-    apiToken: env?.API_TOKEN || ""
+    apiToken: env?.API_TOKEN || "",
+    paymentAddress: env?.PAYMENT_ADDRESS || "0x1234567890abcdef1234567890abcdef12345678",
+    botPaymentSystemUrl: env?.BOT_PAYMENT_SYSTEM_URL || "https://your-domain.com/api/x402-payment"
   };
+}
+
+// Generate X402 Payment Required response
+function generateX402Response(clientIP, config) {
+  const paymentDetails = {
+    error: "Payment Required",
+    message: "Bot access requires X402 payment. Please transfer 0.01 MOVE tokens to the specified address.",
+    payment_required: true,
+    payment_address: config.paymentAddress,
+    payment_amount: "0.01",
+    payment_currency: "MOVE",
+    client_ip: clientIP,
+    timestamp: new Date().toISOString(),
+    instructions: "Transfer exactly 0.01 MOVE tokens to the payment address. Access will be granted automatically upon payment confirmation."
+  };
+
+  return new Response(
+    JSON.stringify(paymentDetails),
+    {
+      status: 402,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate": "X402-Payment",
+        "X402-Payment-Address": config.paymentAddress,
+        "X402-Payment-Amount": "0.01",
+        "X402-Payment-Currency": "MOVE",
+        "X-Bot-Protection": "x402-payment-required"
+      }
+    }
+  );
+}
+
+// Verify X402 payment with bot payment system
+async function verifyX402Payment(transactionId, clientIP, config) {
+  if (!config.botPaymentSystemUrl || !transactionId) {
+    if (config.logging) {
+      console.log("❌ X402 payment verification failed - missing configuration", { 
+        hasUrl: !!config.botPaymentSystemUrl, 
+        hasTransactionId: !!transactionId,
+        clientIP 
+      });
+    }
+    return { verified: false, error: "Missing payment system configuration or transaction ID" };
+  }
+
+  try {
+    const response = await fetch(`${config.botPaymentSystemUrl}/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiToken}`
+      },
+      body: JSON.stringify({
+        transactionId,
+        clientIP,
+        expectedAmount: 0.01,
+        expectedCurrency: 'MOVE'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      if (config.logging) {
+        console.log("❌ X402 payment verification HTTP error", { 
+          status: response.status, 
+          statusText: response.statusText,
+          error: errorText,
+          transactionId, 
+          clientIP 
+        });
+      }
+      return { 
+        verified: false, 
+        error: `Payment verification failed: ${response.status} ${response.statusText}`,
+        details: errorText
+      };
+    }
+
+    const result = await response.json();
+    
+    if (config.logging) {
+      console.log("✅ X402 payment verification response", { 
+        verified: result.verified,
+        transactionId, 
+        clientIP,
+        result 
+      });
+    }
+    
+    return {
+      verified: result.verified === true,
+      error: result.verified ? null : (result.error || "Payment verification failed"),
+      details: result
+    };
+  } catch (error) {
+    if (config.logging) {
+      console.log("❌ X402 payment verification network error", { 
+        error: error.message, 
+        stack: error.stack,
+        transactionId, 
+        clientIP 
+      });
+    }
+    return { 
+      verified: false, 
+      error: `Network error during payment verification: ${error.message}`,
+      details: error.stack
+    };
+  }
+}
+
+// Trigger IP whitelisting through bot payment system
+async function triggerIPWhitelisting(transactionId, clientIP, config) {
+  if (!config.botPaymentSystemUrl) {
+    if (config.logging) {
+      console.log("❌ IP whitelisting failed - missing bot payment system URL", { transactionId, clientIP });
+    }
+    return { success: false, error: "Missing bot payment system configuration" };
+  }
+
+  try {
+    const response = await fetch(`${config.botPaymentSystemUrl}/whitelist`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiToken}`
+      },
+      body: JSON.stringify({
+        transactionId,
+        clientIP,
+        duration: 60 // 60 seconds
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      if (config.logging) {
+        console.log("❌ IP whitelisting HTTP error", { 
+          status: response.status, 
+          statusText: response.statusText,
+          error: errorText,
+          transactionId, 
+          clientIP 
+        });
+      }
+      return { 
+        success: false, 
+        error: `Whitelisting failed: ${response.status} ${response.statusText}`,
+        details: errorText
+      };
+    }
+
+    const result = await response.json();
+    
+    if (config.logging) {
+      console.log("✅ IP whitelisting response", { 
+        success: result.success,
+        transactionId, 
+        clientIP,
+        result 
+      });
+    }
+    
+    return {
+      success: result.success === true,
+      error: result.success ? null : (result.error || "IP whitelisting failed"),
+      details: result
+    };
+  } catch (error) {
+    if (config.logging) {
+      console.log("❌ IP whitelisting network error", { 
+        error: error.message, 
+        stack: error.stack,
+        transactionId, 
+        clientIP 
+      });
+    }
+    return { 
+      success: false, 
+      error: `Network error during IP whitelisting: ${error.message}`,
+      details: error.stack
+    };
+  }
 }
 
 // Check if IP is whitelisted in Cloudflare firewall rules
@@ -117,7 +302,7 @@ export default {
     const config = getConfig(env);
     
     if (config.logging) {
-      console.log("Bot Blocker processing request", {
+      console.log("X402 Payment Gateway processing request", {
         url: request.url,
         method: request.method,
         userAgent: request.headers.get("User-Agent"),
@@ -135,40 +320,132 @@ export default {
     
     if (isWhitelisted) {
       if (config.logging) {
-        console.log("✅ IP whitelisted in Cloudflare firewall rules, bypassing bot detection", { clientIP });
+        console.log("✅ IP whitelisted in Cloudflare firewall rules, allowing access", { clientIP });
       }
-      // Skip bot detection for whitelisted IPs
+      // Allow access for whitelisted IPs
     } else {
       // Detect if this is a bot request
       const isBot = detectBot(request);
       if (isBot) {
         if (config.logging) {
-          console.log("🚫 Bot detected - BLOCKING ACCESS", { clientIP });
+          console.log("🤖 Bot detected - requiring X402 payment", { clientIP });
         }
         
-        // Block all bots with 403 Forbidden
-        return new Response(
-          JSON.stringify({
-            error: "Access Denied",
-            message: "Bot access is not allowed. This site is protected against automated scraping.",
-            blocked_user_agent: request.headers.get("User-Agent"),
-            client_ip: clientIP,
-            timestamp: new Date().toISOString()
-          }),
-          {
-            status: 403,
-            headers: { 
-              "Content-Type": "application/json",
-              "X-Bot-Protection": "active"
-            },
+        // Check if this is a payment verification request
+        const transactionId = request.headers.get("X402-Transaction-ID");
+        if (transactionId) {
+          if (config.logging) {
+            console.log("💰 X402 payment verification request", { transactionId, clientIP });
           }
-        );
+          
+          // Verify the X402 payment
+          const paymentResult = await verifyX402Payment(transactionId, clientIP, config);
+          
+          if (paymentResult.verified) {
+            if (config.logging) {
+              console.log("✅ X402 payment verified, triggering IP whitelisting", { transactionId, clientIP });
+            }
+            
+            // Trigger IP whitelisting
+            const whitelistResult = await triggerIPWhitelisting(transactionId, clientIP, config);
+            
+            if (whitelistResult.success) {
+              // Return success response
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  message: "Payment verified and IP whitelisted. You may now access the content.",
+                  transaction_id: transactionId,
+                  client_ip: clientIP,
+                  whitelist_duration: 60,
+                  timestamp: new Date().toISOString()
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-Payment-Status": "verified",
+                    "X-Whitelist-Status": "active"
+                  }
+                }
+              );
+            } else {
+              // Whitelisting failed - return detailed error
+              if (config.logging) {
+                console.log("❌ IP whitelisting failed after successful payment verification", { 
+                  transactionId, 
+                  clientIP, 
+                  error: whitelistResult.error,
+                  details: whitelistResult.details
+                });
+              }
+              
+              return new Response(
+                JSON.stringify({
+                  error: "Whitelisting Failed",
+                  message: "Payment verified but IP whitelisting failed. Please try again in a few moments.",
+                  transaction_id: transactionId,
+                  client_ip: clientIP,
+                  error_details: whitelistResult.error,
+                  timestamp: new Date().toISOString(),
+                  retry_after: 30 // Suggest retry after 30 seconds
+                }),
+                {
+                  status: 500,
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-Payment-Status": "verified",
+                    "X-Whitelist-Status": "failed",
+                    "Retry-After": "30"
+                  }
+                }
+              );
+            }
+          } else {
+            // Payment verification failed - return detailed error
+            if (config.logging) {
+              console.log("❌ X402 payment verification failed", { 
+                transactionId, 
+                clientIP, 
+                error: paymentResult.error,
+                details: paymentResult.details
+              });
+            }
+            
+            return new Response(
+              JSON.stringify({
+                error: "Payment Verification Failed",
+                message: "The provided transaction could not be verified. Please ensure you transferred exactly 0.01 MOVE tokens to the correct address.",
+                transaction_id: transactionId,
+                client_ip: clientIP,
+                error_details: paymentResult.error,
+                payment_requirements: {
+                  amount: "0.01",
+                  currency: "MOVE",
+                  address: config.paymentAddress
+                },
+                timestamp: new Date().toISOString()
+              }),
+              {
+                status: 403,
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Payment-Status": "failed",
+                  "X-Bot-Protection": "payment-verification-failed"
+                }
+              }
+            );
+          }
+        } else {
+          // No payment provided, return X402 Payment Required
+          return generateX402Response(clientIP, config);
+        }
       }
     }
     
-    // For regular browser requests, forward to origin
+    // For regular browser requests or whitelisted bots, forward to origin
     if (config.logging) {
-      console.log("✅ Human browser detected, forwarding to origin");
+      console.log("✅ Allowing access, forwarding to origin", { clientIP });
     }
     
     // Create a new request to the origin server
@@ -181,6 +458,3 @@ export default {
     return fetch(originRequest);
   },
 };
-
-
-

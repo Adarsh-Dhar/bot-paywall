@@ -6,6 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from typing import Optional
+from x402_payment_handler import X402PaymentHandler
 
 load_dotenv()
 
@@ -24,6 +25,7 @@ TARGET_URL = os.getenv("TARGET_URL", "https://example.com")
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 RETRY_DELAY = int(os.getenv("RETRY_DELAY", "1"))
+BOT_PAYMENT_SYSTEM_URL = os.getenv("BOT_PAYMENT_SYSTEM_URL", "http://localhost:3000/api/x402-payment")
 
 
 class WebScraper:
@@ -33,17 +35,40 @@ class WebScraper:
         self.session.headers.update({
             "User-Agent": "Python-WebScraper/1.0 (Bot)"
         })
+        self.x402_handler = X402PaymentHandler(bot_payment_system_url=BOT_PAYMENT_SYSTEM_URL)
 
     def fetch(self) -> Optional[str]:
-        """Fetch the webpage with retry logic."""
+        """Fetch the webpage with retry logic and X402 payment handling."""
         for attempt in range(MAX_RETRIES):
             try:
                 logger.info(f"Fetching {self.url} (attempt {attempt + 1}/{MAX_RETRIES})...")
                 response = self.session.get(self.url, timeout=REQUEST_TIMEOUT)
+                
+                # Check if we need to handle payment (new payment or expired whitelist)
+                client_ip = self.x402_handler.get_client_ip()
+                
+                # Handle X402 payment requirement or expired whitelist
+                if self.x402_handler.should_trigger_new_payment(response):
+                    if response.status_code == 402 and self.x402_handler.detect_payment_required(response):
+                        logger.info("💳 X402 Payment Required detected")
+                        payment_success = self.x402_handler.handle_payment_required(response, client_ip)
+                    else:
+                        logger.info("⏰ Expired whitelist detected, handling renewal")
+                        payment_success = self.x402_handler.handle_expired_whitelist(response, client_ip)
+                    
+                    if payment_success:
+                        logger.info("🔄 Retrying request after successful payment/renewal...")
+                        # Retry the request after successful payment
+                        response = self.session.get(self.url, timeout=REQUEST_TIMEOUT)
+                    else:
+                        logger.error("❌ Payment/renewal failed, cannot proceed")
+                        return None
+                
                 response.raise_for_status()
                 logger.info(f"✅ Successfully fetched: {response.status_code}")
                 logger.info(f"Content length: {len(response.text)} characters")
                 return response.text
+                
             except requests.RequestException as e:
                 logger.error(f"❌ Error: {e}")
                 if attempt < MAX_RETRIES - 1:

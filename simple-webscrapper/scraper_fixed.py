@@ -2,6 +2,7 @@
 """
 Simple webscraper that scrapes https://test-cloudflare-website.adarsh.software/
 with real MOVE blockchain payment support for accessing paywalled content.
+Fixed version with cache-busting to avoid cached 402 responses.
 """
 
 import requests
@@ -26,12 +27,11 @@ logger = logging.getLogger(__name__)
 
 def scrape_website():
     """Scrape the target website with real payment support."""
-    url = "https://test-cloudflare-website.adarsh.software/"
+    base_url = "https://test-cloudflare-website.adarsh.software/"
     
     # Add cache-busting parameter to avoid cached 402 responses
-    import time
     cache_bust = int(time.time())
-    url_with_cache_bust = f"{url}?t={cache_bust}"
+    url = f"{base_url}?t={cache_bust}"
     
     # Initialize real payment handler
     payment_handler = RealPaymentHandler()
@@ -56,7 +56,7 @@ def scrape_website():
     })
     
     try:
-        logger.info(f"Starting to scrape: {url_with_cache_bust}")
+        logger.info(f"Starting to scrape: {url}")
         
         # Show current configuration
         logger.info("🔗 Real transaction mode enabled")
@@ -64,76 +64,23 @@ def scrape_website():
         logger.info(f"💰 Current balance: {balance / 100_000_000:.8f} MOVE")
         
         # Make the initial request
-        response = session.get(url_with_cache_bust, timeout=30)
+        response = session.get(url, timeout=30)
         
         # Check if payment is required
         if response.status_code == 402:
             logger.info("💳 Payment required (402 status code)")
             
             try:
-                # Parse the x402 payment requirements from the response body
+                # Parse the payment requirements from the response body
                 payment_data = response.json()
                 logger.info(f"Payment data received: {payment_data}")
                 
-                # Handle x402 protocol format
-                if 'accepts' in payment_data and len(payment_data['accepts']) > 0:
-                    accept_info = payment_data['accepts'][0]
-                    payment_address = accept_info.get('payTo')
-                    # Convert from octas to MOVE (100000000 octas = 1 MOVE)
-                    max_amount_octas = int(accept_info.get('maxAmountRequired', '1000000'))
-                    payment_amount = max_amount_octas / 100_000_000
-                    
-                    logger.info(f"💰 x402 Payment required: {payment_amount} MOVE to {payment_address}")
-                    
-                    # Make the MOVE payment to the specified address
-                    transaction_id = payment_handler.make_move_payment(payment_address, payment_amount)
-                    
-                    if transaction_id:
-                        logger.info(f"✅ Payment completed! Transaction: {transaction_id}")
-                        
-                        # Verify the transaction
-                        verification = payment_handler.verify_transaction(transaction_id)
-                        logger.info(f"🔍 Transaction verification: {verification}")
-                        
-                        if verification.get('verified'):
-                            logger.info("⏳ Submitting payment proof to Cloudflare worker...")
-                            
-                            # Submit payment proof using X402-Transaction-ID header (Cloudflare worker format)
-                            session.headers.update({
-                                'X402-Transaction-ID': transaction_id
-                            })
-                            
-                            # Try to access the content with payment proof
-                            logger.info("🔄 Attempting to access content with payment proof...")
-                            retry_response = session.get(url, timeout=30)
-                            
-                            if retry_response.status_code == 200:
-                                logger.info("🎉 Payment successful! Access granted.")
-                                response = retry_response
-                            elif retry_response.status_code == 302:
-                                logger.info("🎉 Payment successful! Redirected to content.")
-                                response = retry_response
-                            else:
-                                logger.error(f"❌ Payment verification failed. Status: {retry_response.status_code}")
-                                try:
-                                    error_data = retry_response.json()
-                                    logger.error(f"Error details: {error_data}")
-                                except:
-                                    logger.error(f"Response text: {retry_response.text[:500]}")
-                                return None
-                        else:
-                            logger.error("❌ Transaction verification failed")
-                            return None
-                    else:
-                        logger.error("❌ Payment failed")
-                        return None
-                
-                # Handle legacy format (from cloudflare website) - fallback for testing
-                elif payment_data.get('error') == 'Payment Required':
+                # Handle legacy format (from cloudflare website)
+                if payment_data.get('error') == 'Payment Required':
                     payment_address = payment_data.get('payment_address')
                     payment_amount = payment_data.get('price_move', 0.01)
                     
-                    logger.info(f"💰 Legacy payment required: {payment_amount} MOVE to {payment_address}")
+                    logger.info(f"💰 Payment required: {payment_amount} MOVE to {payment_address}")
                     
                     # Make the MOVE payment to the specified address
                     transaction_id = payment_handler.make_move_payment(payment_address, payment_amount)
@@ -148,14 +95,16 @@ def scrape_website():
                         if verification.get('verified'):
                             logger.info("⏳ Submitting payment proof to Cloudflare worker...")
                             
-                            # Submit payment proof using X402-Transaction-ID header (Cloudflare worker format)
+                            # Submit payment proof using X402-Transaction-ID header
                             session.headers.update({
                                 'X402-Transaction-ID': transaction_id
                             })
                             
-                            # Try to access the content with payment proof
+                            # Try to access the content with payment proof (with new cache-bust)
+                            retry_cache_bust = int(time.time())
+                            retry_url = f"{base_url}?t={retry_cache_bust}"
                             logger.info("🔄 Attempting to access content with payment proof...")
-                            retry_response = session.get(url, timeout=30)
+                            retry_response = session.get(retry_url, timeout=30)
                             
                             if retry_response.status_code == 200:
                                 logger.info("🎉 Payment successful! Access granted.")
@@ -205,7 +154,7 @@ def scrape_website():
         logger.info(f"Content length: {len(response.text)} characters")
         logger.info("Website content:")
         logger.info("-" * 50)
-        logger.info(response.text)
+        logger.info(response.text[:1000])  # Show first 1000 characters
         logger.info("-" * 50)
         
         return response.text

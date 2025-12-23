@@ -182,24 +182,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    * Converts Prisma BotsAllowed entry to BotAllowedEntry format
    */
   private convertPrismaEntryToBotAllowedEntry(prismaEntry: any): BotAllowedEntry {
-    // Create a mock payment record since the current schema doesn't store payment details
-    const mockPaymentRecord: PaymentRecord = {
-      transactionId: 'stored_in_reason', // Would need schema update to store properly
-      amount: 0.01,
-      currency: 'MOVE',
-      timestamp: prismaEntry.createdAt,
-      payerAddress: 'unknown', // Would need schema update
-      verified: true
-    };
-
-    return {
-      id: prismaEntry.id,
-      ipAddress: prismaEntry.ipAddress,
-      reason: prismaEntry.reason || '',
-      paymentRecord: mockPaymentRecord,
-      createdAt: prismaEntry.createdAt,
-      expiresAt: undefined, // Current schema doesn't have expiration
-      cleanedUp: false // Would need schema update to track this
-    };
+    // TODO: Update database schema to properly store payment records
+    throw new Error('Payment record storage not implemented. Database schema needs to be updated to store real payment data.');
   }
 }

@@ -206,69 +206,13 @@ export class BotPaymentSystemApplication {
         return;
       }
 
-      // For now, we'll simulate payment verification since we don't have actual x402 integration
-      // In a real implementation, this would wait for an actual payment transaction
-      const mockTransactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+      // Real implementation required - no mock transactions
       await this.loggingService.log({
         timestamp: new Date(),
-        level: 'info',
+        level: 'error',
         component: 'BotPaymentSystem',
-        message: 'Simulating payment verification (replace with actual x402 integration)',
-        context: { ip, mockTransactionId }
-      });
-
-      // Verify payment (mock implementation)
-      const paymentResult = await this.paymentVerificationService.verifyTransaction(mockTransactionId);
-      
-      if (!paymentResult.success) {
-        await this.loggingService.log({
-          timestamp: new Date(),
-          level: 'warn',
-          component: 'BotPaymentSystem',
-          message: 'Payment verification failed',
-          context: { ip, error: paymentResult.error }
-        });
-        return;
-      }
-
-      // Create payment record
-      const paymentRecord: PaymentRecord = {
-        transactionId: mockTransactionId,
-        amount: 0.01,
-        currency: 'MOVE',
-        timestamp: new Date(),
-        payerAddress: paymentResult.payerAddress || 'unknown',
-        verified: true
-      };
-
-      // Add IP to database
-      const entryId = await (this.databaseService as DatabaseServiceImpl).addBotEntryWithPayment(
-        ip,
-        paymentRecord
-      );
-
-      await this.loggingService.logDatabaseOperation('add_bot_entry', ip, true);
-
-      // Create Cloudflare whitelist rule
-      const accessRule = await this.cloudflareClient.createAccessRule(ip, 'whitelist');
-      
-      await this.loggingService.logCloudflareOperation('create_rule', ip, true);
-
-      // Schedule cleanup
-      await this.cleanupScheduler.scheduleCleanup(ip, this.config.cleanupDelayMs);
-
-      await this.loggingService.log({
-        timestamp: new Date(),
-        level: 'info',
-        component: 'BotPaymentSystem',
-        message: 'Bot access granted successfully',
-        context: {
-          ip,
-          entryId,
-          ruleId: accessRule.id,
-          cleanupScheduledIn: this.config.cleanupDelayMs
-        }
+        message: 'Real x402 payment integration required. Mock transactions have been removed.',
+        context: { ip }
       });
 
     } catch (error) {

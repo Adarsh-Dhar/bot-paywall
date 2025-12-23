@@ -32,11 +32,10 @@ export class PaymentVerificationServiceImpl implements PaymentVerificationServic
         };
       }
 
-      // In a real implementation, this would query the MOVE blockchain
-      // For now, we'll simulate the verification process
-      const mockTransactionData = await this.fetchTransactionFromBlockchain(transactionId);
+      // Query the MOVE blockchain for transaction data
+      const transactionData = await this.fetchTransactionFromBlockchain(transactionId);
       
-      if (!mockTransactionData) {
+      if (!transactionData) {
         return {
           success: false,
           error: 'Transaction not found on blockchain'
@@ -44,26 +43,26 @@ export class PaymentVerificationServiceImpl implements PaymentVerificationServic
       }
 
       // Validate the transaction amount
-      if (!this.validateAmount(mockTransactionData.amount)) {
+      if (!this.validateAmount(transactionData.amount)) {
         return {
           success: false,
-          error: `Invalid payment amount. Expected ${this.REQUIRED_AMOUNT} ${this.REQUIRED_CURRENCY}, got ${mockTransactionData.amount}`
+          error: `Invalid payment amount. Expected ${this.REQUIRED_AMOUNT} ${this.REQUIRED_CURRENCY}, got ${transactionData.amount}`
         };
       }
 
       // Validate currency
-      if (mockTransactionData.currency !== this.REQUIRED_CURRENCY) {
+      if (transactionData.currency !== this.REQUIRED_CURRENCY) {
         return {
           success: false,
-          error: `Invalid currency. Expected ${this.REQUIRED_CURRENCY}, got ${mockTransactionData.currency}`
+          error: `Invalid currency. Expected ${this.REQUIRED_CURRENCY}, got ${transactionData.currency}`
         };
       }
 
       return {
         success: true,
         transactionId,
-        amount: mockTransactionData.amount,
-        payerAddress: mockTransactionData.payerAddress
+        amount: transactionData.amount,
+        payerAddress: transactionData.payerAddress
       };
 
     } catch (error) {
@@ -227,45 +226,31 @@ export class PaymentVerificationServiceImpl implements PaymentVerificationServic
   }
 
   /**
-   * Mock function to simulate fetching transaction data from blockchain
-   * In a real implementation, this would query the MOVE blockchain API
+   * Fetches transaction data from the MOVE blockchain
    */
   private async fetchTransactionFromBlockchain(transactionId: string): Promise<{
     amount: number;
     currency: string;
     payerAddress: string;
   } | null> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Mock transaction data - in reality this would come from blockchain
-    // For testing purposes, we'll return valid data for non-empty transaction IDs
-    if (transactionId && transactionId.length > 0) {
-      return {
-        amount: 0.01,
-        currency: 'MOVE',
-        payerAddress: `move_address_${transactionId.slice(0, 8)}`
-      };
-    }
-
-    return null;
+    // TODO: Implement real blockchain query
+    // This should query the MOVE blockchain API to get transaction details
+    throw new Error('Real blockchain transaction verification not implemented. Mock transactions have been removed.');
   }
 
   /**
-   * Validates transaction signature (mock implementation)
+   * Validates transaction signature
    */
   private validateTransactionSignature(transactionId: string, signature: string): boolean {
-    // In a real implementation, this would verify the cryptographic signature
-    // For now, we'll just check that both parameters are provided
-    return !!(transactionId && signature);
+    // TODO: Implement real cryptographic signature verification
+    throw new Error('Transaction signature validation not implemented. Mock transactions have been removed.');
   }
 
   /**
    * Checks if a transaction has already been processed to prevent double-spending
    */
   private async isTransactionAlreadyProcessed(transactionId: string): Promise<boolean> {
-    // In a real implementation, this would check a database of processed transactions
-    // For now, we'll return false to allow all transactions
-    return false;
+    // TODO: Implement database check for processed transactions
+    throw new Error('Transaction processing check not implemented. Mock transactions have been removed.');
   }
 }

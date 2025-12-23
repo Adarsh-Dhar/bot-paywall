@@ -322,7 +322,14 @@ export default {
       if (config.logging) {
         console.log("✅ IP whitelisted in Cloudflare firewall rules, allowing access", { clientIP });
       }
-      // Allow access for whitelisted IPs
+      // Allow access for whitelisted IPs - forward to origin
+      const originRequest = new Request(config.originUrl + new URL(request.url).pathname + new URL(request.url).search, {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      });
+      
+      return fetch(originRequest);
     } else {
       // Detect if this is a bot request
       const isBot = detectBot(request);

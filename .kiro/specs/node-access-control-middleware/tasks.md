@@ -146,7 +146,7 @@ Implementation of a single-file Node.js server (access-server.js) that acts as a
     - Test configuration loading
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 10. Integration and final testing
+- [-] 10. Integration and final testing
   - [ ] 10.1 Wire all components together
     - Integrate Payment Verifier, Cloudflare Client, and Timer Manager
     - Ensure proper error propagation between components

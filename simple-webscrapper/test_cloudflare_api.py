@@ -1,83 +1,109 @@
 #!/usr/bin/env python3
 """
-Test Cloudflare API to check whitelist rules
+Test Cloudflare API connectivity and permissions
 """
 
 import requests
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def test_cloudflare_api():
-    """Test Cloudflare API to check whitelist rules"""
+    """Test basic Cloudflare API connectivity"""
     
-    # Configuration from worker
-    zone_id = "11685346bf13dc3ffebc9cc2866a8105"
-    api_token = "oWN3t2VfMulCIBh7BzrScK87xlKmPRp6a1ttKVsB"
+    # Try to get token from environment or main project
+    api_token = os.getenv('CLOUDFLARE_API_TOKEN')
+    if not api_token:
+        main_env_path = os.path.join(os.path.dirname(__file__), '..', 'main', '.env')
+        if os.path.exists(main_env_path):
+            with open(main_env_path, 'r') as f:
+                for line in f:
+                    if line.startswith('CLOUDFLARE_API_TOKEN='):
+                        api_token = line.split('=', 1)[1].strip()
+                        break
     
-    # Test IP (this should be your current IP)
-    test_ip = "210.212.2.133"  # From the .env file
+    if not api_token:
+        print("❌ No API token found")
+        return
     
-    print(f"Testing Cloudflare API for zone: {zone_id}")
-    print(f"Checking IP: {test_ip}")
-    
-    # Check existing whitelist rules
-    print("\n=== Checking existing whitelist rules ===")
-    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/firewall/access_rules/rules"
+    print(f"🔑 Using API token: {api_token[:10]}...")
     
     headers = {
-        "Authorization": f"Bearer {api_token}",
-        "Content-Type": "application/json"
+        'Authorization': f'Bearer {api_token}',
+        'Content-Type': 'application/json'
     }
     
-    response = requests.get(url, headers=headers)
-    
-    if response.ok:
+    # Test 1: Verify token
+    print("\n🧪 Test 1: Verify token")
+    try:
+        response = requests.get('https://api.cloudflare.com/client/v4/user/tokens/verify', headers=headers)
+        print(f"Status: {response.status_code}")
         data = response.json()
-        print(f"API call successful: {data.get('success')}")
-        print(f"Total rules: {len(data.get('result', []))}")
+        print(f"Response: {json.dumps(data, indent=2)}")
         
-        # Check for our IP
-        for rule in data.get('result', []):
-            if rule.get('configuration', {}).get('value') == test_ip:
-                print(f"✅ Found rule for IP {test_ip}:")
-                print(f"  Mode: {rule.get('mode')}")
-                print(f"  ID: {rule.get('id')}")
-                print(f"  Notes: {rule.get('notes')}")
-                return
+        if data.get('success'):
+            print("✅ Token is valid")
+        else:
+            print("❌ Token verification failed")
+            return
+    except Exception as e:
+        print(f"❌ Token verification error: {e}")
+        return
+    
+    # Test 2: List zones
+    print("\n🧪 Test 2: List zones")
+    try:
+        response = requests.get('https://api.cloudflare.com/client/v4/zones', headers=headers)
+        print(f"Status: {response.status_code}")
+        data = response.json()
         
-        print(f"❌ No existing rule found for IP {test_ip}")
+        if data.get('success'):
+            zones = data.get('result', [])
+            print(f"✅ Found {len(zones)} zones:")
+            for zone in zones:
+                print(f"  - {zone['name']} (ID: {zone['id']})")
+        else:
+            print(f"❌ Failed to list zones: {data}")
+    except Exception as e:
+        print(f"❌ Zone listing error: {e}")
+    
+    # Test 3: Test specific zone
+    zone_id = os.getenv('CLOUDFLARE_ZONE_ID', '11685346bf13dc3ffebc9cc2866a8105')
+    print(f"\n🧪 Test 3: Test specific zone {zone_id}")
+    try:
+        response = requests.get(f'https://api.cloudflare.com/client/v4/zones/{zone_id}', headers=headers)
+        print(f"Status: {response.status_code}")
+        data = response.json()
+        print(f"Response: {json.dumps(data, indent=2)}")
         
-        # Show all rules for debugging
-        print("\nAll existing rules:")
-        for rule in data.get('result', []):
-            config = rule.get('configuration', {})
-            print(f"  {rule.get('mode')} - {config.get('target')}: {config.get('value')} (ID: {rule.get('id')})")
-    else:
-        print(f"❌ API call failed: {response.status_code}")
-        print(f"Response: {response.text}")
+        if data.get('success'):
+            zone_info = data.get('result', {})
+            print(f"✅ Zone found: {zone_info.get('name')}")
+        else:
+            print(f"❌ Zone access failed: {data}")
+    except Exception as e:
+        print(f"❌ Zone access error: {e}")
     
-    # Test creating a whitelist rule
-    print(f"\n=== Testing whitelist rule creation for IP {test_ip} ===")
-    create_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/firewall/access_rules/rules"
-    
-    payload = {
-        "mode": "whitelist",
-        "configuration": {
-            "target": "ip",
-            "value": test_ip
-        },
-        "notes": "Test X402 Payment"
-    }
-    
-    create_response = requests.post(create_url, headers=headers, json=payload)
-    
-    if create_response.ok:
-        result = create_response.json()
-        print(f"✅ Whitelist rule created successfully")
-        print(f"Rule ID: {result.get('result', {}).get('id')}")
-    else:
-        print(f"❌ Failed to create whitelist rule: {create_response.status_code}")
-        print(f"Response: {create_response.text}")
+    # Test 4: Test firewall rules access
+    print(f"\n🧪 Test 4: Test firewall rules access for zone {zone_id}")
+    try:
+        response = requests.get(f'https://api.cloudflare.com/client/v4/zones/{zone_id}/firewall/access_rules/rules', headers=headers)
+        print(f"Status: {response.status_code}")
+        data = response.json()
+        
+        if response.status_code == 200 and data.get('success'):
+            rules = data.get('result', [])
+            print(f"✅ Found {len(rules)} firewall rules")
+            for rule in rules[:3]:  # Show first 3 rules
+                print(f"  - {rule.get('configuration', {}).get('value')} ({rule.get('mode')})")
+        else:
+            print(f"❌ Firewall rules access failed: {data}")
+            print(f"Status code: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Firewall rules error: {e}")
+
 
 if __name__ == "__main__":
     test_cloudflare_api()

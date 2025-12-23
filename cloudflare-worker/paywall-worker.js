@@ -16,7 +16,7 @@ function getConfig(env) {
 // Generate X402 Payment Required response
 function generateX402Response(clientIP, config) {
   const paymentDetails = {
-    error: "Payment Required",
+    error: "Payment Required - NEW WORKER VERSION",
     message: "Bot access requires X402 payment. Please transfer 0.01 MOVE tokens to the specified address.",
     payment_required: true,
     payment_address: config.paymentAddress,
@@ -24,7 +24,8 @@ function generateX402Response(clientIP, config) {
     payment_currency: "MOVE",
     client_ip: clientIP,
     timestamp: new Date().toISOString(),
-    instructions: "Transfer exactly 0.01 MOVE tokens to the payment address. Access will be granted automatically upon payment confirmation."
+    instructions: "Transfer exactly 0.01 MOVE tokens to the payment address. Access will be granted automatically upon payment confirmation.",
+    worker_version: "v2.0-updated"
   };
 
   return new Response(
@@ -239,62 +240,91 @@ async function isIPWhitelisted(clientIP, config) {
   }
 }
 
-// Bot detection function
+// Bot detection function - More accurate detection for real bots vs humans
 function detectBot(request) {
   const userAgent = request.headers.get("User-Agent") || "";
   const acceptHeader = request.headers.get("Accept") || "";
   const acceptLanguage = request.headers.get("Accept-Language") || "";
   const acceptEncoding = request.headers.get("Accept-Encoding") || "";
   
-  // Check for obvious bot patterns in User-Agent
-  const botPatterns = [
+  // If no User-Agent at all, likely a bot
+  if (!userAgent || userAgent.trim() === "") {
+    return true;
+  }
+  
+  // Check for obvious bot patterns in User-Agent - these are definitive bot indicators
+  const obviousBotPatterns = [
     /bot/i,
     /crawler/i,
     /spider/i,
     /scraper/i,
-    /python/i,
-    /requests/i,
-    /curl/i,
-    /wget/i,
+    /python-requests/i,
+    /python\/\d/i,
+    /^curl/i,
+    /^wget/i,
     /beautifulsoup/i,
     /scrapy/i,
     /selenium/i,
     /phantomjs/i,
     /headless/i,
-    /automation/i
+    /automation/i,
+    /^python/i,
+    /httpx/i,
+    /aiohttp/i
   ];
   
-  // Check if User-Agent matches bot patterns
-  if (botPatterns.some(pattern => pattern.test(userAgent))) {
+  // If User-Agent matches obvious bot patterns, it's definitely a bot
+  if (obviousBotPatterns.some(pattern => pattern.test(userAgent))) {
     return true;
   }
   
-  // Check for incomplete browser User-Agent (missing Chrome/Safari/Firefox)
-  if (userAgent.includes("Mozilla") && userAgent.includes("AppleWebKit")) {
-    // Real browsers have Chrome, Safari, Firefox, or Edge in their UA
-    if (!userAgent.includes("Chrome") && 
-        !userAgent.includes("Safari") && 
-        !userAgent.includes("Firefox") && 
-        !userAgent.includes("Edge")) {
-      return true;
+  // Check for real browser User-Agent patterns
+  const browserPatterns = [
+    /Mozilla.*Chrome/i,
+    /Mozilla.*Safari/i,
+    /Mozilla.*Firefox/i,
+    /Mozilla.*Edge/i,
+    /Opera/i
+  ];
+  
+  // If it looks like a real browser, it's probably not a bot
+  if (browserPatterns.some(pattern => pattern.test(userAgent))) {
+    // Additional check: real browsers usually have proper Accept headers
+    if (acceptHeader && acceptHeader.includes("text/html")) {
+      return false; // Definitely a real browser
     }
   }
   
-  // Check for missing critical browser headers
-  if (!acceptLanguage || acceptLanguage.length < 2) {
-    return true; // Real browsers always send Accept-Language
+  // Check for programmatic access patterns (for edge cases)
+  let botScore = 0;
+  
+  // Missing or suspicious Accept header
+  if (!acceptHeader || acceptHeader === "*/*") {
+    botScore += 1;
   }
   
-  if (!acceptEncoding || !acceptEncoding.includes("gzip")) {
-    return true; // Real browsers always support gzip
+  // Missing Accept-Language (most browsers send this)
+  if (!acceptLanguage) {
+    botScore += 1;
   }
   
-  // Check for suspicious Accept header (real browsers send text/html first)
-  if (acceptHeader === "*/*" && !acceptHeader.includes("text/html")) {
-    return true;
+  // Missing Accept-Encoding (most browsers send this)
+  if (!acceptEncoding) {
+    botScore += 1;
   }
   
-  return false;
+  // Very simple User-Agent (less than 20 characters)
+  if (userAgent.length < 20) {
+    botScore += 1;
+  }
+  
+  // User-Agent doesn't contain Mozilla (most real browsers do)
+  if (!userAgent.includes("Mozilla")) {
+    botScore += 1;
+  }
+  
+  // If bot score is 3 or higher, likely a bot
+  return botScore >= 3;
 }
 
 export default {
@@ -333,6 +363,18 @@ export default {
     } else {
       // Detect if this is a bot request
       const isBot = detectBot(request);
+      
+      if (config.logging) {
+        console.log("🔍 Bot detection result", { 
+          clientIP, 
+          isBot,
+          userAgent: request.headers.get("User-Agent"),
+          accept: request.headers.get("Accept"),
+          acceptLanguage: request.headers.get("Accept-Language"),
+          acceptEncoding: request.headers.get("Accept-Encoding")
+        });
+      }
+      
       if (isBot) {
         if (config.logging) {
           console.log("🤖 Bot detected - requiring X402 payment", { clientIP });

@@ -8,10 +8,10 @@ const CONFIG = {
   CLOUDFLARE_TOKEN: 'oWN3t2VfMulCIBh7BzrScK87xlKmPRp6a1ttKVsB',
   CLOUDFLARE_ZONE_ID: '11685346bf13dc3ffebc9cc2866a8105',
   CLOUDFLARE_API_URL: 'https://api.cloudflare.com/client/v4',
-  PAYMENT_DESTINATION: '0xYOUR_WALLET_ADDRESS_HERE',
+  PAYMENT_DESTINATION: '0xc205d2924138e17e0035ecf74c98c40f486431276e20158ef3cf3697e9e967d1',
   REQUIRED_AMOUNT_OCTAS: 1000000, // 0.01 MOVE
   SUBSCRIPTION_DURATION_MS: 60000, // 60 seconds
-  SERVER_PORT: 3000
+  SERVER_PORT: 5000
 };
 
 // In-memory storage for active timers
@@ -272,6 +272,82 @@ class PaymentVerifier {
     };
   }
 }
+
+// Add these new endpoints for Cloudflare Worker integration
+
+// Endpoint: POST /verify - Verify payment transaction
+app.post('/verify', async (req, res) => {
+  try {
+    const { transactionId, clientIP, expectedAmount, expectedCurrency } = req.body;
+    
+    if (!transactionId) {
+      return res.status(400).json({
+        verified: false,
+        error: 'Missing transactionId'
+      });
+    }
+    
+    // Verify the payment
+    const isValid = await paymentVerifier.verifyPayment(transactionId);
+    
+    res.json({
+      verified: isValid,
+      transactionId,
+      clientIP,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error in /verify endpoint:', error.message);
+    res.status(500).json({
+      verified: false,
+      error: 'Verification failed',
+      details: error.message
+    });
+  }
+});
+
+// Endpoint: POST /whitelist - Whitelist IP after payment verification
+app.post('/whitelist', async (req, res) => {
+  try {
+    const { transactionId, clientIP, duration = 60 } = req.body;
+    
+    if (!clientIP) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing clientIP'
+      });
+    }
+    
+    // Check for existing rule and delete
+    const existingRuleId = await cloudflareClient.findExistingRule(clientIP);
+    if (existingRuleId) {
+      await cloudflareClient.deleteRule(existingRuleId);
+    }
+    
+    // Create whitelist rule
+    const ruleId = await cloudflareClient.createWhitelistRule(clientIP);
+    
+    // Start timer for automatic cleanup
+    timerManager.startTimer(clientIP, ruleId, cloudflareClient);
+    
+    res.json({
+      success: true,
+      clientIP,
+      ruleId,
+      expiresIn: `${duration}s`,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error in /whitelist endpoint:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Whitelisting failed',
+      details: error.message
+    });
+  }
+});
 
 // Cloudflare Client Component
 class CloudflareClient {

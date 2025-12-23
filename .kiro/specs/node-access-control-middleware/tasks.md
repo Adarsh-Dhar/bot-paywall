@@ -135,25 +135,25 @@ Implementation of a single-file Node.js server (access-server.js) that acts as a
     - _Requirements: 6.5_
 
 - [ ] 9. Configuration and constants setup
-  - [ ] 9.1 Define all configuration constants
+  - [x] 9.1 Define all configuration constants
     - CLOUDFLARE_TOKEN, CLOUDFLARE_ZONE_ID, CLOUDFLARE_API_URL
     - PAYMENT_DESTINATION, REQUIRED_AMOUNT_OCTAS, SUBSCRIPTION_DURATION_MS
     - SERVER_PORT
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [ ] 9.2 Write unit tests for configuration constants
+  - [x] 9.2 Write unit tests for configuration constants
     - Verify all constants are defined with correct values
     - Test configuration loading
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [-] 10. Integration and final testing
-  - [ ] 10.1 Wire all components together
+- [x] 10. Integration and final testing
+  - [x] 10.1 Wire all components together
     - Integrate Payment Verifier, Cloudflare Client, and Timer Manager
     - Ensure proper error propagation between components
     - Test end-to-end workflow
     - _Requirements: All requirements_
 
-  - [ ] 10.2 Write integration tests
+  - [x] 10.2 Write integration tests
     - Test complete payment-to-access workflow
     - Test timer expiration and cleanup
     - Test concurrent request handling

@@ -1,274 +1,112 @@
-# Ignore files and folders for main
-
 # Dependencies
-main/node_modules/
-main/.pnp
-main/.pnp.js
-
-# Testing
-main/coverage/
-main/.nyc_output/
-
-# Next.js (or build output)
-main/.next/
-main/out/
-main/build/
-main/dist/
-
-# Production logs
-main/*.log
-main/*.log.*
-
-# Miscellaneous
-main/.DS_Store
-main/*.pem
-
-# Debug logs
-main/npm-debug.log*
-main/yarn-debug.log*
-main/yarn-error.log*
-main/pnpm-debug.log*
-main/lerna-debug.log*
-
-# Local env files
-main/.env
-main/.env*.local
-main/.env.development.local
-main/.env.test.local
-main/.env.production.local
-
-# Vercel
-main/.vercel
-
-# TypeScript cache
-main/*.tsbuildinfo
-main/next-env.d.ts
-
-# IDE / Editor folders and swap files
-main/.idea/
-main/.vscode/
-main/*.swp
-main/*.swo
-main/*~
-main/.project
-main/.classpath
-main/.settings/
-main/*.sublime-project
-main/*.sublime-workspace
-
-# OS generated files
-main/.DS_Store
-main/.DS_Store?
-main/._*
-main/.Spotlight-V100
-main/.Trashes
-main/ehthumbs.db
-main/Thumbs.db
-main/Desktop.ini
-
-# Package manager
-main/.pnpm-store/
-main/pnpm-lock.yaml
-# Note: You might want to keep pnpm-lock.yaml for consistency
-# Remove the line above if you want to commit it
-
-# Temporary files
-main/*.tmp
-main/*.temp
-main/.cache/
-main/.turbo/
-
-# Storybook
-main/storybook-static/
-
-# Optional: Keep if you want to ignore these
-# main/.eslintcache
-# main/.stylelintcache
-
-
-# Ignore files and folders for test-cloudflare-website
-
-# Dependencies
-test-cloudflare-website/node_modules/
-test-cloudflare-website/.pnp
-test-cloudflare-website/.pnp.js
-
-# Testing
-test-cloudflare-website/coverage/
-test-cloudflare-website/.nyc_output/
-
-# Next.js (or build output)
-test-cloudflare-website/.next/
-test-cloudflare-website/out/
-test-cloudflare-website/build/
-test-cloudflare-website/dist/
-
-# Production logs
-test-cloudflare-website/*.log
-test-cloudflare-website/*.log.*
-
-# Miscellaneous
-test-cloudflare-website/.DS_Store
-test-cloudflare-website/*.pem
-
-# Debug logs
-test-cloudflare-website/npm-debug.log*
-test-cloudflare-website/yarn-debug.log*
-test-cloudflare-website/yarn-error.log*
-test-cloudflare-website/pnpm-debug.log*
-test-cloudflare-website/lerna-debug.log*
-
-# Local env files
-test-cloudflare-website/.env
-test-cloudflare-website/.env*.local
-test-cloudflare-website/.env.development.local
-test-cloudflare-website/.env.test.local
-test-cloudflare-website/.env.production.local
-
-# Vercel
-test-cloudflare-website/.vercel
-
-# TypeScript cache
-test-cloudflare-website/*.tsbuildinfo
-test-cloudflare-website/next-env.d.ts
-
-# IDE / Editor folders and swap files
-test-cloudflare-website/.idea/
-test-cloudflare-website/.vscode/
-test-cloudflare-website/*.swp
-test-cloudflare-website/*.swo
-test-cloudflare-website/*~
-test-cloudflare-website/.project
-test-cloudflare-website/.classpath
-test-cloudflare-website/.settings/
-test-cloudflare-website/*.sublime-project
-test-cloudflare-website/*.sublime-workspace
-
-# OS generated files
-test-cloudflare-website/.DS_Store
-test-cloudflare-website/.DS_Store?
-test-cloudflare-website/._*
-test-cloudflare-website/.Spotlight-V100
-test-cloudflare-website/.Trashes
-test-cloudflare-website/ehthumbs.db
-test-cloudflare-website/Thumbs.db
-test-cloudflare-website/Desktop.ini
-
-# Package manager
-test-cloudflare-website/.pnpm-store/
-test-cloudflare-website/pnpm-lock.yaml
-# Note: You might want to keep pnpm-lock.yaml for consistency
-# Remove the line above if you want to commit it
-
-# Temporary files
-test-cloudflare-website/*.tmp
-test-cloudflare-website/*.temp
-test-cloudflare-website/.cache/
-test-cloudflare-website/.turbo/
-
-# Storybook
-test-cloudflare-website/storybook-static/
-
-# Optional: Keep if you want to ignore these
-# test-cloudflare-website/.eslintcache
-# test-cloudflare-website/.stylelintcache
-
-
-# Ignore files and folders for test-paywall-website
-
-# Dependencies
-test-paywall-website/node_modules/
-test-paywall-website/.pnp
-test-paywall-website/.pnp.js
-
-# Testing
-test-paywall-website/coverage/
-test-paywall-website/.nyc_output/
-
-# Next.js (or build output)
-test-paywall-website/.next/
-test-paywall-website/out/
-test-paywall-website/build/
-test-paywall-website/dist/
-
-# Production logs
-test-paywall-website/*.log
-test-paywall-website/*.log.*
-
-# Miscellaneous
-test-paywall-website/.DS_Store
-test-paywall-website/*.pem
-
-# Debug logs
-test-paywall-website/npm-debug.log*
-test-paywall-website/yarn-debug.log*
-test-paywall-website/yarn-error.log*
-test-paywall-website/pnpm-debug.log*
-test-paywall-website/lerna-debug.log*
-
-# Local env files
-test-paywall-website/.env
-test-paywall-website/.env*.local
-test-paywall-website/.env.development.local
-test-paywall-website/.env.test.local
-test-paywall-website/.env.production.local
-
-# Vercel
-test-paywall-website/.vercel
-
-# TypeScript cache
-test-paywall-website/*.tsbuildinfo
-test-paywall-website/next-env.d.ts
-
-# IDE / Editor folders and swap files
-test-paywall-website/.idea/
-test-paywall-website/.vscode/
-test-paywall-website/*.swp
-test-paywall-website/*.swo
-test-paywall-website/*~
-test-paywall-website/.project
-test-paywall-website/.classpath
-test-paywall-website/.settings/
-test-paywall-website/*.sublime-project
-test-paywall-website/*.sublime-workspace
-
-# OS generated files
-test-paywall-website/.DS_Store
-test-paywall-website/.DS_Store?
-test-paywall-website/._*
-test-paywall-website/.Spotlight-V100
-test-paywall-website/.Trashes
-test-paywall-website/ehthumbs.db
-test-paywall-website/Thumbs.db
-test-paywall-website/Desktop.ini
-
-# Package manager
-test-paywall-website/.pnpm-store/
-test-paywall-website/pnpm-lock.yaml
-# Note: You might want to keep pnpm-lock.yaml for consistency
-# Remove the line above if you want to commit it
-
-# Temporary files
-test-paywall-website/*.tmp
-test-paywall-website/*.temp
-test-paywall-website/.cache/
-test-paywall-website/.turbo/
-
-# Storybook
-test-paywall-website/storybook-static/
-
-# Optional: Keep if you want to ignore these
-# test-paywall-website/.eslintcache
-# test-paywall-website/.stylelintcache
-
-
-# Ignore files and folders for webscrapper
-
-# Local env files
-webscrapper/.env
-webscrapper/.env*.local
-webscrapper/venv
-
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-cloudflare-worker/.env
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage
+.grunt
+
+# Bower dependency directory
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons
+build/Release
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+.env.local
+.env.production
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

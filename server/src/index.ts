@@ -16,7 +16,7 @@ app.use(
     process.env.MOVEMENT_PAY_TO as string,
     {
       "GET /api/premium-content": {
-        network: "movement",  // Try mainnet to test if facilitator supports it
+        network: "movement",  // Use mainnet network identifier
         asset: "0x1::aptos_coin::AptosCoin",
         maxAmountRequired: "100000000", // 1 MOVE
         description: "Premium workshop content",

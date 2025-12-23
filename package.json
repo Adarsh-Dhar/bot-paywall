@@ -1,0 +1,35 @@
+{
+  "name": "node-access-control-middleware",
+  "version": "1.0.0",
+  "description": "Pay-to-Pass gateway that verifies Aptos blockchain payments and temporarily whitelists IP addresses on Cloudflare",
+  "main": "access-server.js",
+  "scripts": {
+    "start": "node access-server.js",
+    "dev": "node access-server.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "aptos",
+    "blockchain",
+    "cloudflare",
+    "access-control",
+    "payment-gateway"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "axios": "^1.6.2",
+    "@aptos-labs/ts-sdk": "^1.8.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "fast-check": "^3.15.0",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

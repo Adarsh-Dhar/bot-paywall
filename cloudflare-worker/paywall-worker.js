@@ -1,231 +1,299 @@
-// CLOUDFLARE WORKER CODE - FIXED VERSION
-// This worker implements X402 payment flow for bot access
+/**
+ * CLOUDFLARE WORKER - X402 BOT PAYWALL (PRODUCTION)
+ * 
+ * Uses Cloudflare's NATIVE Bot Management for accurate bot detection.
+ * Stores whitelist in KV for fast access (no API calls).
+ * 
+ * Prerequisites:
+ * 1. Bot Management (requires Pro/Business/Enterprise plan)
+ * 2. KV Namespace created: npx wrangler kv:namespace create "PAYMENT_WHITELIST"
+ */
 
-// Configuration from environment variables
-function getConfig(env) {
-  return {
-    logging: env?.LOGGING === "true",
-    originUrl: env?.ORIGIN_URL || "https://test-paywall-website.adarsh.software",
-    zoneId: env?.ZONE_ID || "11685346bf13dc3ffebc9cc2866a8105",
-    apiToken: env?.API_TOKEN || "",
-    paymentAddress: env?.PAYMENT_ADDRESS || "0x1234567890abcdef1234567890abcdef12345678",
-    botPaymentSystemUrl: env?.BOT_PAYMENT_SYSTEM_URL || "http://localhost:5000"
-  };
-}
+// Configuration
+const CONFIG = {
+  PAYMENT_ADDRESS: "0xc205d2924138e17e0035ecf74c98c40f486431276e20158ef3cf3697e9e967d1",
+  PRICE_AMOUNT: "0.01",
+  PRICE_CURRENCY: "MOVE",
+  ORIGIN_URL: "https://test-cloudflare-website.adarsh.software",
+  ACCESS_SERVER_URL: "http://localhost:5000",
+  
+  // Bot Management Thresholds
+  BOT_SCORE_THRESHOLD: 30,  // Score < 30 = likely bot (1-99 scale)
+  ALLOW_VERIFIED_BOTS: false, // Set true to allow Google/Bing for SEO
+  
+  // Logging
+  ENABLE_LOGGING: true
+};
 
-// Generate X402 Payment Required response
-function generateX402Response(clientIP, config) {
-  const paymentDetails = {
-    error: "Payment Required",
-    message: "Bot access requires payment. Please transfer 0.01 MOVE tokens to the specified address.",
-    payment_required: true,
-    payment_address: config.paymentAddress,
-    payment_amount: "0.01",
-    payment_currency: "MOVE",
-    client_ip: clientIP,
-    timestamp: new Date().toISOString(),
-    instructions: "1. Transfer 0.01 MOVE to payment address. 2. POST tx_hash to access server. 3. Retry request.",
-    access_server_url: `${config.botPaymentSystemUrl}/buy-access`
-  };
-
-  return new Response(
-    JSON.stringify(paymentDetails, null, 2),
-    {
-      status: 402,
-      headers: {
-        "Content-Type": "application/json",
-        "WWW-Authenticate": "X402-Payment",
-        "X402-Payment-Address": config.paymentAddress,
-        "X402-Payment-Amount": "0.01",
-        "X402-Payment-Currency": "MOVE",
-        "X-Bot-Protection": "x402-payment-required"
-      }
-    }
-  );
-}
-
-// Check if IP is whitelisted in Cloudflare firewall rules
-async function isIPWhitelisted(clientIP, config) {
-  if (!config.apiToken || !clientIP) {
-    return false;
-  }
-  
-  try {
-    const response = await fetch(
-      `https://api.cloudflare.com/client/v4/zones/${config.zoneId}/firewall/access_rules/rules?configuration.value=${clientIP}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${config.apiToken}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-    
-    const data = await response.json();
-    
-    if (data.success && data.result && data.result.length > 0) {
-      const whitelistRule = data.result.find(rule => 
-        rule.mode === "whitelist" && 
-        rule.configuration.value === clientIP
-      );
-      
-      if (whitelistRule) {
-        if (config.logging) {
-          console.log("✅ IP found in whitelist", { clientIP, ruleId: whitelistRule.id });
-        }
-        return true;
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    if (config.logging) {
-      console.log("❌ Error checking whitelist", { error: error.message });
-    }
-    return false;
-  }
-}
-
-// Bot detection function
-function detectBot(request) {
-  const userAgent = request.headers.get("User-Agent") || "";
-  const acceptHeader = request.headers.get("Accept") || "";
-  const acceptLanguage = request.headers.get("Accept-Language") || "";
-  const acceptEncoding = request.headers.get("Accept-Encoding") || "";
-  
-  // If no User-Agent at all, it's a bot
-  if (!userAgent || userAgent.trim() === "") {
-    return true;
-  }
-  
-  // Check for obvious bot patterns
-  const obviousBotPatterns = [
-    /bot/i,
-    /crawler/i,
-    /spider/i,
-    /scraper/i,
-    /python-requests/i,
-    /python\/\d/i,
-    /^curl/i,
-    /^wget/i,
-    /beautifulsoup/i,
-    /scrapy/i,
-    /selenium/i,
-    /phantomjs/i,
-    /headless/i,
-    /automation/i,
-    /^python/i,
-    /httpx/i,
-    /aiohttp/i
-  ];
-  
-  // If matches bot patterns, it's definitely a bot
-  if (obviousBotPatterns.some(pattern => pattern.test(userAgent))) {
-    return true;
-  }
-  
-  // Check for real browser patterns
-  const browserPatterns = [
-    /Mozilla.*Chrome/i,
-    /Mozilla.*Safari/i,
-    /Mozilla.*Firefox/i,
-    /Mozilla.*Edge/i,
-    /Opera/i
-  ];
-  
-  // If it looks like a real browser with proper headers
-  if (browserPatterns.some(pattern => pattern.test(userAgent))) {
-    if (acceptHeader && acceptHeader.includes("text/html")) {
-      return false; // Definitely a real browser
-    }
-  }
-  
-  // Score-based detection for edge cases
-  let botScore = 0;
-  
-  if (!acceptHeader || acceptHeader === "*/*") botScore += 1;
-  if (!acceptLanguage) botScore += 1;
-  if (!acceptEncoding) botScore += 1;
-  if (userAgent.length < 20) botScore += 1;
-  if (!userAgent.includes("Mozilla")) botScore += 1;
-  
-  return botScore >= 3;
-}
-
-// MAIN WORKER EXPORT
 export default {
   async fetch(request, env, ctx) {
-    const config = getConfig(env);
+    const clientIP = request.headers.get("CF-Connecting-IP");
+    const url = new URL(request.url);
     
-    if (config.logging) {
+    if (CONFIG.ENABLE_LOGGING) {
       console.log("🔍 Request received", {
-        url: request.url,
-        method: request.method,
-        userAgent: request.headers.get("User-Agent")
+        ip: clientIP,
+        path: url.pathname,
+        userAgent: request.headers.get("User-Agent")?.substring(0, 50)
       });
     }
+
+    // ================================================================
+    // STEP 1: CHECK WHITELIST (Fast KV lookup - no API calls)
+    // ================================================================
+    const accessStatus = await env.PAYMENT_WHITELIST.get(clientIP);
     
-    // Get client IP
-    const clientIP = request.headers.get("CF-Connecting-IP") || 
-                     request.headers.get("X-Forwarded-For")?.split(',')[0]?.trim() || 
-                     request.headers.get("X-Real-IP") || "";
-    
-    // STEP 1: Check if IP is whitelisted (has paid)
-    const isWhitelisted = await isIPWhitelisted(clientIP, config);
-    
-    if (isWhitelisted) {
-      if (config.logging) {
-        console.log("✅ IP whitelisted, allowing access", { clientIP });
+    if (accessStatus === "active") {
+      if (CONFIG.ENABLE_LOGGING) {
+        console.log("✅ IP whitelisted (KV)", { ip: clientIP });
       }
-      
-      // Forward to origin
-      const originRequest = new Request(
-        config.originUrl + new URL(request.url).pathname + new URL(request.url).search,
-        {
-          method: request.method,
-          headers: request.headers,
-          body: request.body,
-        }
-      );
-      
-      return fetch(originRequest);
+      return forwardToOrigin(request);
     }
+
+    // ================================================================
+    // STEP 2: CLOUDFLARE BOT MANAGEMENT (Native Detection)
+    // ================================================================
+    const botDetectionResult = detectBotNative(request);
     
-    // STEP 2: Not whitelisted - check if it's a bot
-    const isBot = detectBot(request);
-    
-    if (config.logging) {
-      console.log("🤖 Bot detection", { 
-        clientIP, 
-        isBot,
-        userAgent: request.headers.get("User-Agent")
+    if (CONFIG.ENABLE_LOGGING) {
+      console.log("🤖 Bot detection", {
+        ip: clientIP,
+        isBot: botDetectionResult.isBot,
+        score: botDetectionResult.score,
+        verifiedBot: botDetectionResult.verifiedBot,
+        method: botDetectionResult.method
       });
     }
-    
-    // STEP 3: If it's a bot, require payment
-    if (isBot) {
-      if (config.logging) {
-        console.log("🚫 Bot detected, requiring payment", { clientIP });
+
+    // ================================================================
+    // STEP 3: BLOCK BOTS WITH 402 PAYMENT REQUIRED
+    // ================================================================
+    if (botDetectionResult.isBot) {
+      if (CONFIG.ENABLE_LOGGING) {
+        console.log("🚫 Bot blocked, requiring payment", {
+          ip: clientIP,
+          reason: botDetectionResult.reason
+        });
       }
-      
-      // Return 402 Payment Required
-      return generateX402Response(clientIP, config);
+      return generateX402Response(clientIP, url.pathname, botDetectionResult);
     }
-    
-    // STEP 4: Not a bot (regular browser) - allow access
-    if (config.logging) {
-      console.log("✅ Browser request, allowing access", { clientIP });
+
+    // ================================================================
+    // STEP 4: ALLOW HUMANS
+    // ================================================================
+    if (CONFIG.ENABLE_LOGGING) {
+      console.log("✅ Human traffic allowed", { ip: clientIP });
     }
-    
-    const originRequest = new Request(
-      config.originUrl + new URL(request.url).pathname + new URL(request.url).search,
-      {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-      }
-    );
-    
-    return fetch(originRequest);
+    return forwardToOrigin(request);
   }
 };
+
+// ================================================================
+// BOT DETECTION USING CLOUDFLARE'S NATIVE BOT MANAGEMENT
+// ================================================================
+
+/**
+ * Uses Cloudflare's built-in Bot Management signals
+ * This is MUCH more accurate than header parsing!
+ * 
+ * Requires: Pro, Business, or Enterprise plan with Bot Management
+ */
+function detectBotNative(request) {
+  const cf = request.cf;
+  const userAgent = request.headers.get("User-Agent") || "";
+
+  // ------------------------------------------------------------
+  // Method 1: Cloudflare Bot Management (Most Accurate)
+  // ------------------------------------------------------------
+  if (cf?.botManagement) {
+    const score = cf.botManagement.score;
+    const verifiedBot = cf.botManagement.verifiedBot;
+    const jsDetection = cf.botManagement.jsDetection;
+    
+    // Handle verified bots (Google, Bing, etc.)
+    if (verifiedBot) {
+      if (CONFIG.ALLOW_VERIFIED_BOTS) {
+        return {
+          isBot: false,
+          score: score,
+          verifiedBot: true,
+          method: "cloudflare_native",
+          reason: "Verified bot (allowed for SEO)"
+        };
+      } else {
+        return {
+          isBot: true,
+          score: score,
+          verifiedBot: true,
+          method: "cloudflare_native",
+          reason: "Verified bot (not allowed)"
+        };
+      }
+    }
+
+    // Score-based detection
+    // Score 1-29 = likely bot
+    // Score 30-99 = likely human
+    if (score < CONFIG.BOT_SCORE_THRESHOLD) {
+      return {
+        isBot: true,
+        score: score,
+        verifiedBot: false,
+        method: "cloudflare_native",
+        reason: `Bot score ${score} < threshold ${CONFIG.BOT_SCORE_THRESHOLD}`
+      };
+    }
+
+    // Passed bot management checks
+    return {
+      isBot: false,
+      score: score,
+      verifiedBot: false,
+      method: "cloudflare_native",
+      reason: "Passed Cloudflare Bot Management"
+    };
+  }
+
+  // ------------------------------------------------------------
+  // Method 2: Cloudflare Threat Score (Fallback for Free Plans)
+  // ------------------------------------------------------------
+  if (cf?.clientThreatScore !== undefined) {
+    // Threat score 0-100 (higher = more threatening)
+    // > 50 = likely malicious
+    // This is available on all plans!
+    const threatScore = cf.clientThreatScore;
+    
+    if (threatScore > 50) {
+      return {
+        isBot: true,
+        score: threatScore,
+        verifiedBot: false,
+        method: "cloudflare_threat_score",
+        reason: `High threat score: ${threatScore}`
+      };
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Method 3: Minimal Heuristic Fallback (If no CF signals)
+  // ------------------------------------------------------------
+  // This is a last resort if Bot Management isn't available
+  
+  // Check for completely missing User-Agent (obvious bot)
+  if (!userAgent || userAgent.length < 5) {
+    return {
+      isBot: true,
+      score: 0,
+      verifiedBot: false,
+      method: "heuristic_fallback",
+      reason: "Missing or empty User-Agent"
+    };
+  }
+
+  // Check for obvious bot keywords in User-Agent
+  const obviousBotKeywords = [
+    "python-requests",
+    "curl/",
+    "wget/",
+    "scrapy",
+    "bot",
+    "crawler",
+    "spider"
+  ];
+  
+  const userAgentLower = userAgent.toLowerCase();
+  for (const keyword of obviousBotKeywords) {
+    if (userAgentLower.includes(keyword)) {
+      return {
+        isBot: true,
+        score: 0,
+        verifiedBot: false,
+        method: "heuristic_fallback",
+        reason: `User-Agent contains "${keyword}"`
+      };
+    }
+  }
+
+  // Default: allow (couldn't definitively detect bot)
+  return {
+    isBot: false,
+    score: null,
+    verifiedBot: false,
+    method: "heuristic_fallback",
+    reason: "No bot indicators found"
+  };
+}
+
+// ================================================================
+// HELPER FUNCTIONS
+// ================================================================
+
+/**
+ * Forward request to origin server
+ */
+function forwardToOrigin(request) {
+  const url = new URL(request.url);
+  const originUrl = CONFIG.ORIGIN_URL + url.pathname + url.search;
+  
+  const newRequest = new Request(originUrl, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+    redirect: "follow"
+  });
+  
+  return fetch(newRequest);
+}
+
+/**
+ * Generate 402 Payment Required response
+ */
+function generateX402Response(clientIP, path, botInfo) {
+  const responseBody = {
+    error: "Payment Required",
+    message: "Bot or automated access detected. Please make a payment to access this resource.",
+    
+    // Payment details
+    payment_context: {
+      address: CONFIG.PAYMENT_ADDRESS,
+      amount: CONFIG.PRICE_AMOUNT,
+      currency: CONFIG.PRICE_CURRENCY,
+      network: "movement",
+      chain_id: "m1"
+    },
+    
+    // User context
+    user_context: {
+      ip: clientIP,
+      requested_path: path,
+      detection_method: botInfo.method,
+      bot_score: botInfo.score
+    },
+    
+    // Instructions for payment
+    instructions: {
+      step_1: `Transfer ${CONFIG.PRICE_AMOUNT} ${CONFIG.PRICE_CURRENCY} to ${CONFIG.PAYMENT_ADDRESS}`,
+      step_2: `POST your transaction hash to ${CONFIG.ACCESS_SERVER_URL}/buy-access`,
+      step_3: "Retry your request after confirmation"
+    },
+    
+    // Access server endpoint
+    access_server: `${CONFIG.ACCESS_SERVER_URL}/buy-access`,
+    
+    timestamp: new Date().toISOString()
+  };
+
+  return new Response(JSON.stringify(responseBody, null, 2), {
+    status: 402,
+    headers: {
+      "Content-Type": "application/json",
+      "WWW-Authenticate": `X402-Payment address="${CONFIG.PAYMENT_ADDRESS}"`,
+      "X402-Payment-Address": CONFIG.PAYMENT_ADDRESS,
+      "X402-Payment-Amount": CONFIG.PRICE_AMOUNT,
+      "X402-Payment-Currency": CONFIG.PRICE_CURRENCY,
+      "X-Bot-Detection-Method": botInfo.method,
+      "X-Bot-Score": String(botInfo.score || 0),
+      "Access-Control-Allow-Origin": "*"
+    }
+  });
+}

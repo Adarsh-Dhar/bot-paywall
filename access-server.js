@@ -168,24 +168,24 @@ async function whitelistIP(ip, notes = "x402 Payment - Bot Access") {
 /**
  * Custom x402 payment handler that integrates with Cloudflare whitelisting
  */
-app.use(
-  x402Paywall(
-    PAYMENT_CONFIG.PAYMENT_ADDRESS,
-    {
-      "POST /buy-access": {
-        network: PAYMENT_CONFIG.NETWORK,
-        asset: PAYMENT_CONFIG.ASSET,
-        maxAmountRequired: PAYMENT_CONFIG.AMOUNT_REQUIRED,
-        description: PAYMENT_CONFIG.DESCRIPTION,
-        mimeType: "application/json",
-        maxTimeoutSeconds: PAYMENT_CONFIG.TIMEOUT_SECONDS
-      }
-    },
-    {
-      url: process.env.FACILITATOR_URL || "https://facilitator.stableyard.fi"
-    }
-  )
-);
+// app.use(
+//   x402Paywall(
+//     PAYMENT_CONFIG.PAYMENT_ADDRESS,
+//     {
+//       "POST /buy-access": {
+//         network: PAYMENT_CONFIG.NETWORK,
+//         asset: PAYMENT_CONFIG.ASSET,
+//         maxAmountRequired: PAYMENT_CONFIG.AMOUNT_REQUIRED,
+//         description: PAYMENT_CONFIG.DESCRIPTION,
+//         mimeType: "application/json",
+//         maxTimeoutSeconds: PAYMENT_CONFIG.TIMEOUT_SECONDS
+//       }
+//     },
+//     {
+//       url: process.env.FACILITATOR_URL || "https://facilitator.stableyard.fi"
+//     }
+//   )
+// );
 
 // =============================================================================
 // API ENDPOINTS

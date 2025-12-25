@@ -1,6 +1,6 @@
 'use server'
 
-import { auth } from '@/lib/mock-auth'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
@@ -32,15 +32,15 @@ async function hashApiKey(key: string): Promise<string> {
  */
 export async function getProjects() {
   try {
-    const { userId } = await auth()
-
-    if (!userId) {
+    const authResult = await auth()
+    if (!authResult) {
       return {
         success: false,
         error: 'User context not found',
         statusCode: 401,
       }
     }
+    const { userId } = authResult
 
     const projects = await prisma.project.findMany({
       where: { userId },
@@ -76,15 +76,15 @@ export async function getProjects() {
  */
 export async function getProject(projectId: string) {
   try {
-    const { userId } = await auth()
-
-    if (!userId) {
+    const authResult = await auth()
+    if (!authResult) {
       return {
         success: false,
         error: 'User context not found',
         statusCode: 401,
       }
     }
+    const { userId } = authResult
 
     const project = await prisma.project.findFirst({
       where: {
@@ -131,15 +131,15 @@ export async function getProject(projectId: string) {
  */
 export async function createProject(formData: FormData) {
   try {
-    const { userId } = await auth()
-
-    if (!userId) {
+    const authResult = await auth()
+    if (!authResult) {
       return {
         success: false,
         error: 'User context not found',
         statusCode: 401,
       }
     }
+    const { userId, email } = authResult
 
     const name = formData.get('name') as string
     const website_url = formData.get('website_url') as string | null
@@ -161,10 +161,10 @@ export async function createProject(formData: FormData) {
     await prisma.user.upsert({
       where: { userId: userId },
       update: {},
-      create: {
-        userId: userId,
-        email: 'test@example.com',
-      },
+        create: {
+          userId: userId,
+          email: email,
+        },
     });
 
     // Create project with API key in a transaction
@@ -213,15 +213,15 @@ export async function createProject(formData: FormData) {
  */
 export async function incrementUsage(projectId: string) {
   try {
-    const { userId } = await auth()
-
-    if (!userId) {
+    const authResult = await auth()
+    if (!authResult) {
       return {
         success: false,
         error: 'User context not found',
         statusCode: 401,
       }
     }
+    const { userId } = authResult
 
     // Verify user owns the project and increment usage
     const project = await prisma.project.findFirst({

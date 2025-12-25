@@ -6,7 +6,7 @@
  * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5
  */
 
-import { auth } from '@/lib/mock-auth';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   getCloudflareZoneStatus,
@@ -29,13 +29,14 @@ export async function verifyProjectStatus(
 ): Promise<VerifyProjectStatusResponse> {
   try {
     // Get authenticated user
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         status: 'error',
         message: 'User not authenticated',
       };
     }
+    const { userId } = authResult;
 
     // Fetch project data including zone_id, api_token, and secret_key from database
     // Requirements: 9.2

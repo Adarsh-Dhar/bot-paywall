@@ -5,7 +5,7 @@
  * Handle user Cloudflare API token storage and validation
  */
 
-import { auth } from '@/lib/mock-auth';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { encryptToken, decryptToken } from '@/lib/token-encryption';
 
@@ -150,13 +150,14 @@ async function validateCloudflareToken(token: string): Promise<{
  */
 export async function saveCloudflareToken(token: string): Promise<CloudflareTokenResponse> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         success: false,
         error: 'User not authenticated',
       };
     }
+    const { userId, email } = authResult;
 
     // For development/testing, we'll skip validation and store the token
     // In production, you might want to enable validation
@@ -205,7 +206,7 @@ export async function saveCloudflareToken(token: string): Promise<CloudflareToke
         update: {},
         create: {
           userId: userId,
-          email: 'test@example.com',
+          email: email,
         },
       });
 
@@ -253,10 +254,11 @@ export async function saveCloudflareToken(token: string): Promise<CloudflareToke
  */
 export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken | null> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return null;
     }
+    const { userId } = authResult;
 
     const token = await prisma.cloudflareToken.findUnique({
       where: {
@@ -277,10 +279,11 @@ export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken 
  */
 export async function getUserCloudflareToken(): Promise<string | null> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return null;
     }
+    const { userId } = authResult;
 
     const tokenRecord = await prisma.cloudflareToken.findUnique({
       where: {
@@ -305,13 +308,14 @@ export async function getUserCloudflareToken(): Promise<string | null> {
  */
 export async function removeCloudflareToken(): Promise<{ success: boolean; error?: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         success: false,
         error: 'User not authenticated',
       };
     }
+    const { userId } = authResult;
 
     await prisma.cloudflareToken.updateMany({
       where: { userId },

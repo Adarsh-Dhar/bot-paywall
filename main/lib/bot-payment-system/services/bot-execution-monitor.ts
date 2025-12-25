@@ -1,6 +1,15 @@
 /**
  * Bot Execution Monitor Service for detecting webscraper execution
+ * 
+ * NOTE: This file uses Node.js built-in modules (child_process, fs)
+ * and should ONLY be imported in server-side code (API routes, server components, server actions).
+ * Do NOT import this in client components.
  */
+
+// Ensure this only runs server-side
+if (typeof window !== 'undefined') {
+  throw new Error('bot-execution-monitor.ts cannot be imported in client-side code. It uses Node.js modules (child_process, fs).');
+}
 
 import { BotExecutionMonitor } from '../interfaces';
 import { LoggingService } from '../interfaces';
@@ -19,7 +28,7 @@ export class BotExecutionMonitorImpl implements BotExecutionMonitor {
   private callbacks: Array<(ip: string) => Promise<void>> = [];
   private readonly webscrapperPath: string;
   private readonly logFilePath: string;
-  private readonly checkInterval = 5000; // Check every 5 seconds
+  private checkInterval = 5000; // Check every 5 seconds
   private lastLogSize = 0;
   private monitoredProcesses = new Set<number>();
 

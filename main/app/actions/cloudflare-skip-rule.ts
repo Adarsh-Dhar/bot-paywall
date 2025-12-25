@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod';
-import { auth } from '@/lib/mock-auth';
+import { auth } from '@/lib/auth';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
 import { deployWAFRule } from '@/lib/cloudflare-api';
 
@@ -42,14 +42,15 @@ export async function deploySkipRule(
     });
 
     // Check authentication
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         success: false,
         message: 'User not authenticated',
         error: 'UNAUTHORIZED',
       };
     }
+    const { userId } = authResult;
 
     // Get user's Cloudflare token
     const userToken = await getUserCloudflareToken();

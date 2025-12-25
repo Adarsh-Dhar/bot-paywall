@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
-import { auth } from '@/lib/mock-auth';
+import { auth } from '@/lib/auth';
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
 
@@ -36,14 +36,15 @@ export interface ZoneLookupResult {
 export async function verifyCloudflareToken(): Promise<TokenVerificationResult> {
   try {
     // Check authentication
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         success: false,
         message: 'User not authenticated',
         error: 'UNAUTHORIZED',
       };
     }
+    const { userId } = authResult;
 
     // Get user's Cloudflare token
     const userToken = await getUserCloudflareToken();
@@ -112,14 +113,15 @@ export async function lookupZoneId(domain: string): Promise<ZoneLookupResult> {
     const validatedDomain = domainSchema.parse(domain);
 
     // Check authentication
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         success: false,
         message: 'User not authenticated',
         error: 'UNAUTHORIZED',
       };
     }
+    const { userId } = authResult;
 
     // Get user's Cloudflare token
     const userToken = await getUserCloudflareToken();

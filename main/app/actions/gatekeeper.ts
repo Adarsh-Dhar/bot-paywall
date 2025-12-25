@@ -5,7 +5,7 @@
  * Core server-side operations for domain registration and verification
  */
 
-import { auth } from '@/lib/mock-auth';
+import { auth } from '@/lib/auth';
 import { getUserCloudflareToken } from '@/app/actions/cloudflare-tokens';
 import { lookupZoneId } from '@/app/actions/cloudflare-token-verification';
 import { prisma } from '@/lib/prisma';
@@ -48,13 +48,14 @@ function generateGatekeeperToken(): string {
 export async function registerDomain(domain: string): Promise<RegisterDomainResult> {
   try {
     // Check authentication
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return {
         success: false,
         error: 'User not authenticated',
       };
     }
+    const { userId } = authResult;
 
     // Validate domain format
     const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*$/;
@@ -138,10 +139,11 @@ export async function registerDomain(domain: string): Promise<RegisterDomainResu
  */
 export async function getUserProjects(): Promise<ProjectWithToken[]> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return [];
     }
+    const { userId } = authResult;
 
     const projects = await prisma.project.findMany({
       where: {
@@ -171,10 +173,11 @@ export async function getUserProjects(): Promise<ProjectWithToken[]> {
  */
 export async function getProject(projectId: string): Promise<ProjectWithToken | null> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return null;
     }
+    const { userId } = authResult;
 
     const project = await prisma.project.findFirst({
       where: {
@@ -238,10 +241,11 @@ export async function deploySkipRule(projectId: string): Promise<{ success: bool
  */
 export async function checkCloudflareConnection(): Promise<boolean> {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const authResult = await auth();
+    if (!authResult) {
       return false;
     }
+    const { userId } = authResult;
 
     const userToken = await getUserCloudflareToken();
     return !!userToken;

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         transactionId,
         clientIP,
         duration,
-        whitelistRuleId: result.whitelistRuleId,
+        whitelistRuleId: result.ruleId,
         expiresAt: new Date(Date.now() + duration * 1000).toISOString(),
         timestamp: new Date().toISOString()
       });

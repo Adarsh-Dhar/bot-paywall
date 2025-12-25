@@ -131,7 +131,8 @@ if (typeof process !== 'undefined') {
 }
 
 // Export the main application class for direct use
-export { BotPaymentSystemApplication, BotPaymentSystemConfig } from './bot-payment-system/services/main-application';
+export { BotPaymentSystemApplication } from './bot-payment-system/services/main-application';
+export type { BotPaymentSystemConfig } from './bot-payment-system/services/main-application';
 
 // Export all interfaces and types for external use
 export * from './bot-payment-system/interfaces';

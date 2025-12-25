@@ -5,7 +5,7 @@
  */
 
 const CONFIG = {
-  PAYMENT_ADDRESS: "0xdb466d22253732426f60d1a9ce33b080cf44160ed383277e399160ffdcc70b05",
+  PAYMENT_ADDRESS: "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b",
   PRICE_AMOUNT: "0.01",
   PRICE_CURRENCY: "MOVE",
   ORIGIN_URL: "https://test-cloudflare-website.adarsh.software",

@@ -102,24 +102,43 @@ def check_access_status(ip):
 
 def make_blockchain_payment(payment_address, amount):
     """
-    Make actual MOVE token payment.
-    You'll need to integrate with Movement blockchain here.
+    Make actual MOVE token payment using Movement blockchain.
     """
-    # This is pseudocode - implement with your Movement SDK
-    from aptos_sdk import Account, RestClient
+    import asyncio
+    from aptos_sdk.account import Account
+    from aptos_sdk.async_client import RestClient
+    from aptos_sdk.account_address import AccountAddress
     
-    # Load your wallet
-    account = Account.load_key("YOUR_PRIVATE_KEY")
-    client = RestClient("MOVEMENT_RPC_URL")
+    async def _make_payment():
+        # Load your wallet from private key
+        account = Account.load_key("0xafcc93f1f5bf61dadb43da473273a900754b12714243e3aa6124dfee14341871")
+        
+        # Create REST client for Movement testnet
+        client = RestClient("https://testnet.movementnetwork.xyz/v1")
+        
+        try:
+            # Convert payment address to AccountAddress
+            recipient = AccountAddress.from_str(payment_address)
+            
+            # Transfer coins (amount is in octas)
+            # coin_type: "0x1::aptos_coin::AptosCoin" for Movement/MOVE tokens
+            # transfer_coins returns the transaction hash
+            txn_hash = await client.transfer_coins(
+                sender=account,
+                recipient=recipient,
+                amount=amount,
+                coin_type="0x1::aptos_coin::AptosCoin"
+            )
+            
+            # Wait for transaction to complete
+            await client.wait_for_transaction(txn_hash)
+            
+            return txn_hash
+        finally:
+            await client.close()
     
-    # Create and submit transaction
-    txn_hash = client.transfer(
-        account,
-        payment_address,
-        amount
-    )
-    
-    return txn_hash        
+    # Run the async function
+    return asyncio.run(_make_payment())        
 
 def buy_access(scraper_ip):
     try:
@@ -137,38 +156,73 @@ def buy_access(scraper_ip):
             
             log("Making blockchain payment...", "PAYMENT")
             
-            # FIX: Extract payment info from the correct structure
-            # The 402 response has a different structure than /payment-info
-            payment_context = payment_data.get('payment_context', {})
+            # Extract payment info from x402 response structure
+            # x402 response format: { 'x402Version': 1, 'accepts': [{ 'payTo': '...', 'maxAmountRequired': '...', ... }] }
+            accepts = payment_data.get('accepts', [])
+            if not accepts or len(accepts) == 0:
+                log(f"Invalid payment data: no accepts array found", "ERROR")
+                log(f"Full response: {payment_data}", "ERROR")
+                return False
             
-            # Get payment address and amount
-            payment_address = payment_context.get('address')
-            amount = payment_context.get('amount')
+            # Get the first payment option
+            payment_option = accepts[0]
             
-            if not payment_address or not amount:
-                log(f"Invalid payment data: {payment_data}", "ERROR")
+            # Extract payment address (payTo field in x402 format)
+            payment_address = payment_option.get('payTo')
+            
+            # Extract amount (maxAmountRequired is in octas, convert to MOVE)
+            # 1000000 octas = 0.01 MOVE (8 decimal places)
+            max_amount_octas = payment_option.get('maxAmountRequired')
+            if max_amount_octas:
+                # Convert from octas to MOVE (divide by 100000000)
+                amount_move = int(max_amount_octas) / 100000000
+            else:
+                amount_move = None
+            
+            if not payment_address or not amount_move:
+                log(f"Invalid payment data: missing payTo or maxAmountRequired", "ERROR")
+                log(f"Payment option: {payment_option}", "ERROR")
+                log(f"Full response: {payment_data}", "ERROR")
                 return False
             
             log(f"Payment Address: {payment_address}", "INFO")
-            log(f"Amount: {amount} MOVE", "INFO")
+            log(f"Amount: {amount_move} MOVE ({max_amount_octas} octas)", "INFO")
             
             # MAKE ACTUAL PAYMENT
-            tx_hash = make_blockchain_payment(payment_address, amount)
+            # Pass amount in octas (the raw blockchain amount) as integer
+            amount_octas_int = int(max_amount_octas)
+            tx_hash = make_blockchain_payment(payment_address, amount_octas_int)
             
             log(f"Payment made: {tx_hash}", "SUCCESS")
             
+            # Wait a moment for transaction to be confirmed on blockchain
+            log("Waiting for transaction confirmation...", "WAIT")
+            time.sleep(3)  # Wait 3 seconds for blockchain confirmation
+            
             # Retry request WITH PAYMENT PROOF
+            # x402 middleware expects payment proof in header
+            log(f"Retrying request with payment proof: {tx_hash}", "INFO")
             response = requests.post(
                 f"{CONFIG['access_server_url']}/buy-access",
                 json={
                     'scraper_ip': scraper_ip,
-                    'tx_hash': tx_hash  # Include payment proof
+                    'tx_hash': tx_hash  # Include payment proof in body too
                 },
                 headers={
-                    'X-PAYMENT-PROOF': tx_hash  # x402 payment proof header
+                    'X-PAYMENT-PROOF': tx_hash,  # x402 payment proof header
+                    'X-Payment-Proof': tx_hash,  # Alternative header format
+                    'X-Payment-Hash': tx_hash    # Another common format
                 },
                 timeout=120
             )
+            
+            log(f"Response status: {response.status_code}", "INFO")
+            if response.status_code != 200:
+                try:
+                    error_data = response.json()
+                    log(f"Error response: {error_data}", "ERROR")
+                except:
+                    log(f"Error response text: {response.text}", "ERROR")
             
             if response.status_code == 200:
                 data = response.json()
@@ -177,6 +231,13 @@ def buy_access(scraper_ip):
                 log(f"   Status: {data.get('status', 'unknown')}", "INFO")
                 if 'rule_id' in data:
                     log(f"   Rule ID: {data['rule_id']}", "INFO")
+                # Log transaction details if available
+                if 'transaction' in data:
+                    tx_info = data['transaction']
+                    if 'hash' in tx_info:
+                        log(f"   Transaction Hash: {tx_info['hash']}", "INFO")
+                    if 'url' in tx_info:
+                        log(f"   Transaction URL: {tx_info['url']}", "INFO")
                 return True
             else:
                 log(f"Failed after payment: {response.status_code}", "ERROR")
@@ -210,65 +271,6 @@ def buy_access(scraper_ip):
         log(f"Error purchasing access: {e}", "ERROR")
         import traceback
         traceback.print_exc()  # Print full error for debugging
-        return False
-    try:
-        # First attempt - will get 402 with payment instructions
-        response = requests.post(
-            f"{CONFIG['access_server_url']}/buy-access",
-            json={'scraper_ip': scraper_ip},
-            timeout=120
-        )
-        
-        if response.status_code == 402:
-            # Extract payment details from x402 response
-            payment_header = response.headers.get('X-PAYMENT-RESPONSE')
-            payment_data = response.json()
-            
-            log("Making blockchain payment...", "PAYMENT")
-            
-            # MAKE ACTUAL PAYMENT
-            tx_hash = make_blockchain_payment(
-                payment_data['payment_address'],
-                payment_data['amount']
-            )
-            
-            log(f"Payment made: {tx_hash}", "SUCCESS")
-            
-            # Retry request WITH PAYMENT PROOF
-            response = requests.post(
-                f"{CONFIG['access_server_url']}/buy-access",
-                json={
-                    'scraper_ip': scraper_ip,
-                    'tx_hash': tx_hash  # Include payment proof
-                },
-                headers={
-                    'X-PAYMENT-PROOF': tx_hash  # x402 payment proof header
-                },
-                timeout=120
-            )
-            
-            if response.status_code == 200:
-                log("Access granted!", "SUCCESS")
-                return True
-        
-        else:
-            # Other error
-            log(f"Failed to purchase access: {response.status_code}", "ERROR")
-            try:
-                error_data = response.json()
-                log(f"   Error: {error_data.get('error', 'unknown')}", "ERROR")
-                log(f"   Message: {error_data.get('message', 'unknown')}", "ERROR")
-            except:
-                log(f"   Response: {response.text}", "ERROR")
-            
-            return False
-            
-    except requests.exceptions.Timeout:
-        log("Request timed out - x402 payment may take longer", "ERROR")
-        log("Please check the access server logs", "INFO")
-        return False
-    except Exception as e:
-        log(f"Error purchasing access: {e}", "ERROR")
         return False
 
 def scrape(url):

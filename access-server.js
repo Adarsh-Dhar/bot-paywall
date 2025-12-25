@@ -16,12 +16,13 @@ const CLOUDFLARE_CONFIG = {
 
 // Payment configuration for x402
 const PAYMENT_CONFIG = {
-  PAYMENT_ADDRESS: process.env.MOVEMENT_PAY_TO || "0xdb466d22253732426f60d1a9ce33b080cf44160ed383277e399160ffdcc70b05",
+  PAYMENT_ADDRESS: process.env.MOVEMENT_PAY_TO || "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b",
   NETWORK: "movement-testnet",
   ASSET: "0x1::aptos_coin::AptosCoin",
   AMOUNT_REQUIRED: "1000000", // 0.01 MOVE in octas
   DESCRIPTION: "Bot scraper access payment",
-  TIMEOUT_SECONDS: 600
+  TIMEOUT_SECONDS: 600,
+  EXPLORER_URL: process.env.MOVEMENT_EXPLORER_URL || "https://explorer.movementnetwork.xyz"
 };
 
 app.use(cors());
@@ -59,6 +60,122 @@ async function isIPWhitelisted(ip) {
     return false;
   } catch (error) {
     console.error(`Error checking whitelist for ${ip}:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Verify payment transaction on-chain
+ */
+async function verifyPaymentTransaction(txHash, expectedPayTo, expectedAmount) {
+  try {
+    // Query Movement testnet RPC to get transaction details
+    const rpcUrl = "https://testnet.movementnetwork.xyz/v1";
+    console.log(`Fetching transaction ${txHash} from ${rpcUrl}...`);
+    
+    // Use by_hash endpoint (standard for Aptos/Movement)
+    let response = await fetch(`${rpcUrl}/transactions/by_hash/${txHash}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to fetch transaction: ${response.status} ${response.statusText}`);
+      console.error(`Response: ${errorText}`);
+      // Transaction might not be propagated yet - give it a moment
+      console.log("Transaction may not be propagated yet. Waiting 2 seconds and retrying...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Retry once
+      response = await fetch(`${rpcUrl}/transactions/by_hash/${txHash}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`Retry also failed: ${response.status}`);
+        return false;
+      }
+    }
+    
+    const txData = await response.json();
+    
+    // Check if transaction is successful
+    if (txData.type !== "user_transaction") {
+      console.error(`Transaction is not a user_transaction. Type: ${txData.type}`);
+      return false;
+    }
+    
+    // Check transaction success status
+    if (txData.success !== true && txData.vm_status !== "Executed successfully") {
+      console.error(`Transaction not successful. vm_status: ${txData.vm_status}`);
+      return false;
+    }
+    
+    // Normalize expected address (remove 0x prefix and convert to lowercase)
+    const normalizedExpected = expectedPayTo.replace(/^0x/, "").toLowerCase();
+    const expectedAmountNum = parseInt(expectedAmount);
+    
+    // Method 1: Check transaction payload for transfer_coins function
+    const payload = txData.payload;
+    if (payload?.function) {
+      // Check for transfer functions
+      if (payload.function.includes("transfer")) {
+        const args = payload.arguments || [];
+        
+        if (args.length >= 2) {
+          // Args format: [recipient, amount] for transfer_coins
+          let recipient = String(args[0]).trim();
+          let amount = parseInt(args[1]);
+          
+          // Normalize recipient address
+          recipient = recipient.replace(/^0x/, "").toLowerCase();
+          
+          console.log(`Payload check: recipient=${recipient}, expected=${normalizedExpected}, amount=${amount}, expected=${expectedAmountNum}`);
+          
+          if (recipient === normalizedExpected && amount >= expectedAmountNum) {
+            console.log("✅ Payment verified via payload arguments");
+            return true;
+          }
+        }
+      }
+    }
+    
+    // Method 2: Check events for DepositEvent to the expected address
+    const events = txData.events || [];
+    
+    for (const event of events) {
+      // Look for coin DepositEvent
+      if (event.type && event.type.includes("DepositEvent")) {
+        const eventData = event.data || {};
+        const amount = parseInt(eventData.amount || 0);
+        
+        // Get the account address from the event guid
+        const eventAccount = event.guid?.account_address || "";
+        const normalizedEventAccount = String(eventAccount).replace(/^0x/, "").toLowerCase();
+        
+        console.log(`DepositEvent check: account=${normalizedEventAccount}, expected=${normalizedExpected}, amount=${amount}, expected=${expectedAmountNum}`);
+        
+        if (normalizedEventAccount === normalizedExpected && amount >= expectedAmountNum) {
+          console.log("✅ Payment verified via DepositEvent");
+          return true;
+        }
+      }
+    }
+    
+    console.error("❌ Payment verification failed - no matching transfer found");
+    console.error(`Transaction payload:`, JSON.stringify(payload, null, 2));
+    console.error(`Transaction events:`, JSON.stringify(events, null, 2));
+    return false;
+    
+  } catch (error) {
+    console.error(`Error verifying payment transaction: ${error.message}`);
+    console.error(error.stack);
     return false;
   }
 }
@@ -108,9 +225,30 @@ async function removeExistingWhitelist(ip) {
 }
 
 /**
+ * Schedule automatic deletion of whitelist after specified seconds
+ */
+function scheduleWhitelistDeletion(ip, delaySeconds = 60) {
+  const timeoutId = setTimeout(async () => {
+    try {
+      console.log(`⏰ Auto-deleting whitelist for IP: ${ip} after ${delaySeconds} seconds`);
+      const deleted = await removeExistingWhitelist(ip);
+      if (deleted) {
+        console.log(`✅ Successfully auto-deleted whitelist for IP: ${ip}`);
+      } else {
+        console.log(`⚠️ Auto-deletion attempted for IP: ${ip} (may already be deleted)`);
+      }
+    } catch (error) {
+      console.error(`❌ Error during auto-deletion of whitelist for ${ip}:`, error.message);
+    }
+  }, delaySeconds * 1000);
+  
+  return timeoutId;
+}
+
+/**
  * Add IP to Cloudflare whitelist
  */
-async function whitelistIP(ip, notes = "x402 Payment - Bot Access") {
+async function whitelistIP(ip, notes = "x402 Payment - Bot Access", autoDeleteAfterSeconds = 60) {
   try {
     // First, remove any existing whitelist rules for this IP
     await removeExistingWhitelist(ip);
@@ -139,10 +277,16 @@ async function whitelistIP(ip, notes = "x402 Payment - Bot Access") {
     
     if (data.success) {
       console.log(`✅ Successfully whitelisted IP: ${ip}`);
+      
+      // Schedule automatic deletion after specified seconds
+      scheduleWhitelistDeletion(ip, autoDeleteAfterSeconds);
+      console.log(`⏰ Scheduled auto-deletion of whitelist for IP: ${ip} after ${autoDeleteAfterSeconds} seconds`);
+      
       return {
         success: true,
         rule_id: data.result.id,
-        message: `IP ${ip} has been whitelisted`
+        message: `IP ${ip} has been whitelisted`,
+        auto_deletes_in: `${autoDeleteAfterSeconds} seconds`
       };
     } else {
       console.error(`❌ Failed to whitelist IP ${ip}:`, data.errors);
@@ -166,7 +310,10 @@ async function whitelistIP(ip, notes = "x402 Payment - Bot Access") {
 // =============================================================================
 
 /**
- * Custom x402 payment handler that integrates with Cloudflare whitelisting
+ * x402 payment handler - Verifies blockchain payments before allowing access
+ * Returns 402 if no payment proof, blocks if payment is invalid
+ * 
+ * NOTE: Temporarily disabled - handling payment verification manually in endpoint
  */
 // app.use(
 //   x402Paywall(
@@ -202,6 +349,16 @@ app.post("/buy-access", async (req, res) => {
     console.log("🔵 NEW ACCESS REQUEST");
     console.log("=".repeat(80));
     
+    // Log all payment-related headers for debugging
+    console.log("📋 Payment-related headers:", {
+      'x-payment-proof': req.headers['x-payment-proof'],
+      'x-payment-hash': req.headers['x-payment-hash'],
+      'x-transaction-hash': req.headers['x-transaction-hash'],
+      'X-PAYMENT-PROOF': req.headers['X-PAYMENT-PROOF'],
+      'X-Payment-Proof': req.headers['X-Payment-Proof'],
+      'X-Payment-Hash': req.headers['X-Payment-Hash']
+    });
+    
     // Get the scraper's IP address
     const scraperIP = req.body.scraper_ip || 
                       req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
@@ -229,13 +386,67 @@ app.post("/buy-access", async (req, res) => {
         message: "IP already whitelisted",
         ip: scraperIP,
         status: "active",
-        expires_in: "24 hours"
+        expires_in: "60 seconds"
       });
     }
     
-    // At this point, x402 middleware has already verified the payment
-    // If we reach here, payment was successful
-    console.log("💳 Payment verified by x402 middleware");
+    // Payment verification: Verify transaction on-chain
+    // Extract transaction hash from request
+    const transactionHash = req.body?.tx_hash || 
+                           req.body?.transaction || 
+                           req.body?.transaction_hash ||
+                           req.headers?.['x-payment-proof'] || 
+                           req.headers?.['x-payment-hash'] ||
+                           req.headers?.['x-transaction-hash'] ||
+                           req.headers?.['X-PAYMENT-PROOF'] ||
+                           req.headers?.['X-Payment-Proof'] ||
+                           req.headers?.['X-Payment-Hash'] ||
+                           null;
+    
+    if (!transactionHash) {
+      console.log("❌ No payment proof provided");
+      console.log("=".repeat(80) + "\n");
+      return res.status(402).json({
+        x402Version: 1,
+        accepts: [{
+          scheme: "exact",
+          network: PAYMENT_CONFIG.NETWORK,
+          asset: PAYMENT_CONFIG.ASSET,
+          maxAmountRequired: PAYMENT_CONFIG.AMOUNT_REQUIRED,
+          resource: `${req.protocol}://${req.get('host')}${req.path}`,
+          description: PAYMENT_CONFIG.DESCRIPTION,
+          mimeType: "application/json",
+          payTo: PAYMENT_CONFIG.PAYMENT_ADDRESS,
+          maxTimeoutSeconds: PAYMENT_CONFIG.TIMEOUT_SECONDS
+        }]
+      });
+    }
+    
+    console.log(`💳 Verifying payment transaction: ${transactionHash}`);
+    
+    // Verify transaction on-chain
+    const paymentVerified = await verifyPaymentTransaction(
+      transactionHash, 
+      PAYMENT_CONFIG.PAYMENT_ADDRESS,
+      PAYMENT_CONFIG.AMOUNT_REQUIRED
+    );
+    
+    if (!paymentVerified) {
+      console.log("❌ Payment verification failed");
+      console.log("=".repeat(80) + "\n");
+      return res.status(403).json({
+        success: false,
+        error: "Payment verification failed",
+        message: "The transaction could not be verified. Please ensure the payment was sent to the correct address with the correct amount."
+      });
+    }
+    
+    console.log("✅ Payment verified successfully");
+    
+    // Generate transaction URL for Movement testnet explorer
+    const transactionUrl = `${PAYMENT_CONFIG.EXPLORER_URL}/txn/${transactionHash}`;
+    console.log(`🔗 Transaction Hash: ${transactionHash}`);
+    console.log(`🔗 Transaction URL: ${transactionUrl}`);
     
     // Whitelist the IP in Cloudflare
     console.log(`🔐 Whitelisting IP in Cloudflare: ${scraperIP}`);
@@ -250,8 +461,13 @@ app.post("/buy-access", async (req, res) => {
         message: "Access granted - IP whitelisted",
         ip: scraperIP,
         rule_id: whitelistResult.rule_id,
+        transaction: {
+          hash: transactionHash,
+          url: transactionUrl
+        },
         status: "active",
-        expires_in: "24 hours",
+        expires_in: "60 seconds",
+        auto_deletes_in: "60 seconds",
         timestamp: new Date().toISOString()
       });
     } else {

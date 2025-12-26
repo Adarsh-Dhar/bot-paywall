@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processManualPayment, getBotPaymentSystem, startBotPaymentSystem } from '@/lib/automated-bot-payment-system';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    // Ensure bot payment system is initialized
+    // Ensure bot payment system is initialized (without Cloudflare credentials)
     if (!getBotPaymentSystem()) {
-      console.log('Bot payment system not initialized, starting it now...');
       await startBotPaymentSystem({
         enableConsoleLogging: true,
         enableFileLogging: false,
@@ -14,20 +15,49 @@ export async function POST(request: NextRequest) {
         configuredClientIP: '210.212.2.133', // Use the specific client IP
         webscrapperPath: process.cwd().replace('/main', '') + '/webscrapper' // Fix the path
       });
-      console.log('Bot payment system initialized successfully');
     }
 
-    const body = await request.json();
-    const { transactionId, clientIP, expectedAmount, expectedCurrency } = body;
-
-    // Validate required fields
-    if (!transactionId || !clientIP) {
+    // Authenticate user
+    const authResult = await auth();
+    if (!authResult) {
       return NextResponse.json(
         { 
           verified: false, 
-          error: 'Missing required fields: transactionId and clientIP' 
+          error: 'User not authenticated' 
+        },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { transactionId, clientIP, projectId, expectedAmount, expectedCurrency } = body;
+
+    // Validate required fields
+    if (!transactionId || !clientIP || !projectId) {
+      return NextResponse.json(
+        { 
+          verified: false, 
+          error: 'Missing required fields: transactionId, clientIP, and projectId are required' 
         },
         { status: 400 }
+      );
+    }
+
+    // Validate project exists and belongs to user
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: authResult.userId,
+      },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        { 
+          verified: false, 
+          error: 'Project not found or unauthorized' 
+        },
+        { status: 404 }
       );
     }
 
@@ -43,13 +73,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Process the payment through the bot payment system
-    const result = await processManualPayment(transactionId, clientIP);
+    const result = await processManualPayment(transactionId, projectId, clientIP);
 
     if (result.success) {
       return NextResponse.json({
         verified: true,
         transactionId,
         clientIP,
+        projectId,
         amount: expectedAmount,
         currency: expectedCurrency,
         timestamp: new Date().toISOString()
@@ -68,7 +99,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         verified: false, 
-        error: 'Internal server error during payment verification' 
+        error: error instanceof Error ? error.message : 'Internal server error during payment verification' 
       },
       { status: 500 }
     );

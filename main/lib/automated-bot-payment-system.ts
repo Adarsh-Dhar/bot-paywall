@@ -64,12 +64,16 @@ export async function getBotPaymentSystemStatus() {
 /**
  * Processes a manual payment (for testing or API endpoints)
  */
-export async function processManualPayment(transactionId: string, ip?: string) {
+export async function processManualPayment(transactionId: string, projectId: string, ip?: string) {
   if (!botPaymentSystem) {
     throw new Error('Bot payment system not initialized');
   }
 
-  return await botPaymentSystem.processPayment(transactionId, ip);
+  if (!projectId) {
+    throw new Error('Project ID is required');
+  }
+
+  return await botPaymentSystem.processPayment(transactionId, projectId, ip);
 }
 
 /**

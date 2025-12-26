@@ -31,6 +31,7 @@ export interface UserCloudflareToken {
 
 /**
  * Validate a Cloudflare API token by making a test API call
+ * Returns real token name and account ID from Cloudflare API
  */
 async function validateCloudflareToken(token: string): Promise<{
   valid: boolean;
@@ -40,12 +41,12 @@ async function validateCloudflareToken(token: string): Promise<{
   error?: string;
 }> {
   try {
-    // Try multiple endpoints to validate the token
-    let validationSuccess = false;
+    let tokenName = '';
     let accountId = '';
+    let validationSuccess = false;
     let errorMessage = '';
 
-    // Try 1: Verify token endpoint (works with User permissions)
+    // Step 1: Verify token endpoint to get token name and status
     try {
       const verifyResponse = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
         headers: {
@@ -56,17 +57,50 @@ async function validateCloudflareToken(token: string): Promise<{
 
       if (verifyResponse.ok) {
         const verifyData = await verifyResponse.json();
-        if (verifyData.success) {
+        if (verifyData.success && verifyData.result) {
           validationSuccess = true;
-          console.log('Token validated via verify endpoint');
+          // Extract token name from verify endpoint
+          tokenName = verifyData.result.name || 'API Token';
+          
+          // Extract permissions if available
+          const permissions = verifyData.result.policies?.map((policy: any) => 
+            `${policy.resources?.map((r: any) => r.id || r.tag).join(',')}:${policy.permission_groups?.join(',')}`
+          ).join(', ') || 'Zone:Read, Zone:Edit';
+        } else {
+          errorMessage = verifyData.errors?.[0]?.message || 'Token verification failed';
+        }
+      } else {
+        const errorData = await verifyResponse.json().catch(() => ({}));
+        errorMessage = errorData.errors?.[0]?.message || `API returned ${verifyResponse.status}`;
+      }
+    } catch (e) {
+      errorMessage = e instanceof Error ? e.message : 'Failed to verify token';
+    }
+
+    if (!validationSuccess) {
+      return {
+        valid: false,
+        error: errorMessage || 'Unable to validate token. Please check your token permissions.',
+      };
+    }
+
+    // Step 2: Get account ID from accounts endpoint
+    try {
+      const accountsResponse = await fetch('https://api.cloudflare.com/client/v4/accounts', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (accountsResponse.ok) {
+        const accountsData = await accountsResponse.json();
+        if (accountsData.success && accountsData.result && accountsData.result.length > 0) {
+          accountId = accountsData.result[0].id;
         }
       }
     } catch (e) {
-      console.log('Verify endpoint failed, trying zones...');
-    }
-
-    // Try 2: List zones endpoint (works with Zone permissions)
-    if (!validationSuccess) {
+      // If accounts endpoint fails, try zones endpoint as fallback
       try {
         const zonesResponse = await fetch('https://api.cloudflare.com/client/v4/zones?per_page=1', {
           headers: {
@@ -77,65 +111,28 @@ async function validateCloudflareToken(token: string): Promise<{
 
         if (zonesResponse.ok) {
           const zonesData = await zonesResponse.json();
-          if (zonesData.success) {
-            validationSuccess = true;
-            console.log('Token validated via zones endpoint');
-            
-            // Extract account ID from first zone
-            if (zonesData.result && zonesData.result.length > 0) {
-              accountId = zonesData.result[0].account?.id || '';
-            }
-          } else {
-            errorMessage = zonesData.errors?.[0]?.message || 'Token validation failed';
+          if (zonesData.success && zonesData.result && zonesData.result.length > 0) {
+            accountId = zonesData.result[0].account?.id || '';
           }
-        } else {
-          const errorData = await zonesResponse.json().catch(() => ({}));
-          errorMessage = errorData.errors?.[0]?.message || `API returned ${zonesResponse.status}`;
         }
-      } catch (e) {
-        errorMessage = e instanceof Error ? e.message : 'Network error';
-        console.log('Zones endpoint failed:', errorMessage);
+      } catch (zonesError) {
+        // Account ID extraction failed, but token is still valid
+        console.warn('Could not extract account ID from accounts or zones endpoint');
       }
     }
 
-    // Try 3: List accounts endpoint (works with Account permissions)
-    if (!validationSuccess) {
-      try {
-        const accountsResponse = await fetch('https://api.cloudflare.com/client/v4/accounts', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (accountsResponse.ok) {
-          const accountsData = await accountsResponse.json();
-          if (accountsData.success) {
-            validationSuccess = true;
-            console.log('Token validated via accounts endpoint');
-            
-            if (accountsData.result && accountsData.result.length > 0) {
-              accountId = accountsData.result[0].id;
-            }
-          }
-        }
-      } catch (e) {
-        console.log('Accounts endpoint failed');
-      }
-    }
-
-    if (!validationSuccess) {
+    if (!accountId) {
       return {
         valid: false,
-        error: errorMessage || 'Unable to validate token. Please check your token permissions.',
+        error: 'Unable to retrieve account ID. Please ensure your token has Account or Zone read permissions.',
       };
     }
 
     return {
       valid: true,
       accountId,
-      tokenName: 'Cloudflare API Token',
-      permissions: ['Zone:Read', 'Zone:Edit'],
+      tokenName: tokenName || 'API Token',
+      permissions: ['Zone:Read', 'Zone:Edit'], // Default permissions
     };
   } catch (error) {
     return {
@@ -159,41 +156,35 @@ export async function saveCloudflareToken(token: string): Promise<CloudflareToke
     }
     const { userId, email } = authResult;
 
-    // For development/testing, we'll skip validation and store the token
-    // In production, you might want to enable validation
-    const skipValidation = process.env.NODE_ENV === 'development' || process.env.SKIP_TOKEN_VALIDATION === 'true';
-    
-    let validation: {
-      valid: boolean;
-      accountId: string;
-      tokenName: string;
-      permissions: string[];
-    };
-
-    if (!skipValidation) {
-      // Validate the token first
-      const validationResult = await validateCloudflareToken(token);
-      if (!validationResult.valid) {
-        return {
-          success: false,
-          error: validationResult.error || 'Invalid token',
-        };
-      }
-      validation = {
-        valid: true,
-        accountId: validationResult.accountId || 'unknown',
-        tokenName: validationResult.tokenName || 'API Token',
-        permissions: validationResult.permissions || ['Zone:Read', 'Zone:Edit']
-      };
-    } else {
-      console.log('Skipping token validation for development');
-      validation = {
-        valid: true,
-        accountId: 'test-account-id',
-        tokenName: 'Development Token',
-        permissions: ['Zone:Read', 'Zone:Edit']
+    // Always validate the token to get real token name and account ID
+    const validationResult = await validateCloudflareToken(token);
+    if (!validationResult.valid) {
+      return {
+        success: false,
+        error: validationResult.error || 'Invalid token. Please check your Cloudflare API token.',
       };
     }
+
+    if (!validationResult.accountId) {
+      return {
+        success: false,
+        error: 'Unable to retrieve account ID. Please ensure your token has Account or Zone read permissions.',
+      };
+    }
+
+    if (!validationResult.tokenName) {
+      return {
+        success: false,
+        error: 'Unable to retrieve token name. Please check your token is valid.',
+      };
+    }
+
+    const validation = {
+      valid: true,
+      accountId: validationResult.accountId,
+      tokenName: validationResult.tokenName,
+      permissions: validationResult.permissions || ['Zone:Read', 'Zone:Edit']
+    };
 
     // Encrypt the token
     const encryptedToken = encryptToken(token);

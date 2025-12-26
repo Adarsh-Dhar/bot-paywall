@@ -13,10 +13,19 @@ export class CloudflareClientImpl implements CloudflareClient {
   private readonly rateLimitDelay = 1000; // 1 second delay for rate limiting
   private readonly maxRetries = 3;
 
-  constructor(apiToken?: string, zoneId?: string) {
-    // Use existing configuration from environment or provided values
-    this.apiToken = apiToken || process.env.CLOUDFLARE_API_TOKEN || 'oWN3t2VfMulCIBh7BzrScK87xlKmPRp6a1ttKVsB';
-    this.zoneId = zoneId || process.env.CLOUDFLARE_ZONE_ID || '11685346bf13dc3ffebc9cc2866a8105';
+  constructor(apiToken: string, zoneId: string) {
+    if (!apiToken) {
+      throw new Error('Cloudflare API token is required');
+    }
+    if (!zoneId) {
+      throw new Error('Cloudflare Zone ID is required');
+    }
+    // Basic format validation for zone ID (should be 32 hex characters)
+    if (!/^[a-f0-9]{32}$/i.test(zoneId)) {
+      throw new Error('Invalid Zone ID format. Zone ID must be 32 hexadecimal characters.');
+    }
+    this.apiToken = apiToken;
+    this.zoneId = zoneId;
   }
 
   /**

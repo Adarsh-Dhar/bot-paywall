@@ -79,13 +79,17 @@ def get_payment_info():
         log(f"Error getting payment info: {e}", "ERROR")
         return None
 
-def check_access_status(ip):
+def check_access_status(ip, domain):
     """
     Check if IP is whitelisted.
+    Args:
+        ip: The IP address to check
+        domain: The domain name (e.g., 'test-cloudflare-website.adarsh.software')
     """
     try:
         response = requests.get(
             f"{CONFIG['access_server_url']}/check-access/{ip}",
+            params={'domain': domain},
             timeout=10
         )
         
@@ -140,12 +144,21 @@ def make_blockchain_payment(payment_address, amount):
     # Run the async function
     return asyncio.run(_make_payment())        
 
-def buy_access(scraper_ip):
+def buy_access(scraper_ip, domain):
+    """
+    Purchase access for scraper IP.
+    Args:
+        scraper_ip: The IP address of the scraper
+        domain: The domain name (e.g., 'test-cloudflare-website.adarsh.software')
+    """
     try:
         # First attempt - will get 402 with payment instructions
         response = requests.post(
             f"{CONFIG['access_server_url']}/buy-access",
-            json={'scraper_ip': scraper_ip},
+            json={
+                'scraper_ip': scraper_ip,
+                'domain': domain
+            },
             timeout=120
         )
         
@@ -206,6 +219,7 @@ def buy_access(scraper_ip):
                 f"{CONFIG['access_server_url']}/buy-access",
                 json={
                     'scraper_ip': scraper_ip,
+                    'domain': domain,
                     'tx_hash': tx_hash  # Include payment proof in body too
                 },
                 headers={
@@ -317,6 +331,21 @@ def extract_client_ip(payment_info):
     
     return ip
 
+def extract_domain_from_url(url):
+    """
+    Extract domain from URL.
+    Examples:
+    - https://test-cloudflare-website.adarsh.software/ -> test-cloudflare-website.adarsh.software
+    - https://www.example.com/path -> www.example.com
+    """
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        return None
+    # Return the full hostname (including subdomain)
+    return hostname
+
 # =============================================================================
 # MAIN FLOW
 # =============================================================================
@@ -362,6 +391,14 @@ def main():
         log("Could not detect client IP from response", "ERROR")
         log("Will let access server detect it", "INFO")
     
+    # Extract domain from target URL
+    target_domain = extract_domain_from_url(CONFIG['target_url'])
+    if not target_domain:
+        log("Could not extract domain from target URL", "ERROR")
+        return 1
+    
+    log(f"Extracted domain: {target_domain}", "INFO")
+    
     print()
     
     # =========================================================================
@@ -385,7 +422,7 @@ def main():
     print("STEP 3: Purchasing access")
     print("-" * 40)
     
-    access_granted = buy_access(client_ip)
+    access_granted = buy_access(client_ip, target_domain)
     
     if not access_granted:
         log("Access not granted - check access server logs", "ERROR")
@@ -409,7 +446,7 @@ def main():
     
     # Check access status
     if client_ip:
-        is_whitelisted = check_access_status(client_ip)
+        is_whitelisted = check_access_status(client_ip, target_domain)
         if is_whitelisted:
             log(f"IP {client_ip} is now whitelisted", "SUCCESS")
         else:

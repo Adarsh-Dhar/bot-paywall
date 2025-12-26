@@ -19,7 +19,7 @@ export default async function Home() {
   const protectedDomains = projects?.map((project: any) => ({
     id: project.id,
     name: project.name,
-    status: 'Active', // You can map this from project.status if needed
+    status: project.status || 'PENDING_NS', // Use actual status from database
     nameservers: 'Cloudflare NS',
     lastUpdated: new Date(project.updatedAt).toLocaleDateString(),
     websiteUrl: project.websiteUrl,

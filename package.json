@@ -1,6 +1,7 @@
 {
   "name": "node-access-control-middleware",
   "version": "1.0.0",
+  "type": "module",
   "description": "Pay-to-Pass gateway that verifies Aptos blockchain payments and temporarily whitelists IP addresses on Cloudflare",
   "main": "access-server.js",
   "scripts": {

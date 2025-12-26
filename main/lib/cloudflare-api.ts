@@ -12,14 +12,13 @@ import {
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
 
-function getHeaders(token?: string): HeadersInit {
-  const apiToken = token || process.env.CLOUDFLARE_API_TOKEN;
-  if (!apiToken) {
+function getHeaders(token: string): HeadersInit {
+  if (!token) {
     throw new Error('Cloudflare API token is required');
   }
 
   return {
-    Authorization: `Bearer ${apiToken}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 }
@@ -29,11 +28,33 @@ function getHeaders(token?: string): HeadersInit {
  */
 export async function createCloudflareZone(
   domain: string,
-  token?: string
+  token: string
 ): Promise<CloudflareZoneResponse> {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!token) {
+    throw new Error('Cloudflare API token is required');
+  }
+
+  // Get account ID from accounts endpoint
+  const accountsResponse = await fetch(`${CLOUDFLARE_API_BASE}/accounts`, {
+    method: 'GET',
+    headers: getHeaders(token),
+  });
+
+  const accountsData = await accountsResponse.json();
+
+  if (!accountsResponse.ok || !accountsData.success) {
+    throw new Error(
+      `Failed to get account ID: ${accountsData.errors?.[0]?.message || 'Unknown error'}`
+    );
+  }
+
+  if (!accountsData.result || accountsData.result.length === 0) {
+    throw new Error('No accounts found for this token');
+  }
+
+  const accountId = accountsData.result[0].id;
   if (!accountId) {
-    throw new Error('CLOUDFLARE_ACCOUNT_ID environment variable is not set');
+    throw new Error('Failed to get account ID from accounts endpoint');
   }
 
   const response = await fetch(`${CLOUDFLARE_API_BASE}/zones`, {
@@ -63,8 +84,12 @@ export async function createCloudflareZone(
  */
 export async function getCloudflareZoneStatus(
   zoneId: string,
-  token?: string
+  token: string
 ): Promise<CloudflareZoneStatusResponse> {
+  if (!token) {
+    throw new Error('Cloudflare API token is required');
+  }
+
   const response = await fetch(`${CLOUDFLARE_API_BASE}/zones/${zoneId}`, {
     method: 'GET',
     headers: getHeaders(token),
@@ -89,8 +114,12 @@ export async function getCloudflareZoneStatus(
 export async function deployWAFRule(
   zoneId: string,
   secretKey: string,
-  token?: string
+  token: string
 ): Promise<any> {
+  if (!token) {
+    throw new Error('Cloudflare API token is required');
+  }
+
   const rule = {
     description: 'Bypass Bot Fight Mode with Password',
     expression: `(http.request.headers["X-Bot-Auth"] eq "${secretKey}")`,

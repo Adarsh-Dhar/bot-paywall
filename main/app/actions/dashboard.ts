@@ -49,6 +49,7 @@ export async function getProjects() {
         userId: true,
         name: true,
         websiteUrl: true,
+        status: true,
         requestsCount: true,
         createdAt: true,
         updatedAt: true,

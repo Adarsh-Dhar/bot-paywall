@@ -4,15 +4,130 @@ import { x402Paywall } from "x402plus";
 import fetch from "node-fetch";
 import "dotenv/config";
 
+// Startup diagnostic: log presence of critical environment variables (do not log secret values)
+console.log('Startup diagnostic:', {
+  has_WORKER_API_KEY: !!process.env.WORKER_API_KEY,
+  has_ACCESS_SERVER_API_KEY: !!process.env.ACCESS_SERVER_API_KEY,
+  has_MAIN_APP_API_URL: !!process.env.MAIN_APP_API_URL,
+  port: process.env.PORT || process.env.SERVER_PORT || 5000
+});
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Cloudflare configuration
-const CLOUDFLARE_CONFIG = {
-  ZONE_ID: process.env.CLOUDFLARE_ZONE_ID || "11685346bf13dc3ffebc9cc2866a8105",
-  API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || "oWN3t2VfMulCIBh7BzrScK87xlKmPRp6a1ttKVsB",
-  API_BASE: "https://api.cloudflare.com/client/v4"
+// Main app API configuration (for fetching Cloudflare credentials)
+const MAIN_APP_CONFIG = {
+  API_BASE_URL: process.env.MAIN_APP_API_URL || "http://localhost:3000",
+  WORKER_API_KEY: (process.env.WORKER_API_KEY || process.env.ACCESS_SERVER_API_KEY || '').trim()
 };
+
+// Cloudflare API base URL
+const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
+
+/**
+ * Fetch Cloudflare credentials from main app API based on domain
+ * Tries the full hostname first, then tries the root domain (without subdomain)
+ */
+async function getCloudflareConfig(domain) {
+  if (!domain) {
+    throw new Error("Domain is required to fetch Cloudflare configuration");
+  }
+
+  if (!MAIN_APP_CONFIG.WORKER_API_KEY) {
+    throw new Error("WORKER_API_KEY or ACCESS_SERVER_API_KEY environment variable is required");
+  }
+
+  // Debug: Log API key info (first 8 chars only for security)
+  const apiKeyPreview = MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0, 8) + '...';
+  console.log(`🔑 Using API key: ${apiKeyPreview} (length: ${MAIN_APP_CONFIG.WORKER_API_KEY.trim().length})`);
+
+  // Try the full hostname first
+  let hostnameToTry = domain;
+  let lastError = null;
+
+  try {
+    const url = `${MAIN_APP_CONFIG.API_BASE_URL}/api/worker/config?hostname=${encodeURIComponent(hostnameToTry)}`;
+    console.log(`📡 Fetching config from: ${url}`);
+
+    const response = await fetch(url, {
+      headers: {
+        'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim(),
+        'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim()}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('➡️ Sent headers to main app:', {
+      'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8) + '...',
+      'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8)}...`,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        console.log(`✅ Found config for hostname: ${hostnameToTry}`);
+        return {
+          zoneId: data.zoneId,
+          apiToken: data.cloudflareToken,
+          domain: data.domain,
+          projectId: data.projectId
+        };
+      }
+    } else {
+      const errorText = await response.text().catch(() => '');
+      console.error(`❌ API request failed: ${response.status} - ${response.statusText} - ${errorText}`);
+      lastError = new Error(`Failed to fetch config for ${hostnameToTry}: ${response.status} - ${errorText || response.statusText}`);
+    }
+  } catch (error) {
+    console.error(`❌ Fetch error:`, error.message);
+    lastError = error;
+  }
+
+  // If that failed and it's a subdomain, try the root domain
+  const parts = domain.split('.');
+  if (parts.length > 2 && parts[0] !== 'www') {
+    // It's a subdomain, try the root domain
+    const rootDomain = parts.slice(1).join('.');
+    console.log(`⚠️ Config not found for ${hostnameToTry}, trying root domain: ${rootDomain}`);
+
+    try {
+      const response = await fetch(
+        `${MAIN_APP_CONFIG.API_BASE_URL}/api/worker/config?hostname=${encodeURIComponent(rootDomain)}`,
+      {
+        headers: {
+          'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim(),
+          'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim()}`,
+          'Content-Type': 'application/json'
+        }
+      }
+      );
+
+      console.log('➡️ Sent headers to main app (root domain attempt):', {
+        'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8) + '...',
+        'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8)}...`,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          console.log(`✅ Found config for root domain: ${rootDomain}`);
+          return {
+            zoneId: data.zoneId,
+            apiToken: data.cloudflareToken,
+            domain: data.domain,
+            projectId: data.projectId
+          };
+        }
+      }
+    } catch (error) {
+      // Ignore, we'll throw the original error
+    }
+  }
+
+  // If both attempts failed, throw the error
+  console.error(`❌ Error fetching Cloudflare config for domain ${domain}:`, lastError?.message || 'Unknown error');
+  throw lastError || new Error(`Failed to fetch configuration for domain: ${domain}`);
+}
 
 // Payment configuration for x402
 const PAYMENT_CONFIG = {
@@ -35,13 +150,17 @@ app.use(express.json());
 /**
  * Check if an IP is already whitelisted in Cloudflare
  */
-async function isIPWhitelisted(ip) {
+async function isIPWhitelisted(ip, zoneId, apiToken) {
+  if (!zoneId || !apiToken) {
+    throw new Error("Zone ID and API token are required for whitelist check");
+  }
+
   try {
     const response = await fetch(
-      `${CLOUDFLARE_CONFIG.API_BASE}/zones/${CLOUDFLARE_CONFIG.ZONE_ID}/firewall/access_rules/rules?configuration.value=${ip}`,
+      `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules?configuration.value=${ip}`,
       {
         headers: {
-          "Authorization": `Bearer ${CLOUDFLARE_CONFIG.API_TOKEN}`,
+          "Authorization": `Bearer ${apiToken}`,
           "Content-Type": "application/json"
         }
       }
@@ -183,13 +302,17 @@ async function verifyPaymentTransaction(txHash, expectedPayTo, expectedAmount) {
 /**
  * Remove existing whitelist rule for an IP
  */
-async function removeExistingWhitelist(ip) {
+async function removeExistingWhitelist(ip, zoneId, apiToken) {
+  if (!zoneId || !apiToken) {
+    throw new Error("Zone ID and API token are required to remove whitelist");
+  }
+
   try {
     const response = await fetch(
-      `${CLOUDFLARE_CONFIG.API_BASE}/zones/${CLOUDFLARE_CONFIG.ZONE_ID}/firewall/access_rules/rules?configuration.value=${ip}`,
+      `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules?configuration.value=${ip}`,
       {
         headers: {
-          "Authorization": `Bearer ${CLOUDFLARE_CONFIG.API_TOKEN}`,
+          "Authorization": `Bearer ${apiToken}`,
           "Content-Type": "application/json"
         }
       }
@@ -201,11 +324,11 @@ async function removeExistingWhitelist(ip) {
       for (const rule of data.result) {
         if (rule.mode === "whitelist" && rule.configuration.value === ip) {
           const deleteResponse = await fetch(
-            `${CLOUDFLARE_CONFIG.API_BASE}/zones/${CLOUDFLARE_CONFIG.ZONE_ID}/firewall/access_rules/rules/${rule.id}`,
+            `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules/${rule.id}`,
             {
               method: "DELETE",
               headers: {
-                "Authorization": `Bearer ${CLOUDFLARE_CONFIG.API_TOKEN}`,
+                "Authorization": `Bearer ${apiToken}`,
                 "Content-Type": "application/json"
               }
             }
@@ -227,11 +350,11 @@ async function removeExistingWhitelist(ip) {
 /**
  * Schedule automatic deletion of whitelist after specified seconds
  */
-function scheduleWhitelistDeletion(ip, delaySeconds = 60) {
+function scheduleWhitelistDeletion(ip, zoneId, apiToken, delaySeconds = 60) {
   const timeoutId = setTimeout(async () => {
     try {
       console.log(`⏰ Auto-deleting whitelist for IP: ${ip} after ${delaySeconds} seconds`);
-      const deleted = await removeExistingWhitelist(ip);
+      const deleted = await removeExistingWhitelist(ip, zoneId, apiToken);
       if (deleted) {
         console.log(`✅ Successfully auto-deleted whitelist for IP: ${ip}`);
       } else {
@@ -248,18 +371,22 @@ function scheduleWhitelistDeletion(ip, delaySeconds = 60) {
 /**
  * Add IP to Cloudflare whitelist
  */
-async function whitelistIP(ip, notes = "x402 Payment - Bot Access", autoDeleteAfterSeconds = 60) {
+async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment - Bot Access", autoDeleteAfterSeconds = 60) {
+  if (!zoneId || !apiToken) {
+    throw new Error("Zone ID and API token are required to whitelist IP");
+  }
+
   try {
     // First, remove any existing whitelist rules for this IP
-    await removeExistingWhitelist(ip);
+    await removeExistingWhitelist(ip, zoneId, apiToken);
     
     // Add new whitelist rule
     const response = await fetch(
-      `${CLOUDFLARE_CONFIG.API_BASE}/zones/${CLOUDFLARE_CONFIG.ZONE_ID}/firewall/access_rules/rules`,
+      `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules`,
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${CLOUDFLARE_CONFIG.API_TOKEN}`,
+          "Authorization": `Bearer ${apiToken}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -279,7 +406,7 @@ async function whitelistIP(ip, notes = "x402 Payment - Bot Access", autoDeleteAf
       console.log(`✅ Successfully whitelisted IP: ${ip}`);
       
       // Schedule automatic deletion after specified seconds
-      scheduleWhitelistDeletion(ip, autoDeleteAfterSeconds);
+      scheduleWhitelistDeletion(ip, zoneId, apiToken, autoDeleteAfterSeconds);
       console.log(`⏰ Scheduled auto-deletion of whitelist for IP: ${ip} after ${autoDeleteAfterSeconds} seconds`);
       
       return {
@@ -341,7 +468,7 @@ async function whitelistIP(ip, notes = "x402 Payment - Bot Access", autoDeleteAf
 /**
  * POST /buy-access
  * Main endpoint for scrapers to purchase access
- * Expects: { scraper_ip: "xxx.xxx.xxx.xxx" } in body or uses request IP
+ * Expects: { scraper_ip: "xxx.xxx.xxx.xxx", domain: "example.com" } in body or uses request IP
  */
 app.post("/buy-access", async (req, res) => {
   try {
@@ -365,7 +492,11 @@ app.post("/buy-access", async (req, res) => {
                       req.ip || 
                       req.connection.remoteAddress;
     
+    // Get domain from request body or query parameter
+    const domain = req.body.domain || req.query.domain;
+    
     console.log(`📍 Scraper IP: ${scraperIP}`);
+    console.log(`🌐 Domain: ${domain || 'NOT PROVIDED'}`);
     console.log(`📦 Request body:`, req.body);
     
     if (!scraperIP) {
@@ -376,9 +507,34 @@ app.post("/buy-access", async (req, res) => {
         message: "Please provide scraper_ip in request body or ensure IP is detectable"
       });
     }
+
+    if (!domain) {
+      console.log("❌ No domain provided");
+      return res.status(400).json({
+        success: false,
+        error: "No domain provided",
+        message: "Please provide domain in request body or query parameter (e.g., ?domain=example.com)"
+      });
+    }
+
+    // Fetch Cloudflare credentials for this domain
+    let cloudflareConfig;
+    try {
+      console.log(`🔑 Fetching Cloudflare configuration for domain: ${domain}`);
+      cloudflareConfig = await getCloudflareConfig(domain);
+      console.log(`✅ Cloudflare configuration loaded for domain: ${domain}`);
+    } catch (error) {
+      console.error(`❌ Failed to fetch Cloudflare configuration: ${error.message}`);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch Cloudflare configuration",
+        message: error.message,
+        hint: "Make sure the domain is registered in the system and WORKER_API_KEY is set"
+      });
+    }
     
     // Check if already whitelisted
-    const alreadyWhitelisted = await isIPWhitelisted(scraperIP);
+    const alreadyWhitelisted = await isIPWhitelisted(scraperIP, cloudflareConfig.zoneId, cloudflareConfig.apiToken);
     if (alreadyWhitelisted) {
       console.log(`✅ IP ${scraperIP} is already whitelisted`);
       return res.json({
@@ -450,7 +606,12 @@ app.post("/buy-access", async (req, res) => {
     
     // Whitelist the IP in Cloudflare
     console.log(`🔐 Whitelisting IP in Cloudflare: ${scraperIP}`);
-    const whitelistResult = await whitelistIP(scraperIP, `x402 Payment - ${new Date().toISOString()}`);
+    const whitelistResult = await whitelistIP(
+      scraperIP, 
+      cloudflareConfig.zoneId, 
+      cloudflareConfig.apiToken, 
+      `x402 Payment - ${new Date().toISOString()}`
+    );
     
     if (whitelistResult.success) {
       console.log("✅ Access granted successfully!");
@@ -497,11 +658,32 @@ app.post("/buy-access", async (req, res) => {
 /**
  * GET /check-access/:ip
  * Check if an IP is whitelisted
+ * Requires domain query parameter: /check-access/:ip?domain=example.com
  */
 app.get("/check-access/:ip", async (req, res) => {
   try {
     const ip = req.params.ip;
-    const isWhitelisted = await isIPWhitelisted(ip);
+    const domain = req.query.domain;
+
+    if (!domain) {
+      return res.status(400).json({
+        error: "Domain query parameter is required",
+        message: "Please provide domain as query parameter: /check-access/:ip?domain=example.com"
+      });
+    }
+
+    // Fetch Cloudflare credentials for this domain
+    let cloudflareConfig;
+    try {
+      cloudflareConfig = await getCloudflareConfig(domain);
+    } catch (error) {
+      return res.status(500).json({
+        error: "Failed to fetch Cloudflare configuration",
+        message: error.message
+      });
+    }
+
+    const isWhitelisted = await isIPWhitelisted(ip, cloudflareConfig.zoneId, cloudflareConfig.apiToken);
     
     res.json({
       ip: ip,
@@ -520,11 +702,32 @@ app.get("/check-access/:ip", async (req, res) => {
 /**
  * DELETE /revoke-access/:ip
  * Remove IP from whitelist
+ * Requires domain query parameter: /revoke-access/:ip?domain=example.com
  */
 app.delete("/revoke-access/:ip", async (req, res) => {
   try {
     const ip = req.params.ip;
-    const removed = await removeExistingWhitelist(ip);
+    const domain = req.query.domain;
+
+    if (!domain) {
+      return res.status(400).json({
+        error: "Domain query parameter is required",
+        message: "Please provide domain as query parameter: /revoke-access/:ip?domain=example.com"
+      });
+    }
+
+    // Fetch Cloudflare credentials for this domain
+    let cloudflareConfig;
+    try {
+      cloudflareConfig = await getCloudflareConfig(domain);
+    } catch (error) {
+      return res.status(500).json({
+        error: "Failed to fetch Cloudflare configuration",
+        message: error.message
+      });
+    }
+
+    const removed = await removeExistingWhitelist(ip, cloudflareConfig.zoneId, cloudflareConfig.apiToken);
     
     if (removed) {
       res.json({
@@ -590,7 +793,8 @@ app.listen(PORT, () => {
   console.log(`📍 Server running at: http://localhost:${PORT}`);
   console.log(`💳 Payment address: ${PAYMENT_CONFIG.PAYMENT_ADDRESS}`);
   console.log(`💰 Required amount: ${(parseInt(PAYMENT_CONFIG.AMOUNT_REQUIRED) / 100000000).toFixed(8)} MOVE`);
-  console.log(`🌐 Cloudflare Zone: ${CLOUDFLARE_CONFIG.ZONE_ID}`);
+  console.log(`🔗 Main App API: ${MAIN_APP_CONFIG.API_BASE_URL}`);
+  console.log(`🔑 API Key configured: ${MAIN_APP_CONFIG.WORKER_API_KEY ? 'Yes' : 'No (REQUIRED)'}`);
   console.log("=".repeat(80));
   console.log("\nEndpoints:");
   console.log("  POST   /buy-access        - Purchase scraper access");
@@ -600,3 +804,4 @@ app.listen(PORT, () => {
   console.log("  GET    /health            - Health check");
   console.log("=".repeat(80) + "\n");
 });
+

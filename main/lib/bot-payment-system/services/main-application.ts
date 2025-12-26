@@ -4,16 +4,12 @@
 
 import { PaymentVerificationServiceImpl } from './payment-verification';
 import { DatabaseServiceImpl } from './database';
-import { CloudflareClientImpl } from './cloudflare-client';
-import { CleanupSchedulerImpl } from './cleanup-scheduler';
 import { LoggingServiceImpl } from './logging';
 import { BotExecutionMonitorImpl } from './bot-execution-monitor';
 import { PrismaClient } from '@prisma/client';
 import {
   PaymentVerificationService,
   DatabaseService,
-  CloudflareClient,
-  CleanupScheduler,
   LoggingService,
   BotExecutionMonitor
 } from '../interfaces';
@@ -21,10 +17,6 @@ import { PaymentResult, BotAllowedEntry, PaymentRecord } from '../types';
 import { validatePaymentAmount, validateIPAddress } from '../validation';
 
 export interface BotPaymentSystemConfig {
-  // Cloudflare configuration
-  cloudflareApiToken?: string;
-  cloudflareZoneId?: string;
-  
   // Database configuration
   prismaClient?: PrismaClient;
   
@@ -49,8 +41,6 @@ export interface BotPaymentSystemConfig {
 export class BotPaymentSystemApplication {
   private paymentVerificationService!: PaymentVerificationService;
   private databaseService!: DatabaseService;
-  private cloudflareClient!: CloudflareClient;
-  private cleanupScheduler!: CleanupScheduler;
   private loggingService!: LoggingService;
   private botExecutionMonitor!: BotExecutionMonitor;
   
@@ -60,8 +50,6 @@ export class BotPaymentSystemApplication {
   constructor(config: BotPaymentSystemConfig = {}) {
     // Set default configuration
     this.config = {
-      cloudflareApiToken: config.cloudflareApiToken || process.env.CLOUDFLARE_API_TOKEN || '',
-      cloudflareZoneId: config.cloudflareZoneId || process.env.CLOUDFLARE_ZONE_ID || '',
       prismaClient: config.prismaClient || new PrismaClient(),
       webscrapperPath: config.webscrapperPath || process.cwd() + '/webscrapper',
       logFilePath: config.logFilePath || process.env.LOG_FILE_PATH || process.cwd() + '/webscrapper/webscrapper.log',
@@ -225,13 +213,27 @@ export class BotPaymentSystemApplication {
   /**
    * Manually processes a payment transaction (for testing or manual triggers)
    */
-  async processPayment(transactionId: string, ip?: string): Promise<{
+  async processPayment(transactionId: string, projectId: string, ip?: string): Promise<{
     success: boolean;
     entryId?: string;
     ruleId?: string;
     error?: string;
   }> {
     try {
+      if (!projectId) {
+        return {
+          success: false,
+          error: 'Project ID is required'
+        };
+      }
+
+      // Import factory function dynamically to avoid circular dependencies
+      const { getCloudflareClientForProject } = await import('@/lib/cloudflare-client-factory');
+      const { CleanupSchedulerImpl } = await import('./cleanup-scheduler');
+
+      // Get Cloudflare client for this project
+      const cloudflareClient = await getCloudflareClientForProject(projectId);
+
       // Detect IP if not provided
       const targetIP = ip || await this.paymentVerificationService.extractPayerIP();
 
@@ -270,10 +272,17 @@ export class BotPaymentSystemApplication {
       );
 
       // Create Cloudflare rule
-      const accessRule = await this.cloudflareClient.createAccessRule(targetIP, 'whitelist');
+      const accessRule = await cloudflareClient.createAccessRule(targetIP, 'whitelist');
+
+      // Create cleanup scheduler for this operation
+      const cleanupScheduler = new CleanupSchedulerImpl(
+        cloudflareClient,
+        this.databaseService,
+        this.loggingService
+      );
 
       // Schedule cleanup
-      await this.cleanupScheduler.scheduleCleanup(targetIP, this.config.cleanupDelayMs);
+      await cleanupScheduler.scheduleCleanup(targetIP, this.config.cleanupDelayMs);
 
       await this.loggingService.log({
         timestamp: new Date(),
@@ -282,6 +291,7 @@ export class BotPaymentSystemApplication {
         message: 'Manual payment processed successfully',
         context: {
           transactionId,
+          projectId,
           ip: targetIP,
           entryId,
           ruleId: accessRule.id
@@ -298,6 +308,7 @@ export class BotPaymentSystemApplication {
       await this.loggingService.logError('BotPaymentSystem', error as Error, {
         operation: 'process_payment',
         transactionId,
+        projectId,
         ip
       });
 
@@ -317,7 +328,6 @@ export class BotPaymentSystemApplication {
     cleanupStats: any;
     logStats: any;
     databaseConnected: boolean;
-    cloudflareConnected: boolean;
   }> {
     try {
       // Test database connection
@@ -329,16 +339,12 @@ export class BotPaymentSystemApplication {
         databaseConnected = false;
       }
 
-      // Test Cloudflare connection
-      const cloudflareTest = await (this.cloudflareClient as CloudflareClientImpl).testConnection();
-
       return {
         isRunning: this.isRunning,
         monitoringStats: { isMonitoring: false }, // Stats not available in interface
         cleanupStats: { scheduledCleanups: 0 }, // Stats not available in interface
         logStats: (this.loggingService as LoggingServiceImpl).getLogStats(),
-        databaseConnected,
-        cloudflareConnected: cloudflareTest.success
+        databaseConnected
       };
 
     } catch (error) {
@@ -400,42 +406,8 @@ export class BotPaymentSystemApplication {
    * Validates system configuration
    */
   private async validateConfiguration(): Promise<void> {
-    const errors: string[] = [];
-
-    // Skip Cloudflare validation in development mode for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
-    if (!isDevelopment) {
-      // Validate Cloudflare configuration
-      if (!this.config.cloudflareApiToken) {
-        errors.push('Cloudflare API token is required');
-      }
-
-      if (!this.config.cloudflareZoneId) {
-        errors.push('Cloudflare Zone ID is required');
-      }
-
-      // Test Cloudflare connection
-      const cloudflareTest = await (this.cloudflareClient as CloudflareClientImpl).testConnection();
-      if (!cloudflareTest.success) {
-        errors.push(`Cloudflare connection failed: ${cloudflareTest.error}`);
-      }
-    } else {
-      await this.loggingService.log({
-        timestamp: new Date(),
-        level: 'info',
-        component: 'BotPaymentSystem',
-        message: 'Development mode: Skipping Cloudflare validation'
-      });
-    }
-
-    // Validate webscraper path (always validate this)
-    // Note: Path validation is done internally by the monitor
-    // Skip explicit validation as method not in interface
-
-    if (errors.length > 0) {
-      throw new Error(`Configuration validation failed: ${errors.join(', ')}`);
-    }
+    // Cloudflare credentials are now fetched from database per operation
+    // No global validation needed here
 
     await this.loggingService.log({
       timestamp: new Date(),
@@ -459,17 +431,9 @@ export class BotPaymentSystemApplication {
     // Initialize core services
     this.paymentVerificationService = new PaymentVerificationServiceImpl(this.config.configuredClientIP);
     this.databaseService = new DatabaseServiceImpl(this.config.prismaClient);
-    this.cloudflareClient = new CloudflareClientImpl(
-      this.config.cloudflareApiToken,
-      this.config.cloudflareZoneId
-    );
-
-    // Initialize cleanup scheduler with dependencies
-    this.cleanupScheduler = new CleanupSchedulerImpl(
-      this.cloudflareClient,
-      this.databaseService,
-      this.loggingService
-    );
+    
+    // CloudflareClient is now created per operation using factory (project-specific)
+    // CleanupScheduler is now created per operation when needed (project-specific)
 
     // Initialize bot execution monitor
     this.botExecutionMonitor = new BotExecutionMonitorImpl(

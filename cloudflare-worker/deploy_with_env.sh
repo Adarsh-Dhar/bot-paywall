@@ -92,12 +92,12 @@ echo "🚀 Deploying worker..."
 
 # Deploy the worker
 npx wrangler deploy
+DEPLOY_EXIT_CODE=$?
 
-# This line would cause the error - unquoted string with parentheses
-# Example of problematic line that would be at line 99:
-echo Deployment completed (check dashboard for status)
+# Fixed: properly quoted echo statement
+echo "Deployment completed (check dashboard for status)"
 
-if [ $? -eq 0 ]; then
+if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo ""
     echo "${GREEN}✅ Deployment successful!${NC}"
 else

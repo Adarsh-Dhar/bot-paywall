@@ -9,17 +9,25 @@ export default async function Home() {
   if (!authResult) {
     redirect('/sign-in');
   }
-  const { userId } = authResult;
 
   // Fetch user's projects
   const projectsResult = await getProjects();
   const projects = projectsResult.success ? projectsResult.data : [];
 
-  // Transform projects to match the expected format
-  const protectedDomains = projects?.map((project: any) => ({
+  type ProtectedDomain = {
+    id: string;
+    name: string;
+    status: string;
+    nameservers: string;
+    lastUpdated: string;
+    websiteUrl: string;
+    requestsCount?: number;
+  };
+
+  const protectedDomains: ProtectedDomain[] = projects?.map((project) => ({
     id: project.id,
     name: project.name,
-    status: project.status || 'PENDING_NS', // Use actual status from database
+    status: project.status || 'PENDING_NS',
     nameservers: 'Cloudflare NS',
     lastUpdated: new Date(project.updatedAt).toLocaleDateString(),
     websiteUrl: project.websiteUrl,
@@ -34,5 +42,3 @@ export default async function Home() {
     />
   );
 }
-
-

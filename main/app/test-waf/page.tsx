@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { deployWAFRule } from '@/app/actions/deploy-waf-rule';
 
 export default function TestWAFPage() {
   const [zoneId, setZoneId] = useState('');
   const [token, setToken] = useState('');
   const [secretKey, setSecretKey] = useState('');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
   const testWAFDeployment = async () => {
@@ -153,7 +154,7 @@ export default function TestWAFPage() {
             <li>1. Enter your Cloudflare Zone ID (found in your Cloudflare dashboard)</li>
             <li>2. Enter your Cloudflare API Token (with Zone:Edit permissions)</li>
             <li>3. Enter a secret key that bots will use to bypass protection</li>
-            <li>4. Click "Test WAF Rule Deployment" to deploy the rule</li>
+            <li>4. Click &quot;Test WAF Rule Deployment&quot; to deploy the rule</li>
             <li>5. Once deployed, bots can use the X-Bot-Auth header with your secret key</li>
           </ol>
         </div>

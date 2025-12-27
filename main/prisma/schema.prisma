@@ -7,43 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id               String           @id @default(cuid())
-  userId           String           @unique
-  email            String           @unique
-  passwordHash     String?
-  firstName        String?
-  lastName         String?
-  imageUrl         String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  cloudflareTokens CloudflareToken?
-  projects         Project[]
-  refreshTokens    RefreshToken[]
-
-  @@map("users")
+model bots_allowed {
+  id        String   @id
+  ipAddress String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
 }
 
-model Project {
-  id            String        @id @default(cuid())
-  userId        String
-  name          String
-  websiteUrl    String?
-  zoneId        String?
-  nameservers   String[]
-  status        ProjectStatus @default(PENDING_NS)
-  secretKey     String
-  requestsCount Int           @default(0)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  apiKeys       ApiKey[]
-  user          User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@map("projects")
-}
-
-model CloudflareToken {
-  id             String    @id @default(cuid())
+model cloudflare_tokens {
+  id             String    @id
   userId         String    @unique
   encryptedToken String
   accountId      String?
@@ -52,46 +25,55 @@ model CloudflareToken {
   isActive       Boolean   @default(true)
   lastVerified   DateTime?
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  user           User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@map("cloudflare_tokens")
+  updatedAt      DateTime
+  users          users     @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 
-model ApiKey {
-  id        String    @id @default(cuid())
-  projectId String
-  keyHash   String
-  prefix    String
-  lastUsed  DateTime?
-  createdAt DateTime  @default(now())
-  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+model projects {
+  id            String        @id @default(cuid())
+  userId        String
+  name          String // Domain name (e.g., example.com)
+  websiteUrl    String // Full website URL (e.g., https://example.com)
+  domainName    String? // User-provided domain name for display
+  zoneId        String // Cloudflare Zone ID (required)
+  nameservers   String[]
+  status        ProjectStatus @default(PENDING_NS)
+  secretKey     String
+  requestsCount Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  api_keys      String?
+  users         users         @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  @@map("api_keys")
+  @@unique([userId, name])
 }
 
-model RefreshToken {
-  id        String   @id @default(cuid())
+model refresh_tokens {
+  id        String    @id
   tokenHash String
   userId    String
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   revokedAt DateTime?
-  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  users     users     @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  @@index([userId])
   @@index([tokenHash])
-  @@map("refresh_tokens")
+  @@index([userId])
 }
 
-model BotsAllowed {
-  id        String   @id @default(cuid())
-  ipAddress String   @unique
-  reason    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("bots_allowed")
+model users {
+  id                String             @id
+  email             String             @unique
+  firstName         String?
+  lastName          String?
+  imageUrl          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime
+  userId            String             @unique
+  passwordHash      String?
+  cloudflare_tokens cloudflare_tokens?
+  projects          projects[]
+  refresh_tokens    refresh_tokens[]
 }
 
 enum ProjectStatus {

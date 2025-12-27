@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getUserCloudflareTokenInfo, type UserCloudflareToken } from '@/app/actions/cloudflare-tokens';
 import { verifyCloudflareToken, type TokenVerificationResult } from '@/app/actions/cloudflare-token-verification';
@@ -11,11 +11,7 @@ export default function CloudflareConnectionStatus() {
   const [verificationResult, setVerificationResult] = useState<TokenVerificationResult | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadTokenInfo();
-  }, []);
-
-  async function loadTokenInfo() {
+  const loadTokenInfo = useCallback(async () => {
     setLoading(true);
     const info = await getUserCloudflareTokenInfo();
     setTokenInfo(info);
@@ -36,7 +32,11 @@ export default function CloudflareConnectionStatus() {
     }
     
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    void loadTokenInfo();
+  }, [loadTokenInfo]);
 
   const handleConnect = () => {
     router.push('/connect-cloudflare');

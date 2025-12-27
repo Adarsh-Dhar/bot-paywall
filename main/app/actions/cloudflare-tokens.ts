@@ -22,7 +22,7 @@ export interface UserCloudflareToken {
   userId: string;
   accountId: string | null;
   tokenName: string | null;
-  permissions: any;
+  permissions: string[] | null;
   isActive: boolean;
   lastVerified: Date | null;
   createdAt: Date;
@@ -41,6 +41,17 @@ async function validateCloudflareToken(token: string): Promise<{
   error?: string;
 }> {
   try {
+    // Clean and validate the token - remove any whitespace, newlines, or invisible characters
+    const cleanToken = token.trim().replace(/[\r\n\t\s]+/g, '');
+
+    // Validate token contains only valid characters (alphanumeric, underscore, hyphen)
+    if (!/^[a-zA-Z0-9_-]+$/.test(cleanToken)) {
+      return {
+        valid: false,
+        error: 'Token contains invalid characters. Please copy the token exactly from Cloudflare.',
+      };
+    }
+
     let tokenName = '';
     let accountId = '';
     let validationSuccess = false;
@@ -49,8 +60,9 @@ async function validateCloudflareToken(token: string): Promise<{
     // Step 1: Verify token endpoint to get token name and status
     try {
       const verifyResponse = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${cleanToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -59,13 +71,8 @@ async function validateCloudflareToken(token: string): Promise<{
         const verifyData = await verifyResponse.json();
         if (verifyData.success && verifyData.result) {
           validationSuccess = true;
-          // Extract token name from verify endpoint
+          // Extract token name from verify endpoint (may be 'name' or just status)
           tokenName = verifyData.result.name || 'API Token';
-          
-          // Extract permissions if available
-          const permissions = verifyData.result.policies?.map((policy: any) => 
-            `${policy.resources?.map((r: any) => r.id || r.tag).join(',')}:${policy.permission_groups?.join(',')}`
-          ).join(', ') || 'Zone:Read, Zone:Edit';
         } else {
           errorMessage = verifyData.errors?.[0]?.message || 'Token verification failed';
         }
@@ -87,8 +94,9 @@ async function validateCloudflareToken(token: string): Promise<{
     // Step 2: Get account ID from accounts endpoint
     try {
       const accountsResponse = await fetch('https://api.cloudflare.com/client/v4/accounts', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${cleanToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -100,11 +108,16 @@ async function validateCloudflareToken(token: string): Promise<{
         }
       }
     } catch (e) {
-      // If accounts endpoint fails, try zones endpoint as fallback
+      console.warn('Accounts endpoint failed:', e instanceof Error ? e.message : e);
+    }
+
+    // If accounts endpoint didn't return an account ID, try zones endpoint as fallback
+    if (!accountId) {
       try {
         const zonesResponse = await fetch('https://api.cloudflare.com/client/v4/zones?per_page=1', {
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${cleanToken}`,
             'Content-Type': 'application/json',
           },
         });
@@ -116,15 +129,36 @@ async function validateCloudflareToken(token: string): Promise<{
           }
         }
       } catch (zonesError) {
-        // Account ID extraction failed, but token is still valid
-        console.warn('Could not extract account ID from accounts or zones endpoint');
+        console.warn('Zones endpoint failed:', zonesError instanceof Error ? zonesError.message : zonesError);
+      }
+    }
+
+    // Third fallback: Try memberships endpoint to get account ID
+    if (!accountId) {
+      try {
+        const membershipsResponse = await fetch('https://api.cloudflare.com/client/v4/memberships', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${cleanToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (membershipsResponse.ok) {
+          const membershipsData = await membershipsResponse.json();
+          if (membershipsData.success && membershipsData.result && membershipsData.result.length > 0) {
+            accountId = membershipsData.result[0].account?.id || '';
+          }
+        }
+      } catch (membershipsError) {
+        console.warn('Memberships endpoint failed:', membershipsError instanceof Error ? membershipsError.message : membershipsError);
       }
     }
 
     if (!accountId) {
       return {
         valid: false,
-        error: 'Unable to retrieve account ID. Please ensure your token has Account or Zone read permissions.',
+        error: 'Unable to retrieve account ID. Your token must have at least one of these permissions: "Account:Read", "Zone:Read", or "All accounts" access. Please create a new token with the required permissions.',
       };
     }
 
@@ -147,6 +181,17 @@ async function validateCloudflareToken(token: string): Promise<{
  */
 export async function saveCloudflareToken(token: string): Promise<CloudflareTokenResponse> {
   try {
+    // Clean the token first - remove any whitespace, newlines, or invisible characters
+    const cleanToken = token.trim().replace(/[\r\n\t\s]+/g, '');
+
+    // Validate token contains only valid characters (alphanumeric, underscore, hyphen)
+    if (!/^[a-zA-Z0-9_-]+$/.test(cleanToken)) {
+      return {
+        success: false,
+        error: 'Token contains invalid characters. Please copy the token exactly from Cloudflare.',
+      };
+    }
+
     const authResult = await auth();
     if (!authResult) {
       return {
@@ -157,7 +202,7 @@ export async function saveCloudflareToken(token: string): Promise<CloudflareToke
     const { userId, email } = authResult;
 
     // Always validate the token to get real token name and account ID
-    const validationResult = await validateCloudflareToken(token);
+    const validationResult = await validateCloudflareToken(cleanToken);
     if (!validationResult.valid) {
       return {
         success: false,
@@ -186,11 +231,11 @@ export async function saveCloudflareToken(token: string): Promise<CloudflareToke
       permissions: validationResult.permissions || ['Zone:Read', 'Zone:Edit']
     };
 
-    // Encrypt the token
-    const encryptedToken = encryptToken(token);
+    // Encrypt the cleaned token
+    const encryptedToken = encryptToken(cleanToken);
 
     // Use a transaction to ensure user exists before creating token
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Ensure user exists in database
       await tx.user.upsert({
         where: { userId: userId },

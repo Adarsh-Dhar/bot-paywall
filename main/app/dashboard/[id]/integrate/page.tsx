@@ -1,39 +1,39 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { getProject } from '@/app/actions/dashboard'
-import CodeBlock from '@/app/dashboard/components/CodeBlock'
-import { Project } from '@prisma/client'
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { getProject } from "@/app/actions/dashboard";
+import CodeBlock from "@/app/dashboard/components/CodeBlock";
+import { Project } from "@prisma/client";
 
 export default function IntegratePage() {
-  const params = useParams()
-  const projectId = params.id as string
-  const [project, setProject] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const projectId = params.id as string;
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProject()
-  }, [projectId])
+    fetchProject(projectId);
+  }, [projectId]);
 
-  async function fetchProject() {
+  async function fetchProject(id: string) {
     try {
-      setLoading(true)
-      setError(null)
-      const result = await getProject(projectId)
+      setLoading(true);
+      setError(null);
+      const result = await getProject(id);
 
       if (!result.success) {
-        setError(result.error || 'Failed to fetch project')
-        return
+        setError(result.error || "Failed to fetch project");
+        return;
       }
 
-      setProject(result.data)
+      setProject(result.data);
     } catch (err) {
-      console.error('Error fetching project:', err)
-      setError('An error occurred while fetching the project')
+      console.error("Error fetching project:", err);
+      setError("An error occurred while fetching the project");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -47,7 +47,7 @@ export default function IntegratePage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !project) {
@@ -55,11 +55,11 @@ export default function IntegratePage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded">
-            {error || 'Project not found'}
+            {error || "Project not found"}
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -70,7 +70,9 @@ export default function IntegratePage() {
 
         <div className="space-y-8">
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">Installation</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              Installation
+            </h2>
             <CodeBlock
               language="bash"
               code={`npm install @bot-paywall/sdk
@@ -82,7 +84,9 @@ pnpm add @bot-paywall/sdk`}
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">Basic Usage</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              Basic Usage
+            </h2>
             <CodeBlock
               language="javascript"
               code={`import { BotPaywall } from '@bot-paywall/sdk'
@@ -103,7 +107,9 @@ if (!hasAccess) {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">React Integration</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              React Integration
+            </h2>
             <CodeBlock
               language="jsx"
               code={`import { useBotPaywall } from '@bot-paywall/sdk/react'
@@ -123,7 +129,9 @@ export function ProtectedContent() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">Configuration</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              Configuration
+            </h2>
             <CodeBlock
               language="javascript"
               code={`const paywall = new BotPaywall({
@@ -137,21 +145,29 @@ export function ProtectedContent() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold text-white mb-4">Project Details</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              Project Details
+            </h2>
             <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-slate-400 text-sm">Project ID</p>
-                  <p className="text-white font-mono text-sm break-all">{project.id}</p>
+                  <p className="text-white font-mono text-sm break-all">
+                    {project.id}
+                  </p>
                 </div>
                 <div>
                   <p className="text-slate-400 text-sm">Created</p>
-                  <p className="text-white text-sm">{new Date(project.created_at).toLocaleDateString()}</p>
+                  <p className="text-white text-sm">
+                    {new Date(project.created_at).toLocaleDateString()}
+                  </p>
                 </div>
                 {project.website_url && (
                   <div className="col-span-2">
                     <p className="text-slate-400 text-sm">Website</p>
-                    <p className="text-white text-sm break-all">{project.website_url}</p>
+                    <p className="text-white text-sm break-all">
+                      {project.website_url}
+                    </p>
                   </div>
                 )}
               </div>
@@ -160,5 +176,5 @@ export function ProtectedContent() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -84,7 +84,7 @@ response = requests.get(
           <div className="ml-3">
             <h4 className="text-sm font-medium text-blue-800">How it works</h4>
             <p className="mt-1 text-sm text-blue-700">
-              When you include the X-Partner-Key header with your secret key, Cloudflare's WAF skip rule 
+              When you include the X-Partner-Key header with your secret key, Cloudflare&apos;s WAF skip rule
               will bypass Super Bot Fight Mode and Rate Limiting, allowing your requests through without challenges.
             </p>
           </div>

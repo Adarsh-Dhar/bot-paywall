@@ -106,7 +106,7 @@ export class CloudflareClientImpl implements CloudflareClient {
         throw new Error(`Cloudflare API error: ${response.errors?.[0]?.message || 'Unknown error'}`);
       }
 
-      return response.result.map((rule: any) => ({
+      return response.result.map((rule: AccessRule) => ({
         id: rule.id,
         mode: rule.mode,
         configuration: rule.configuration,

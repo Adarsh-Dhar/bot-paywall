@@ -24,9 +24,16 @@ const MAIN_APP_CONFIG = {
 // Cloudflare API base URL
 const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 
+// Fallback Cloudflare credentials from environment (for development/testing)
+const FALLBACK_CLOUDFLARE_CONFIG = {
+  zoneId: process.env.CLOUDFLARE_ZONE_ID,
+  apiToken: process.env.CLOUDFLARE_TOKEN
+};
+
 /**
  * Fetch Cloudflare credentials from main app API based on domain
  * Tries the full hostname first, then tries the root domain (without subdomain)
+ * Falls back to environment variables if main app is unavailable
  */
 async function getCloudflareConfig(domain) {
   if (!domain) {
@@ -122,6 +129,17 @@ async function getCloudflareConfig(domain) {
     } catch (error) {
       // Ignore, we'll throw the original error
     }
+  }
+
+  // If main app failed, try fallback to environment variables
+  if (FALLBACK_CLOUDFLARE_CONFIG.zoneId && FALLBACK_CLOUDFLARE_CONFIG.apiToken) {
+    console.log(`⚠️ Main app config failed, using fallback CLOUDFLARE_TOKEN and CLOUDFLARE_ZONE_ID from environment`);
+    return {
+      zoneId: FALLBACK_CLOUDFLARE_CONFIG.zoneId,
+      apiToken: FALLBACK_CLOUDFLARE_CONFIG.apiToken,
+      domain: domain,
+      projectId: 'fallback-env'
+    };
   }
 
   // If both attempts failed, throw the error
@@ -376,13 +394,20 @@ async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment - Bot Acc
     throw new Error("Zone ID and API token are required to whitelist IP");
   }
 
+  // Debug: Log token info (first 8 chars only for security)
+  console.log(`🔑 Cloudflare API call with token: ${apiToken.substring(0, 8)}... (length: ${apiToken.length})`);
+  console.log(`🌐 Zone ID: ${zoneId}`);
+
   try {
     // First, remove any existing whitelist rules for this IP
     await removeExistingWhitelist(ip, zoneId, apiToken);
     
     // Add new whitelist rule
+    const url = `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules`;
+    console.log(`📡 Making Cloudflare API request to: ${url}`);
+
     const response = await fetch(
-      `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules`,
+      url,
       {
         method: "POST",
         headers: {
@@ -401,7 +426,8 @@ async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment - Bot Acc
     );
     
     const data = await response.json();
-    
+    console.log(`📋 Cloudflare API response status: ${response.status}`);
+
     if (data.success) {
       console.log(`✅ Successfully whitelisted IP: ${ip}`);
       

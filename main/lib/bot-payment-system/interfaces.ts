@@ -40,7 +40,7 @@ export interface LoggingService {
   logPaymentVerification(transactionId: string, ip: string, success: boolean): Promise<void>;
   logCloudflareOperation(operation: string, ip: string, success: boolean, error?: string): Promise<void>;
   logDatabaseOperation(operation: string, ip: string, success: boolean, error?: string): Promise<void>;
-  logError(component: string, error: Error, context?: Record<string, any>): Promise<void>;
+  logError(component: string, error: Error, context?: Record<string, unknown>): Promise<void>;
 }
 
 export interface BotExecutionMonitor {

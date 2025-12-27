@@ -1,12 +1,31 @@
 #!/usr/bin/env python3
 """
-Simple Bot Scraper - x402 Payment Flow
-This scraper communicates with the access-server to handle payments and whitelisting.
+Bot-Paywall Simple Bot Scraper - x402 Payment Flow
+========================================================
+This scraper is designed specifically for the bot-paywall project.
+It communicates with the bot-paywall access-server to handle x402 payments and IP whitelisting.
+
+The scraper fetches your protected projects from the bot-paywall main app and handles all
+payment logic transparently, allowing bots to scrape protected websites.
+
+CONFIGURATION:
+    - target_url: URL to scrape (can be overridden with --url or --project)
+    - access_server_url: Access server that handles x402 payments (default: http://localhost:5000)
+    - main_app_url: Bot-paywall main app for fetching projects (default: http://localhost:3000)
+
+USAGE:
+    python scraper.py                           # Use default target URL
+    python scraper.py --url https://example.com # Specify a target URL
+    python scraper.py --project 1               # Use bot-paywall project by index
+    python scraper.py --project example.com     # Use bot-paywall project by domain
+    python scraper.py --list-projects           # List all bot-paywall projects
 """
 
 import requests
 import json
 import time
+import argparse
+import sys
 from datetime import datetime
 
 # =============================================================================
@@ -20,6 +39,9 @@ CONFIG = {
     # Access server (handles x402 payments and whitelisting)
     'access_server_url': 'http://localhost:5000',
     
+    # Main app API URL (for fetching projects)
+    'main_app_url': 'http://localhost:3000',
+
     # Retry settings
     'max_retries': 3,
     'wait_after_payment': 10,  # seconds to wait for whitelisting to propagate
@@ -346,6 +368,229 @@ def extract_domain_from_url(url):
     # Return the full hostname (including subdomain)
     return hostname
 
+def list_available_projects():
+    """
+    List available projects from the bot-paywall main app API.
+    Displays project IDs, domain names, and website URLs for easy selection.
+    This endpoint fetches from: GET /api/projects/public (no auth required)
+    """
+    try:
+        log("Fetching available projects from bot-paywall main app...", "INFO")
+
+        # Try the public projects endpoint
+        response = requests.get(
+            f"{CONFIG['main_app_url']}/api/projects/public",
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            projects = data.get('projects', [])
+
+            if not projects:
+                log("No projects found in bot-paywall.", "INFO")
+                return []
+
+            print("\n" + "=" * 120)
+            print("AVAILABLE PROJECTS IN BOT-PAYWALL")
+            print("=" * 120)
+            print(f"{'#':<4} {'Project ID':<40} {'Domain Name':<30} {'Website URL':<70}")
+            print("-" * 120)
+
+            for i, project in enumerate(projects, 1):
+                project_id = project.get('id', 'N/A')
+                domain = project.get('name', 'N/A')
+                domain_display = project.get('domainName', domain)
+                url = project.get('websiteUrl', 'N/A')
+
+                # Truncate if too long
+                url_display = (url[:67] + '...') if len(url) > 70 else url
+                domain_display = (domain_display[:27] + '...') if len(domain_display) > 30 else domain_display
+
+                print(f"{i:<4} {project_id:<40} {domain_display:<30} {url_display:<70}")
+
+            print("-" * 120)
+            print(f"Total: {len(projects)} project(s)")
+            print()
+            print("USAGE EXAMPLES:")
+            print(f"  python scraper.py --project 1                      # Scrape 1st project by index")
+            print(f"  python scraper.py --project example.com            # Scrape by domain name")
+            print(f"  python scraper.py --project <project-id>           # Scrape by exact project ID")
+            print()
+
+            return projects
+        else:
+            log(f"Failed to fetch projects: {response.status_code}", "ERROR")
+            log(f"Make sure bot-paywall main app is running at {CONFIG['main_app_url']}", "INFO")
+            return []
+
+    except Exception as e:
+        log(f"Error fetching projects from bot-paywall: {e}", "ERROR")
+        return []
+
+
+def get_project_url(project_identifier):
+    """
+    Get the website URL for a project from bot-paywall.
+    Supports multiple matching methods:
+      - Index number: 1, 2, 3 (from --list-projects)
+      - Domain name: example.com
+      - Project ID: exact project ID from database
+      - Partial match: partial domain name
+
+    Args:
+        project_identifier: Project index, domain, project ID, or URL
+    Returns:
+        The website URL or None if not found
+    """
+    try:
+        # Fetch all projects from bot-paywall
+        response = requests.get(
+            f"{CONFIG['main_app_url']}/api/projects/public",
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            projects = data.get('projects', [])
+
+            if not projects:
+                log("No projects available in bot-paywall", "ERROR")
+                return None
+
+            # Method 1: Try to match by index number (1-based)
+            if project_identifier.isdigit():
+                idx = int(project_identifier) - 1
+                if 0 <= idx < len(projects):
+                    matched_project = projects[idx]
+                    log(f"Matched project by index #{project_identifier}: {matched_project.get('name', 'Unknown')}", "INFO")
+                    return matched_project.get('websiteUrl')
+                else:
+                    log(f"Project index {project_identifier} out of range (1-{len(projects)})", "ERROR")
+                    return None
+
+            # Method 2: Try to match by exact project ID
+            for project in projects:
+                if project.get('id', '').lower() == project_identifier.lower():
+                    log(f"Matched project by ID: {project.get('name', 'Unknown')}", "INFO")
+                    return project.get('websiteUrl')
+
+            # Method 3: Try to match by exact domain name
+            for project in projects:
+                if (project.get('name', '').lower() == project_identifier.lower() or
+                    project.get('domainName', '').lower() == project_identifier.lower()):
+                    log(f"Matched project by domain: {project.get('name', 'Unknown')}", "INFO")
+                    return project.get('websiteUrl')
+
+            # Method 4: Try partial match on domain
+            for project in projects:
+                if project_identifier.lower() in project.get('name', '').lower():
+                    log(f"Matched project by partial domain: {project.get('name', 'Unknown')}", "INFO")
+                    return project.get('websiteUrl')
+
+            # If no match found
+            log(f"No matching project found for: {project_identifier}", "ERROR")
+            return None
+
+        # If API fails, try to construct URL directly
+        if project_identifier.startswith('http'):
+            log(f"Using provided URL directly: {project_identifier}", "INFO")
+            return project_identifier
+        else:
+            # Assume it's a domain
+            url = f"https://{project_identifier}"
+            log(f"Constructing URL from domain: {url}", "INFO")
+            return url
+
+    except Exception as e:
+        log(f"Error looking up project '{project_identifier}': {e}", "ERROR")
+        # Fall back to treating identifier as domain
+        if project_identifier.startswith('http'):
+            return project_identifier
+        return f"https://{project_identifier}"
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Simple Bot Scraper with x402 Payment Flow - Works with bot-paywall protected sites',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+EXAMPLES:
+    # List all projects from bot-paywall main app
+    python scraper.py --list-projects
+
+    # Scrape a project by index (from --list-projects output)
+    python scraper.py --project 1
+
+    # Scrape a project by domain name (must match exactly)
+    python scraper.py --project example.com
+
+    # Scrape a project by exact project ID
+    python scraper.py --project 1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p
+
+    # Use a direct URL instead of looking up from bot-paywall
+    python scraper.py --url https://example.com
+
+    # Use custom access server
+    python scraper.py --project 1 --access-server http://localhost:5000
+
+ABOUT THIS SCRAPER:
+    This scraper integrates with bot-paywall to handle websites protected by the x402 Payment Required
+    protocol. It fetches your protected projects from the bot-paywall main app and handles all payment
+    logic transparently.
+        """
+    )
+
+    parser.add_argument(
+        '--url', '-u',
+        type=str,
+        help='Direct website URL to scrape (bypasses bot-paywall project lookup)'
+    )
+
+    parser.add_argument(
+        '--project', '-p',
+        type=str,
+        help='Bot-paywall project to scrape: by index (1,2...), domain name, or project ID'
+    )
+
+    parser.add_argument(
+        '--list-projects', '-l',
+        action='store_true',
+        help='List all available projects from bot-paywall and exit'
+    )
+
+    parser.add_argument(
+        '--access-server', '-a',
+        type=str,
+        default=CONFIG['access_server_url'],
+        help=f"Access server URL (default: {CONFIG['access_server_url']})"
+    )
+
+    parser.add_argument(
+        '--main-app', '-m',
+        type=str,
+        default=CONFIG['main_app_url'],
+        help=f"Main app URL for project listing (default: {CONFIG['main_app_url']})"
+    )
+
+    parser.add_argument(
+        '--wait-time', '-w',
+        type=int,
+        default=CONFIG['wait_after_payment'],
+        help=f"Seconds to wait after payment (default: {CONFIG['wait_after_payment']})"
+    )
+
+    parser.add_argument(
+        '--max-retries', '-r',
+        type=int,
+        default=CONFIG['max_retries'],
+        help=f"Maximum retries for scraping (default: {CONFIG['max_retries']})"
+    )
+
+    return parser.parse_args()
+
+
 # =============================================================================
 # MAIN FLOW
 # =============================================================================
@@ -353,6 +598,39 @@ def extract_domain_from_url(url):
 def main():
     """Main scraping flow with x402 payment."""
     
+    # Parse command line arguments
+    args = parse_arguments()
+
+    # Update CONFIG with command line arguments
+    CONFIG['access_server_url'] = args.access_server
+    CONFIG['main_app_url'] = args.main_app
+    CONFIG['wait_after_payment'] = args.wait_time
+    CONFIG['max_retries'] = args.max_retries
+
+    # Handle list projects
+    if args.list_projects:
+        list_available_projects()
+        return 0
+
+    # Determine target URL
+    target_url = CONFIG['target_url']
+
+    if args.url:
+        target_url = args.url
+        if not target_url.startswith('http'):
+            target_url = 'https://' + target_url
+    elif args.project:
+        project_url = get_project_url(args.project)
+        if project_url:
+            target_url = project_url
+            log(f"Resolved project '{args.project}' to URL: {target_url}", "INFO")
+        else:
+            log(f"Could not resolve project: {args.project}", "ERROR")
+            return 1
+
+    # Update CONFIG with resolved URL
+    CONFIG['target_url'] = target_url
+
     print("\n" + "=" * 80)
     print("SIMPLE BOT SCRAPER - x402 Payment Flow")
     print("=" * 80)

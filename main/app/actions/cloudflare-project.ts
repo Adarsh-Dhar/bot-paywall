@@ -1,0 +1,255 @@
+'use server';
+
+/**
+ * Cloudflare Project-specific Actions
+ * Handles per-project API token and zone management
+ */
+
+import { z } from 'zod';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
+
+const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
+
+export interface ZoneInfo {
+  id: string;
+  name: string;
+  status: string;
+  nameservers: string[];
+}
+
+export interface GetZonesWithTokenResult {
+  success: boolean;
+  zones?: ZoneInfo[];
+  message: string;
+  error?: string;
+}
+
+export interface SaveProjectResult {
+  success: boolean;
+  projectId?: string;
+  message: string;
+  error?: string;
+}
+
+const domainSchema = z.string().min(1, 'Domain is required').regex(
+  /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*$/,
+  'Invalid domain format'
+);
+
+/**
+ * Fetch zones using a provided API token
+ * This allows getting zones for per-project tokens
+ */
+export async function getZonesWithProvidedToken(apiToken: string): Promise<GetZonesWithTokenResult> {
+  try {
+    // Check authentication
+    const authResult = await auth();
+    if (!authResult) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+        error: 'UNAUTHORIZED',
+      };
+    }
+
+    // Clean the token
+    const cleanedToken = apiToken.trim().replace(/[\r\n\t\s]+/g, '');
+
+    if (!cleanedToken || cleanedToken.length < 20) {
+      return {
+        success: false,
+        message: 'Invalid API token provided',
+        error: 'INVALID_TOKEN',
+      };
+    }
+
+    // Fetch all zones from Cloudflare using the provided token
+    const response = await fetch(`${CLOUDFLARE_API_BASE}/zones?per_page=50`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${cleanedToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      return {
+        success: false,
+        message: `Failed to fetch zones: ${data.errors?.[0]?.message || 'Invalid token or API error'}`,
+        error: 'FETCH_FAILED',
+      };
+    }
+
+    if (!data.result || data.result.length === 0) {
+      return {
+        success: false,
+        message: 'No zones found for this API token. Please add a domain to Cloudflare first.',
+        error: 'NO_ZONES',
+      };
+    }
+
+    // Map zones to our format
+    const zones: ZoneInfo[] = data.result.map((zone: ZoneInfo) => ({
+      id: zone.id,
+      name: zone.name,
+      status: zone.status,
+      nameservers: zone.nameservers || [],
+    }));
+
+    return {
+      success: true,
+      zones,
+      message: `Found ${zones.length} zone(s)`,
+    };
+  } catch (error) {
+    console.error('getZonesWithProvidedToken error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      error: 'UNKNOWN_ERROR',
+    };
+  }
+}
+
+/**
+ * Save project with its own API token and zone ID
+ */
+export async function saveProjectWithToken(
+  websiteUrl: string,
+  domainName: string,
+  apiToken: string,
+  zoneId: string,
+  nameservers?: string[]
+): Promise<SaveProjectResult> {
+  try {
+    // Validate inputs
+    const validatedDomain = domainSchema.parse(domainName);
+
+    if (!zoneId || !/^[a-f0-9]{32}$/i.test(zoneId)) {
+      return {
+        success: false,
+        message: 'Invalid Zone ID format',
+        error: 'VALIDATION_ERROR',
+      };
+    }
+
+    // Validate website URL
+    let validatedUrl = websiteUrl.trim();
+    if (!validatedUrl.startsWith('http://') && !validatedUrl.startsWith('https://')) {
+      validatedUrl = 'https://' + validatedUrl;
+    }
+
+    try {
+      new URL(validatedUrl);
+    } catch {
+      return {
+        success: false,
+        message: 'Invalid website URL',
+        error: 'VALIDATION_ERROR',
+      };
+    }
+
+    // Clean the token
+    const cleanedToken = apiToken.trim().replace(/[\r\n\t\s]+/g, '');
+
+    if (!cleanedToken || cleanedToken.length < 20) {
+      return {
+        success: false,
+        message: 'Invalid API token provided',
+        error: 'INVALID_TOKEN',
+      };
+    }
+
+    // Check authentication
+    const authResult = await auth();
+    if (!authResult) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+        error: 'UNAUTHORIZED',
+      };
+    }
+    const { userId, email } = authResult;
+
+    // Use a transaction to ensure user exists and project is created
+    const result = await prisma.$transaction(async (tx) => {
+      // Ensure user exists in database
+      await tx.user.upsert({
+        where: { userId: userId },
+        update: {},
+        create: {
+          userId: userId,
+          email: email,
+        },
+      });
+
+      // Check if project with this domain already exists for this user
+      const existingProject = await tx.project.findFirst({
+        where: {
+          userId: userId,
+          name: validatedDomain,
+        },
+      });
+
+      if (existingProject) {
+        // Update existing project
+        return await tx.project.update({
+          where: { id: existingProject.id },
+          data: {
+            zoneId: zoneId,
+            websiteUrl: validatedUrl,
+            domainName: validatedDomain,
+            nameservers: nameservers || [],
+            status: 'ACTIVE',
+            updatedAt: new Date(),
+            api_keys: cleanedToken,
+          },
+        });
+      } else {
+        // Create new project
+        const secretKey = crypto.randomBytes(32).toString('hex');
+        return await tx.project.create({
+          data: {
+            userId: userId,
+            name: validatedDomain,
+            domainName: validatedDomain,
+            websiteUrl: validatedUrl,
+            zoneId: zoneId,
+            nameservers: nameservers || [],
+            status: 'ACTIVE',
+            secretKey: secretKey,
+            requestsCount: 0,
+            api_keys: cleanedToken,
+          },
+        });
+      }
+    });
+
+    return {
+      success: true,
+      projectId: result.id,
+      message: `Project "${validatedDomain}" saved successfully`,
+    };
+  } catch (error) {
+    console.error('saveProjectWithToken error:', error);
+
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        message: 'Invalid domain: ' + error.issues.map((e: any) => e.message).join(', '),
+        error: 'VALIDATION_ERROR',
+      };
+    }
+
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      error: 'UNKNOWN_ERROR',
+    };
+  }
+}
+

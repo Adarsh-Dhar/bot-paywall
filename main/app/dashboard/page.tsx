@@ -59,7 +59,7 @@ export default function DashboardPage() {
                   Your Cloudflare API token is connected and ready to use.
                 </p>
                 <div className="bg-slate-50 rounded-lg p-6">
-                  <h3 className="font-semibold text-slate-900 mb-3">What's Next?</h3>
+                  <h3 className="font-semibold text-slate-900 mb-3">What&apos;s Next?</h3>
                   <p className="text-slate-600 text-sm mb-4">
                     Your Gatekeeper bot firewall is now ready to protect your domains. 
                     The system will automatically detect and challenge bot traffic while allowing legitimate users through.

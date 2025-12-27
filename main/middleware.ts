@@ -10,6 +10,7 @@ const publicRoutes = [
   '/api/auth/signin',
   '/api/auth/refresh',
   '/api/health',
+  '/api/worker/config', // Worker config has its own API key authentication
 ];
 
 // Check if a path is public

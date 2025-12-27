@@ -78,11 +78,7 @@ export async function GET(request: NextRequest) {
       include: {
         user: {
           include: {
-            cloudflareTokens: {
-              where: {
-                isActive: true,
-              },
-            },
+            cloudflareTokens: true, // Single optional record (one-to-one relation)
           },
         },
       },
@@ -103,7 +99,8 @@ export async function GET(request: NextRequest) {
     }
 
     const tokenRecords = project.user.cloudflareTokens;
-    const tokenRecord = Array.isArray(tokenRecords) && tokenRecords.length > 0 ? tokenRecords[0] : null;
+    // cloudflareTokens is a single optional record (one-to-one relation), not an array
+    const tokenRecord = tokenRecords && tokenRecords.isActive ? tokenRecords : null;
     if (!tokenRecord) {
       return NextResponse.json(
         { error: `Cloudflare token not found for project owner` },

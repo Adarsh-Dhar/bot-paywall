@@ -25,17 +25,20 @@ if [ ! -f ".env" ]; then
 fi
 
 # Update or add API_BASE_URL in .env
+# Escape special characters in the URL for sed
+ESCAPED_URL=$(printf '%s\n' "$API_BASE_URL" | sed 's:[/&]:\\&:g')
+
 if grep -q "^API_BASE_URL=" .env; then
     # Update existing entry
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
-        sed -i '' "s|^API_BASE_URL=.*|API_BASE_URL=$API_BASE_URL|" .env
+        sed -i '' "s|^API_BASE_URL=.*|API_BASE_URL=$ESCAPED_URL|" .env
     else
         # Linux
-        sed -i "s|^API_BASE_URL=.*|API_BASE_URL=$API_BASE_URL|" .env
+        sed -i "s|^API_BASE_URL=.*|API_BASE_URL=$ESCAPED_URL|" .env
     fi
 else
-    # Add new entry
+    # Add new entry - no escaping needed for direct append
     echo "API_BASE_URL=$API_BASE_URL" >> .env
 fi
 

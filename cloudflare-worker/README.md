@@ -86,6 +86,33 @@ const RPC_URL = env.RPC_URL || "https://30732.rpc.thirdweb.com";
    wrangler deploy
    ```
 
+#### Option C: Using deployment scripts with .env
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and set your values:
+   ```bash
+   API_BASE_URL=https://your-api.example.com
+   WORKER_API_KEY=your_secret_api_key
+   ```
+
+3. Deploy with environment variables:
+   ```bash
+   # Set API URL and deploy
+   ./set_api_url_and_deploy.sh https://your-api.example.com
+   
+   # Or deploy directly with existing .env
+   ./deploy_with_env.sh
+   ```
+
+The deployment scripts will:
+- Load variables from `.env` file
+- Set secrets in Cloudflare (like `WORKER_API_KEY`)
+- Deploy the worker with all configurations
+
 ### 4. Route Configuration
 
 After deploying, you need to route traffic through the worker:

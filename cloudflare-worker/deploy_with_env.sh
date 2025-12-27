@@ -43,7 +43,7 @@ echo "📝 Processing environment variables..."
 for var in "${VARS[@]}"; do
     if [ -n "${!var}" ]; then
         echo "Setting var: $var"
-        # Add to wrangler.toml or use wrangler vars set
+        echo "Note: Ensure $var is set in wrangler.toml under [vars] section or use wrangler vars"
     else
         echo "⚠️  Warning: $var is not set in .env"
     fi
@@ -77,10 +77,12 @@ while IFS='=' read -r key value; do
     
     if [ "$is_secret" = true ]; then
         echo "Setting secret: $key"
-        echo "$value" | npx wrangler secret put "$key"
+        # Use printf instead of echo to avoid exposing secrets in process lists
+        printf "%s" "$value" | npx wrangler secret put "$key"
     elif [ "$is_var" = true ]; then
         echo "Setting variable: $key=$value"
-        # Variables are set in wrangler.toml
+        npx wrangler secret put "$key" --env production 2>/dev/null || \
+        echo "Note: Variable $key should be set in wrangler.toml under [vars] section"
     else
         echo "Ignoring .env key not in secret/vars lists: $key"
     fi

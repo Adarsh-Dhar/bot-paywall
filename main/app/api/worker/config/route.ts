@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const domain = hostname.replace(/^www\./, '');
 
     // Find project by domain name
-    const project = await prisma.projects.findFirst({
+    const project = await prisma.project.findFirst({
       where: {
         name: domain,
       },

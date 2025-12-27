@@ -80,30 +80,46 @@ def log(message, level="INFO"):
 def get_project_credentials(project_id):
     """
     Fetch full project details including secrets from the main app.
+    Uses the public endpoint that doesn't require authentication.
     """
     try:
-        # Assuming your API has an endpoint that returns the secrets for a specific project
-        # You might need to adjust the endpoint path based on your API routes
-        url = f"{CONFIG['main_app_url']}/api/projects/{project_id}"
+        # Use the public endpoint with id query parameter (no auth required)
+        url = f"{CONFIG['main_app_url']}/api/projects/public?id={project_id}"
 
         log(f"Fetching credentials for project {project_id}...", "INFO")
         response = requests.get(url, timeout=10)
 
         if response.status_code == 200:
             data = response.json()
-            # Handle different API response structures
-            project = data.get('project', data)
+            if not data.get('success'):
+                log(f"API returned success=false: {data.get('error', 'Unknown error')}", "ERROR")
+                return None
+
+            project = data.get('project')
+            if not project:
+                log("No project data in response", "ERROR")
+                return None
+
             return {
                 'url': project.get('websiteUrl'),
                 'zone_id': project.get('zoneId'),
-                'secret_key': project.get('secretKey')  # or 'api_keys' based on your schema
+                'secret_key': project.get('secretKey')
             }
+        elif response.status_code == 404:
+            log(f"Project not found: {project_id}", "ERROR")
+            return None
         else:
             log(f"Failed to fetch project credentials: {response.status_code}", "ERROR")
+            try:
+                error_data = response.json()
+                log(f"Error details: {error_data.get('error', 'Unknown')}", "ERROR")
+            except:
+                log(f"Response: {response.text}", "ERROR")
             return None
     except Exception as e:
         log(f"Error fetching credentials: {e}", "ERROR")
         return None
+
 
 def get_payment_info():
     """
@@ -628,7 +644,6 @@ ABOUT THIS SCRAPER:
 # =============================================================================
 # MAIN FLOW
 # =============================================================================
-
 def main():
     """Main scraping flow with x402 payment."""
 
@@ -666,14 +681,17 @@ def main():
             }
             log(f"Resolved Project: {target_url}", "INFO")
         else:
-            # Fallback to old logic if credentials fetch fails
-            project_url = get_project_url(args.project)
-            if project_url:
-                target_url = project_url
-            else:
-                return 1
+            # Exit with error - do NOT fall back to treating project ID as domain
+            log("Failed to fetch credentials. Cannot proceed with protected scrape.", "ERROR")
+            log("Make sure:", "INFO")
+            log(f"  1. Main app is running at {CONFIG['main_app_url']}", "INFO")
+            log(f"  2. Project ID '{args.project}' exists in the database", "INFO")
+            log("  3. Run with --list-projects to see available projects", "INFO")
+            return 1
 
     # Update CONFIG with resolved URL
+    CONFIG['target_url'] = target_url
+
     CONFIG['target_url'] = target_url
 
     print("\n" + "=" * 80)

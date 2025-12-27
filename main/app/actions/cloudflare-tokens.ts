@@ -2,12 +2,13 @@
 
 /**
  * Cloudflare Token Management Actions
- * Handle user Cloudflare API token storage and validation
+ * Tokens are stored on Project.api_keys (encrypted)
  */
 
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { encryptToken, decryptToken } from '@/lib/token-encryption';
+import { revalidatePath } from 'next/cache';
 
 export interface CloudflareTokenResponse {
   success: boolean;
@@ -31,7 +32,6 @@ export interface UserCloudflareToken {
 
 /**
  * Validate a Cloudflare API token by making a test API call
- * Returns real token name and account ID from Cloudflare API
  */
 async function validateCloudflareToken(token: string): Promise<{
   valid: boolean;
@@ -41,15 +41,9 @@ async function validateCloudflareToken(token: string): Promise<{
   error?: string;
 }> {
   try {
-    // Clean and validate the token - remove any whitespace, newlines, or invisible characters
     const cleanToken = token.trim().replace(/[\r\n\t\s]+/g, '');
-
-    // Validate token contains only valid characters (alphanumeric, underscore, hyphen)
     if (!/^[a-zA-Z0-9_-]+$/.test(cleanToken)) {
-      return {
-        valid: false,
-        error: 'Token contains invalid characters. Please copy the token exactly from Cloudflare.',
-      };
+      return { valid: false, error: 'Token contains invalid characters. Please copy the token exactly from Cloudflare.' };
     }
 
     let tokenName = '';
@@ -57,21 +51,16 @@ async function validateCloudflareToken(token: string): Promise<{
     let validationSuccess = false;
     let errorMessage = '';
 
-    // Step 1: Verify token endpoint to get token name and status
     try {
       const verifyResponse = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${cleanToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${cleanToken}`, 'Content-Type': 'application/json' },
       });
 
       if (verifyResponse.ok) {
         const verifyData = await verifyResponse.json();
         if (verifyData.success && verifyData.result) {
           validationSuccess = true;
-          // Extract token name from verify endpoint (may be 'name' or just status)
           tokenName = verifyData.result.name || 'API Token';
         } else {
           errorMessage = verifyData.errors?.[0]?.message || 'Token verification failed';
@@ -85,20 +74,13 @@ async function validateCloudflareToken(token: string): Promise<{
     }
 
     if (!validationSuccess) {
-      return {
-        valid: false,
-        error: errorMessage || 'Unable to validate token. Please check your token permissions.',
-      };
+      return { valid: false, error: errorMessage || 'Unable to validate token. Please check your token permissions.' };
     }
 
-    // Step 2: Get account ID from accounts endpoint
     try {
       const accountsResponse = await fetch('https://api.cloudflare.com/client/v4/accounts', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${cleanToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': `Bearer ${cleanToken}`, 'Content-Type': 'application/json' },
       });
 
       if (accountsResponse.ok) {
@@ -111,15 +93,11 @@ async function validateCloudflareToken(token: string): Promise<{
       console.warn('Accounts endpoint failed:', e instanceof Error ? e.message : e);
     }
 
-    // If accounts endpoint didn't return an account ID, try zones endpoint as fallback
     if (!accountId) {
       try {
         const zonesResponse = await fetch('https://api.cloudflare.com/client/v4/zones?per_page=1', {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${cleanToken}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Authorization': `Bearer ${cleanToken}`, 'Content-Type': 'application/json' },
         });
 
         if (zonesResponse.ok) {
@@ -130,28 +108,6 @@ async function validateCloudflareToken(token: string): Promise<{
         }
       } catch (zonesError) {
         console.warn('Zones endpoint failed:', zonesError instanceof Error ? zonesError.message : zonesError);
-      }
-    }
-
-    // Third fallback: Try memberships endpoint to get account ID
-    if (!accountId) {
-      try {
-        const membershipsResponse = await fetch('https://api.cloudflare.com/client/v4/memberships', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${cleanToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (membershipsResponse.ok) {
-          const membershipsData = await membershipsResponse.json();
-          if (membershipsData.success && membershipsData.result && membershipsData.result.length > 0) {
-            accountId = membershipsData.result[0].account?.id || '';
-          }
-        }
-      } catch (membershipsError) {
-        console.warn('Memberships endpoint failed:', membershipsError instanceof Error ? membershipsError.message : membershipsError);
       }
     }
 
@@ -166,144 +122,119 @@ async function validateCloudflareToken(token: string): Promise<{
       valid: true,
       accountId,
       tokenName: tokenName || 'API Token',
-      permissions: ['Zone:Read', 'Zone:Edit'], // Default permissions
+      permissions: ['Zone:Read', 'Zone:Edit'],
     };
   } catch (error) {
-    return {
-      valid: false,
-      error: error instanceof Error ? error.message : 'Token validation failed',
-    };
+    return { valid: false, error: error instanceof Error ? error.message : 'Token validation failed' };
   }
 }
 
 /**
- * Save a user's Cloudflare API token
+ * Verify token and save it to ALL of the user's projects
  */
 export async function saveCloudflareToken(token: string): Promise<CloudflareTokenResponse> {
   try {
-    // Clean the token first - remove any whitespace, newlines, or invisible characters
     const cleanToken = token.trim().replace(/[\r\n\t\s]+/g, '');
-
-    // Validate token contains only valid characters (alphanumeric, underscore, hyphen)
     if (!/^[a-zA-Z0-9_-]+$/.test(cleanToken)) {
-      return {
-        success: false,
-        error: 'Token contains invalid characters. Please copy the token exactly from Cloudflare.',
-      };
+      return { success: false, error: 'Token contains invalid characters. Please copy the token exactly from Cloudflare.' };
     }
 
     const authResult = await auth();
-    if (!authResult) {
-      return {
-        success: false,
-        error: 'User not authenticated',
-      };
-    }
+    if (!authResult) return { success: false, error: 'User not authenticated' };
     const { userId, email } = authResult;
 
-    // Always validate the token to get real token name and account ID
     const validationResult = await validateCloudflareToken(cleanToken);
     if (!validationResult.valid) {
-      return {
-        success: false,
-        error: validationResult.error || 'Invalid token. Please check your Cloudflare API token.',
-      };
+      return { success: false, error: validationResult.error || 'Invalid token. Please check your Cloudflare API token.' };
     }
-
     if (!validationResult.accountId) {
-      return {
-        success: false,
-        error: 'Unable to retrieve account ID. Please ensure your token has Account or Zone read permissions.',
-      };
+      return { success: false, error: 'Unable to retrieve account ID. Please ensure your token has Account or Zone read permissions.' };
     }
-
     if (!validationResult.tokenName) {
-      return {
-        success: false,
-        error: 'Unable to retrieve token name. Please check your token is valid.',
-      };
+      return { success: false, error: 'Unable to retrieve token name. Please check your token is valid.' };
     }
 
-    const validation = {
-      valid: true,
-      accountId: validationResult.accountId,
-      tokenName: validationResult.tokenName,
-      permissions: validationResult.permissions || ['Zone:Read', 'Zone:Edit']
-    };
-
-    // Encrypt the cleaned token
     const encryptedToken = encryptToken(cleanToken);
 
-    // Use a transaction to ensure user exists before creating token
-    const result = await prisma.$transaction(async (tx) => {
-      // Ensure user exists in database
-      await tx.user.upsert({
-        where: { userId: userId },
-        update: {},
-        create: {
-          userId: userId,
-          email: email,
-        },
-      });
-
-      // Upsert the token (update if exists, create if not)
-      return await tx.cloudflareToken.upsert({
-        where: { userId },
-        update: {
-          encryptedToken,
-          accountId: validation.accountId,
-          tokenName: validation.tokenName,
-          permissions: validation.permissions,
-          isActive: true,
-          lastVerified: new Date(),
-          updatedAt: new Date(),
-        },
-        create: {
-          userId,
-          encryptedToken,
-          accountId: validation.accountId,
-          tokenName: validation.tokenName,
-          permissions: validation.permissions,
-          isActive: true,
-          lastVerified: new Date(),
-        },
-      });
+    await prisma.user.upsert({
+      where: { userId },
+      update: {},
+      create: { userId, email },
     });
+
+    const updateResult = await prisma.project.updateMany({
+      where: { userId },
+      data: { api_keys: encryptedToken, updatedAt: new Date() },
+    });
+
+    console.log(`✅ Updated Cloudflare token for ${updateResult.count} projects`);
+    revalidatePath('/dashboard');
 
     return {
       success: true,
-      accountId: validation.accountId,
-      tokenName: validation.tokenName,
-      permissions: validation.permissions,
+      accountId: validationResult.accountId,
+      tokenName: validationResult.tokenName,
+      permissions: validationResult.permissions,
     };
   } catch (error) {
     console.error('saveCloudflareToken error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'An error occurred',
-    };
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred' };
   }
 }
 
 /**
- * Get user's Cloudflare token info (without the actual token)
+ * Alias for saveCloudflareToken (backwards compatibility)
+ */
+export async function verifyAndSaveToken(token: string): Promise<{ success: boolean; error?: string }> {
+  return saveCloudflareToken(token);
+}
+
+/**
+ * Check if the user has at least one project with a token configured
+ */
+export async function getCloudflareTokenStatus(): Promise<{ hasToken: boolean; isActive: boolean; lastVerified?: Date }> {
+  try {
+    const authResult = await auth();
+    if (!authResult) return { hasToken: false, isActive: false };
+
+    const projectWithToken = await prisma.project.findFirst({
+      where: { userId: authResult.userId, api_keys: { not: null } },
+      select: { api_keys: true, updatedAt: true },
+    });
+
+    return { hasToken: !!projectWithToken, isActive: !!projectWithToken, lastVerified: projectWithToken?.updatedAt };
+  } catch (error) {
+    return { hasToken: false, isActive: false };
+  }
+}
+
+/**
+ * Get user's Cloudflare token info (compatible shape)
  */
 export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken | null> {
   try {
     const authResult = await auth();
-    if (!authResult) {
-      return null;
-    }
+    if (!authResult) return null;
     const { userId } = authResult;
 
-    const token = await prisma.cloudflareToken.findUnique({
-      where: {
-        userId,
-        isActive: true,
-      },
+    const projectWithToken = await prisma.project.findFirst({
+      where: { userId, api_keys: { not: null } },
+      select: { id: true, api_keys: true, createdAt: true, updatedAt: true },
     });
 
-    return token;
+    if (!projectWithToken) return null;
+
+    return {
+      id: projectWithToken.id,
+      userId,
+      accountId: null,
+      tokenName: 'API Token',
+      permissions: ['Zone:Read', 'Zone:Edit'],
+      isActive: true,
+      lastVerified: projectWithToken.updatedAt,
+      createdAt: projectWithToken.createdAt,
+      updatedAt: projectWithToken.updatedAt,
+    };
   } catch (error) {
     console.error('getUserCloudflareTokenInfo error:', error);
     return null;
@@ -316,23 +247,16 @@ export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken 
 export async function getUserCloudflareToken(): Promise<string | null> {
   try {
     const authResult = await auth();
-    if (!authResult) {
-      return null;
-    }
+    if (!authResult) return null;
     const { userId } = authResult;
 
-    const tokenRecord = await prisma.cloudflareToken.findUnique({
-      where: {
-        userId,
-        isActive: true,
-      },
+    const projectWithToken = await prisma.project.findFirst({
+      where: { userId, api_keys: { not: null } },
+      select: { api_keys: true },
     });
 
-    if (!tokenRecord) {
-      return null;
-    }
-
-    return decryptToken(tokenRecord.encryptedToken);
+    if (!projectWithToken?.api_keys) return null;
+    return decryptToken(projectWithToken.api_keys);
   } catch (error) {
     console.error('getUserCloudflareToken error:', error);
     return null;
@@ -340,30 +264,30 @@ export async function getUserCloudflareToken(): Promise<string | null> {
 }
 
 /**
- * Remove user's Cloudflare token
+ * Delete token from all user projects
  */
 export async function removeCloudflareToken(): Promise<{ success: boolean; error?: string }> {
   try {
     const authResult = await auth();
-    if (!authResult) {
-      return {
-        success: false,
-        error: 'User not authenticated',
-      };
-    }
+    if (!authResult) return { success: false, error: 'User not authenticated' };
     const { userId } = authResult;
 
-    await prisma.cloudflareToken.updateMany({
+    await prisma.project.updateMany({
       where: { userId },
-      data: { isActive: false },
+      data: { api_keys: null },
     });
 
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (error) {
     console.error('removeCloudflareToken error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'An error occurred',
-    };
+    return { success: false, error: error instanceof Error ? error.message : 'An error occurred' };
   }
+}
+
+/**
+ * Alias for removeCloudflareToken (backwards compatibility)
+ */
+export async function deleteCloudflareToken(): Promise<{ success: boolean; error?: string }> {
+  return removeCloudflareToken();
 }

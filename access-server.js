@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 
 // Main app API configuration
 const MAIN_APP_CONFIG = {
-  API_BASE_URL: process.env.MAIN_APP_API_URL || "http://localhost:3000",
+  API_BASE_URL: process.env.MAIN_APP_API_URL || "https://d2b57a8a3394.ngrok-free.app",
   WORKER_API_KEY: (process.env.WORKER_API_KEY || process.env.ACCESS_SERVER_API_KEY || '').trim()
 };
 

@@ -4,6 +4,7 @@ import { decryptToken } from '@/lib/token-encryption';
 
 export async function GET(request: NextRequest) {
   try {
+    // 1. Authenticate
     const apiKey = request.headers.get('X-Worker-API-Key') || request.headers.get('Authorization')?.replace('Bearer ', '');
     const expectedApiKey = process.env.WORKER_API_KEY || process.env.ACCESS_SERVER_API_KEY;
 
@@ -11,8 +12,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 2. Get Hostname
     const { searchParams } = new URL(request.url);
     const hostname = searchParams.get('hostname');
+
     if (!hostname) {
       return NextResponse.json({ error: 'Hostname required' }, { status: 400 });
     }
@@ -20,6 +23,7 @@ export async function GET(request: NextRequest) {
     const cleanHostname = hostname.replace(/^www\./, '');
     console.log(`🔍 API: Searching for config for: ${cleanHostname}`);
 
+    // 3. Smart Project Search
     let project = await prisma.project.findFirst({
       where: { name: cleanHostname },
       select: { id: true, name: true, zoneId: true, websiteUrl: true, api_keys: true }
@@ -37,7 +41,6 @@ export async function GET(request: NextRequest) {
       const parts = cleanHostname.split('.');
       if (parts.length > 2) {
         const rootDomain = parts.slice(-2).join('.');
-        console.log(`⚠️ API: Checking root domain: ${rootDomain}`);
         project = await prisma.project.findFirst({
           where: { name: rootDomain },
           select: { id: true, name: true, zoneId: true, websiteUrl: true, api_keys: true }
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 4. Validate
     if (!project) {
       console.error(`❌ API: Project not found for ${cleanHostname}`);
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -56,25 +60,36 @@ export async function GET(request: NextRequest) {
 
     if (!project.api_keys) {
       console.error(`❌ API: Project ${project.name} has no api_keys configured`);
-      return NextResponse.json({ error: 'Cloudflare token not found in project api_keys' }, { status: 404 });
+      return NextResponse.json({ error: 'Cloudflare token not found' }, { status: 404 });
     }
 
+    // 5. Get Token (Handle both Encrypted and Plain Text)
+    let cloudflareToken: string;
     try {
-      const decryptedToken = decryptToken(project.api_keys);
-      console.log(`✅ API: Config found for ${project.name}`);
-
-      return NextResponse.json({
-        success: true,
-        domain: project.name,
-        zoneId: project.zoneId,
-        cloudflareToken: decryptedToken,
-        projectId: project.id,
-        originUrl: project.websiteUrl || `https://${project.name}`,
-      });
-    } catch (err) {
-      console.error('Token decryption failed:', err);
-      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+      // Attempt to decrypt
+      cloudflareToken = decryptToken(project.api_keys);
+    } catch (err: any) {
+      // If decryption fails due to format, assume it is a plain text token (manual entry)
+      if (err.message === 'Invalid encrypted token format' || err.message.includes('format')) {
+        console.warn(`⚠️ API: Token for ${project.name} is not encrypted. Using as plain text.`);
+        cloudflareToken = project.api_keys;
+      } else {
+        console.error('Token decryption failed:', err);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+      }
     }
+
+    // 6. Return Config
+    console.log(`✅ API: Config found for ${project.name}`);
+
+    return NextResponse.json({
+      success: true,
+      domain: project.name,
+      zoneId: project.zoneId,
+      cloudflareToken: cloudflareToken,
+      projectId: project.id,
+      originUrl: project.websiteUrl || `https://${project.name}`,
+    });
 
   } catch (error) {
     console.error('API Error:', error);

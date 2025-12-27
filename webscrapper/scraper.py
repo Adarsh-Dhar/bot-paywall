@@ -656,11 +656,6 @@ def main():
     CONFIG['wait_after_payment'] = args.wait_time
     CONFIG['max_retries'] = args.max_retries
 
-    # Handle list projects
-    if args.list_projects:
-        list_available_projects()
-        return 0
-
     # Configuration variables
     auth_headers = None
     target_url = CONFIG['target_url']
@@ -670,31 +665,18 @@ def main():
         if not target_url.startswith('http'):
             target_url = 'https://' + target_url
     elif args.project:
-        # Fetch URL AND Credentials
         creds = get_project_credentials(args.project)
         if creds:
             target_url = creds['url']
-            # Create the headers the Worker expects
-            auth_headers = {
-                'x-zone-id': creds['zone_id'],
-                'x-secret-key': creds['secret_key']
-            }
+            # Let the Worker fetch credentials from the database API
+            auth_headers = None
             log(f"Resolved Project: {target_url}", "INFO")
         else:
-            # Exit with error - do NOT fall back to treating project ID as domain
-            log("Failed to fetch credentials. Cannot proceed with protected scrape.", "ERROR")
-            log("Make sure:", "INFO")
-            log(f"  1. Main app is running at {CONFIG['main_app_url']}", "INFO")
-            log(f"  2. Project ID '{args.project}' exists in the database", "INFO")
-            log("  3. Run with --list-projects to see available projects", "INFO")
+            log(f"Could not resolve project: {args.project}", "ERROR")
             return 1
 
-    # Update CONFIG with resolved URL
     CONFIG['target_url'] = target_url
 
-    CONFIG['target_url'] = target_url
-
-    print("\n" + "=" * 80)
     print("SIMPLE BOT SCRAPER - x402 Payment Flow")
     print("=" * 80)
     print(f"Target: {CONFIG['target_url']}")

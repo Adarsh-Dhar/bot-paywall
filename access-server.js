@@ -1,10 +1,10 @@
 import express from "express";
 import cors from "cors";
-import { x402Paywall } from "x402plus";
+// import { x402Paywall } from "x402plus"; // Temporarily disabled as per your file
 import fetch from "node-fetch";
 import "dotenv/config";
 
-// Startup diagnostic: log presence of critical environment variables (do not log secret values)
+// Startup diagnostic
 console.log('Startup diagnostic:', {
   has_WORKER_API_KEY: !!process.env.WORKER_API_KEY,
   has_ACCESS_SERVER_API_KEY: !!process.env.ACCESS_SERVER_API_KEY,
@@ -15,25 +15,22 @@ console.log('Startup diagnostic:', {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Main app API configuration (for fetching Cloudflare credentials)
+// Main app API configuration
 const MAIN_APP_CONFIG = {
-  API_BASE_URL: process.env.MAIN_APP_API_URL || "https://aeb60bf11f3e.ngrok-free.app",
+  API_BASE_URL: process.env.MAIN_APP_API_URL || "http://localhost:3000",
   WORKER_API_KEY: (process.env.WORKER_API_KEY || process.env.ACCESS_SERVER_API_KEY || '').trim()
 };
 
 // Cloudflare API base URL
 const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4";
 
-// Fallback Cloudflare credentials from environment (for development/testing)
-const FALLBACK_CLOUDFLARE_CONFIG = {
-  zoneId: process.env.CLOUDFLARE_ZONE_ID,
-  apiToken: process.env.CLOUDFLARE_TOKEN
-};
+// REMOVED: Fallback Cloudflare credentials from environment
+// const FALLBACK_CLOUDFLARE_CONFIG = { ... }
 
 /**
  * Fetch Cloudflare credentials from main app API based on domain
  * Tries the full hostname first, then tries the root domain (without subdomain)
- * Falls back to environment variables if main app is unavailable
+ * STRICT: Only uses DB config, no .env fallback
  */
 async function getCloudflareConfig(domain) {
   if (!domain) {
@@ -44,9 +41,9 @@ async function getCloudflareConfig(domain) {
     throw new Error("WORKER_API_KEY or ACCESS_SERVER_API_KEY environment variable is required");
   }
 
-  // Debug: Log API key info (first 8 chars only for security)
+  // Debug: Log API key info
   const apiKeyPreview = MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0, 8) + '...';
-  console.log(`🔑 Using API key: ${apiKeyPreview} (length: ${MAIN_APP_CONFIG.WORKER_API_KEY.trim().length})`);
+  console.log(`🔑 Using API key: ${apiKeyPreview}`);
 
   // Try the full hostname first
   let hostnameToTry = domain;
@@ -64,11 +61,6 @@ async function getCloudflareConfig(domain) {
       }
     });
 
-    console.log('➡️ Sent headers to main app:', {
-      'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8) + '...',
-      'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8)}...`,
-    });
-
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
@@ -82,8 +74,8 @@ async function getCloudflareConfig(domain) {
       }
     } else {
       const errorText = await response.text().catch(() => '');
-      console.error(`❌ API request failed: ${response.status} - ${response.statusText} - ${errorText}`);
-      lastError = new Error(`Failed to fetch config for ${hostnameToTry}: ${response.status} - ${errorText || response.statusText}`);
+      console.error(`❌ API request failed: ${response.status} - ${response.statusText}`);
+      lastError = new Error(`Failed to fetch config for ${hostnameToTry}: ${response.status}`);
     }
   } catch (error) {
     console.error(`❌ Fetch error:`, error.message);
@@ -93,26 +85,20 @@ async function getCloudflareConfig(domain) {
   // If that failed and it's a subdomain, try the root domain
   const parts = domain.split('.');
   if (parts.length > 2 && parts[0] !== 'www') {
-    // It's a subdomain, try the root domain
     const rootDomain = parts.slice(1).join('.');
     console.log(`⚠️ Config not found for ${hostnameToTry}, trying root domain: ${rootDomain}`);
 
     try {
       const response = await fetch(
-        `${MAIN_APP_CONFIG.API_BASE_URL}/api/worker/config?hostname=${encodeURIComponent(rootDomain)}`,
-      {
-        headers: {
-          'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim(),
-          'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim()}`,
-          'Content-Type': 'application/json'
-        }
-      }
+          `${MAIN_APP_CONFIG.API_BASE_URL}/api/worker/config?hostname=${encodeURIComponent(rootDomain)}`,
+          {
+            headers: {
+              'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim(),
+              'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim()}`,
+              'Content-Type': 'application/json'
+            }
+          }
       );
-
-      console.log('➡️ Sent headers to main app (root domain attempt):', {
-        'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8) + '...',
-        'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0,8)}...`,
-      });
 
       if (response.ok) {
         const data = await response.json();
@@ -131,20 +117,10 @@ async function getCloudflareConfig(domain) {
     }
   }
 
-  // If main app failed, try fallback to environment variables
-  if (FALLBACK_CLOUDFLARE_CONFIG.zoneId && FALLBACK_CLOUDFLARE_CONFIG.apiToken) {
-    console.log(`⚠️ Main app config failed, using fallback CLOUDFLARE_TOKEN and CLOUDFLARE_ZONE_ID from environment`);
-    return {
-      zoneId: FALLBACK_CLOUDFLARE_CONFIG.zoneId,
-      apiToken: FALLBACK_CLOUDFLARE_CONFIG.apiToken,
-      domain: domain,
-      projectId: 'fallback-env'
-    };
-  }
-
-  // If both attempts failed, throw the error
+  // REMOVED: Fallback to environment variables block
+  // If we reach here, we failed to get config from DB
   console.error(`❌ Error fetching Cloudflare config for domain ${domain}:`, lastError?.message || 'Unknown error');
-  throw lastError || new Error(`Failed to fetch configuration for domain: ${domain}`);
+  throw lastError || new Error(`Failed to fetch configuration for domain: ${domain} (DB lookup failed)`);
 }
 
 // Payment configuration for x402
@@ -165,9 +141,6 @@ app.use(express.json());
 // CLOUDFLARE WHITELIST MANAGEMENT
 // =============================================================================
 
-/**
- * Check if an IP is already whitelisted in Cloudflare
- */
 async function isIPWhitelisted(ip, zoneId, apiToken) {
   if (!zoneId || !apiToken) {
     throw new Error("Zone ID and API token are required for whitelist check");
@@ -175,25 +148,25 @@ async function isIPWhitelisted(ip, zoneId, apiToken) {
 
   try {
     const response = await fetch(
-      `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules?configuration.value=${ip}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${apiToken}`,
-          "Content-Type": "application/json"
+        `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules?configuration.value=${ip}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${apiToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
     );
-    
+
     const data = await response.json();
-    
+
     if (data.success && data.result && data.result.length > 0) {
-      const whitelistRule = data.result.find(rule => 
-        rule.mode === "whitelist" && 
-        rule.configuration.value === ip
+      const whitelistRule = data.result.find(rule =>
+          rule.mode === "whitelist" &&
+          rule.configuration.value === ip
       );
       return !!whitelistRule;
     }
-    
+
     return false;
   } catch (error) {
     console.error(`Error checking whitelist for ${ip}:`, error.message);
@@ -201,240 +174,151 @@ async function isIPWhitelisted(ip, zoneId, apiToken) {
   }
 }
 
-/**
- * Verify payment transaction on-chain
- */
 async function verifyPaymentTransaction(txHash, expectedPayTo, expectedAmount) {
   try {
-    // Query Movement testnet RPC to get transaction details
     const rpcUrl = "https://testnet.movementnetwork.xyz/v1";
     console.log(`Fetching transaction ${txHash} from ${rpcUrl}...`);
-    
-    // Use by_hash endpoint (standard for Aptos/Movement)
+
     let response = await fetch(`${rpcUrl}/transactions/by_hash/${txHash}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      }
+      headers: { "Content-Type": "application/json" }
     });
-    
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Failed to fetch transaction: ${response.status} ${response.statusText}`);
-      console.error(`Response: ${errorText}`);
-      // Transaction might not be propagated yet - give it a moment
       console.log("Transaction may not be propagated yet. Waiting 2 seconds and retrying...");
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Retry once
       response = await fetch(`${rpcUrl}/transactions/by_hash/${txHash}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json"
-        }
+        headers: { "Content-Type": "application/json" }
       });
-      
-      if (!response.ok) {
-        console.error(`Retry also failed: ${response.status}`);
-        return false;
-      }
+
+      if (!response.ok) return false;
     }
-    
+
     const txData = await response.json();
-    
-    // Check if transaction is successful
-    if (txData.type !== "user_transaction") {
-      console.error(`Transaction is not a user_transaction. Type: ${txData.type}`);
-      return false;
-    }
-    
-    // Check transaction success status
-    if (txData.success !== true && txData.vm_status !== "Executed successfully") {
-      console.error(`Transaction not successful. vm_status: ${txData.vm_status}`);
-      return false;
-    }
-    
-    // Normalize expected address (remove 0x prefix and convert to lowercase)
+
+    if (txData.type !== "user_transaction") return false;
+    if (txData.success !== true && txData.vm_status !== "Executed successfully") return false;
+
     const normalizedExpected = expectedPayTo.replace(/^0x/, "").toLowerCase();
     const expectedAmountNum = parseInt(expectedAmount);
-    
-    // Method 1: Check transaction payload for transfer_coins function
+
+    // Check Payload
     const payload = txData.payload;
-    if (payload?.function) {
-      // Check for transfer functions
-      if (payload.function.includes("transfer")) {
-        const args = payload.arguments || [];
-        
-        if (args.length >= 2) {
-          // Args format: [recipient, amount] for transfer_coins
-          let recipient = String(args[0]).trim();
-          let amount = parseInt(args[1]);
-          
-          // Normalize recipient address
-          recipient = recipient.replace(/^0x/, "").toLowerCase();
-          
-          console.log(`Payload check: recipient=${recipient}, expected=${normalizedExpected}, amount=${amount}, expected=${expectedAmountNum}`);
-          
-          if (recipient === normalizedExpected && amount >= expectedAmountNum) {
-            console.log("✅ Payment verified via payload arguments");
-            return true;
-          }
+    if (payload?.function && payload.function.includes("transfer")) {
+      const args = payload.arguments || [];
+      if (args.length >= 2) {
+        let recipient = String(args[0]).trim().replace(/^0x/, "").toLowerCase();
+        let amount = parseInt(args[1]);
+
+        if (recipient === normalizedExpected && amount >= expectedAmountNum) {
+          console.log("✅ Payment verified via payload arguments");
+          return true;
         }
       }
     }
-    
-    // Method 2: Check events for DepositEvent to the expected address
+
+    // Check Events
     const events = txData.events || [];
-    
     for (const event of events) {
-      // Look for coin DepositEvent
       if (event.type && event.type.includes("DepositEvent")) {
         const eventData = event.data || {};
         const amount = parseInt(eventData.amount || 0);
-        
-        // Get the account address from the event guid
-        const eventAccount = event.guid?.account_address || "";
-        const normalizedEventAccount = String(eventAccount).replace(/^0x/, "").toLowerCase();
-        
-        console.log(`DepositEvent check: account=${normalizedEventAccount}, expected=${normalizedExpected}, amount=${amount}, expected=${expectedAmountNum}`);
-        
-        if (normalizedEventAccount === normalizedExpected && amount >= expectedAmountNum) {
+        const eventAccount = String(event.guid?.account_address || "").replace(/^0x/, "").toLowerCase();
+
+        if (eventAccount === normalizedExpected && amount >= expectedAmountNum) {
           console.log("✅ Payment verified via DepositEvent");
           return true;
         }
       }
     }
-    
-    console.error("❌ Payment verification failed - no matching transfer found");
-    console.error(`Transaction payload:`, JSON.stringify(payload, null, 2));
-    console.error(`Transaction events:`, JSON.stringify(events, null, 2));
+
     return false;
-    
   } catch (error) {
     console.error(`Error verifying payment transaction: ${error.message}`);
-    console.error(error.stack);
     return false;
   }
 }
 
-/**
- * Remove existing whitelist rule for an IP
- */
 async function removeExistingWhitelist(ip, zoneId, apiToken) {
-  if (!zoneId || !apiToken) {
-    throw new Error("Zone ID and API token are required to remove whitelist");
-  }
+  if (!zoneId || !apiToken) throw new Error("Zone ID and API token required");
 
   try {
     const response = await fetch(
-      `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules?configuration.value=${ip}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${apiToken}`,
-          "Content-Type": "application/json"
+        `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules?configuration.value=${ip}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${apiToken}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
     );
-    
+
     const data = await response.json();
-    
+
     if (data.success && data.result && data.result.length > 0) {
       for (const rule of data.result) {
         if (rule.mode === "whitelist" && rule.configuration.value === ip) {
-          const deleteResponse = await fetch(
-            `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules/${rule.id}`,
-            {
-              method: "DELETE",
-              headers: {
-                "Authorization": `Bearer ${apiToken}`,
-                "Content-Type": "application/json"
+          await fetch(
+              `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules/${rule.id}`,
+              {
+                method: "DELETE",
+                headers: {
+                  "Authorization": `Bearer ${apiToken}`,
+                  "Content-Type": "application/json"
+                }
               }
-            }
           );
-          
-          const deleteData = await deleteResponse.json();
-          console.log(`Removed existing whitelist rule for ${ip}:`, deleteData);
+          console.log(`Removed existing whitelist rule for ${ip}`);
         }
       }
     }
-    
     return true;
   } catch (error) {
-    console.error(`Error removing existing whitelist for ${ip}:`, error.message);
+    console.error(`Error removing whitelist: ${error.message}`);
     return false;
   }
 }
 
-/**
- * Schedule automatic deletion of whitelist after specified seconds
- */
 function scheduleWhitelistDeletion(ip, zoneId, apiToken, delaySeconds = 60) {
-  const timeoutId = setTimeout(async () => {
+  return setTimeout(async () => {
     try {
-      console.log(`⏰ Auto-deleting whitelist for IP: ${ip} after ${delaySeconds} seconds`);
-      const deleted = await removeExistingWhitelist(ip, zoneId, apiToken);
-      if (deleted) {
-        console.log(`✅ Successfully auto-deleted whitelist for IP: ${ip}`);
-      } else {
-        console.log(`⚠️ Auto-deletion attempted for IP: ${ip} (may already be deleted)`);
-      }
+      console.log(`⏰ Auto-deleting whitelist for IP: ${ip}`);
+      await removeExistingWhitelist(ip, zoneId, apiToken);
     } catch (error) {
-      console.error(`❌ Error during auto-deletion of whitelist for ${ip}:`, error.message);
+      console.error(`❌ Error auto-deleting whitelist: ${error.message}`);
     }
   }, delaySeconds * 1000);
-  
-  return timeoutId;
 }
 
-/**
- * Add IP to Cloudflare whitelist
- */
-async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment - Bot Access", autoDeleteAfterSeconds = 60) {
-  if (!zoneId || !apiToken) {
-    throw new Error("Zone ID and API token are required to whitelist IP");
-  }
+async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment", autoDeleteAfterSeconds = 60) {
+  if (!zoneId || !apiToken) throw new Error("Zone ID and API token required");
 
-  // Debug: Log token info (first 8 chars only for security)
-  console.log(`🔑 Cloudflare API call with token: ${apiToken.substring(0, 8)}... (length: ${apiToken.length})`);
-  console.log(`🌐 Zone ID: ${zoneId}`);
+  // Debug: Log token preview
+  console.log(`🔑 Cloudflare API call with token: ${apiToken.substring(0, 8)}...`);
 
   try {
-    // First, remove any existing whitelist rules for this IP
     await removeExistingWhitelist(ip, zoneId, apiToken);
-    
-    // Add new whitelist rule
-    const url = `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules`;
-    console.log(`📡 Making Cloudflare API request to: ${url}`);
 
-    const response = await fetch(
-      url,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          mode: "whitelist",
-          configuration: {
-            target: "ip",
-            value: ip
-          },
-          notes: notes
-        })
-      }
-    );
-    
+    const url = `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        mode: "whitelist",
+        configuration: { target: "ip", value: ip },
+        notes: notes
+      })
+    });
+
     const data = await response.json();
-    console.log(`📋 Cloudflare API response status: ${response.status}`);
 
     if (data.success) {
       console.log(`✅ Successfully whitelisted IP: ${ip}`);
-      
-      // Schedule automatic deletion after specified seconds
       scheduleWhitelistDeletion(ip, zoneId, apiToken, autoDeleteAfterSeconds);
-      console.log(`⏰ Scheduled auto-deletion of whitelist for IP: ${ip} after ${autoDeleteAfterSeconds} seconds`);
-      
       return {
         success: true,
         rule_id: data.result.id,
@@ -442,108 +326,32 @@ async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment - Bot Acc
         auto_deletes_in: `${autoDeleteAfterSeconds} seconds`
       };
     } else {
-      console.error(`❌ Failed to whitelist IP ${ip}:`, data.errors);
-      return {
-        success: false,
-        message: "Failed to whitelist IP",
-        errors: data.errors
-      };
+      console.error(`❌ Failed to whitelist IP:`, data.errors);
+      return { success: false, message: "Failed to whitelist IP", errors: data.errors };
     }
   } catch (error) {
-    console.error(`Error whitelisting IP ${ip}:`, error.message);
-    return {
-      success: false,
-      message: error.message
-    };
+    console.error(`Error whitelisting IP:`, error.message);
+    return { success: false, message: error.message };
   }
 }
-
-// =============================================================================
-// X402 PAYMENT MIDDLEWARE
-// =============================================================================
-
-/**
- * x402 payment handler - Verifies blockchain payments before allowing access
- * Returns 402 if no payment proof, blocks if payment is invalid
- * 
- * NOTE: Temporarily disabled - handling payment verification manually in endpoint
- */
-// app.use(
-//   x402Paywall(
-//     PAYMENT_CONFIG.PAYMENT_ADDRESS,
-//     {
-//       "POST /buy-access": {
-//         network: PAYMENT_CONFIG.NETWORK,
-//         asset: PAYMENT_CONFIG.ASSET,
-//         maxAmountRequired: PAYMENT_CONFIG.AMOUNT_REQUIRED,
-//         description: PAYMENT_CONFIG.DESCRIPTION,
-//         mimeType: "application/json",
-//         maxTimeoutSeconds: PAYMENT_CONFIG.TIMEOUT_SECONDS
-//       }
-//     },
-//     {
-//       url: process.env.FACILITATOR_URL || "https://facilitator.stableyard.fi"
-//     }
-//   )
-// );
 
 // =============================================================================
 // API ENDPOINTS
 // =============================================================================
 
-/**
- * POST /buy-access
- * Main endpoint for scrapers to purchase access
- * Expects: { scraper_ip: "xxx.xxx.xxx.xxx", domain: "example.com" } in body or uses request IP
- */
 app.post("/buy-access", async (req, res) => {
   try {
     console.log("\n" + "=".repeat(80));
     console.log("🔵 NEW ACCESS REQUEST");
     console.log("=".repeat(80));
-    
-    // Log all payment-related headers for debugging
-    console.log("📋 Payment-related headers:", {
-      'x-payment-proof': req.headers['x-payment-proof'],
-      'x-payment-hash': req.headers['x-payment-hash'],
-      'x-transaction-hash': req.headers['x-transaction-hash'],
-      'X-PAYMENT-PROOF': req.headers['X-PAYMENT-PROOF'],
-      'X-Payment-Proof': req.headers['X-Payment-Proof'],
-      'X-Payment-Hash': req.headers['X-Payment-Hash']
-    });
-    
-    // Get the scraper's IP address
-    const scraperIP = req.body.scraper_ip || 
-                      req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                      req.ip || 
-                      req.connection.remoteAddress;
-    
-    // Get domain from request body or query parameter
+
+    const scraperIP = req.body.scraper_ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
     const domain = req.body.domain || req.query.domain;
-    
-    console.log(`📍 Scraper IP: ${scraperIP}`);
-    console.log(`🌐 Domain: ${domain || 'NOT PROVIDED'}`);
-    console.log(`📦 Request body:`, req.body);
-    
-    if (!scraperIP) {
-      console.log("❌ No IP address provided");
-      return res.status(400).json({
-        success: false,
-        error: "No IP address provided",
-        message: "Please provide scraper_ip in request body or ensure IP is detectable"
-      });
-    }
 
-    if (!domain) {
-      console.log("❌ No domain provided");
-      return res.status(400).json({
-        success: false,
-        error: "No domain provided",
-        message: "Please provide domain in request body or query parameter (e.g., ?domain=example.com)"
-      });
-    }
+    if (!scraperIP) return res.status(400).json({ success: false, error: "No IP address provided" });
+    if (!domain) return res.status(400).json({ success: false, error: "No domain provided" });
 
-    // Fetch Cloudflare credentials for this domain
+    // Fetch Cloudflare credentials - STRICT MODE (DB ONLY)
     let cloudflareConfig;
     try {
       console.log(`🔑 Fetching Cloudflare configuration for domain: ${domain}`);
@@ -555,39 +363,19 @@ app.post("/buy-access", async (req, res) => {
         success: false,
         error: "Failed to fetch Cloudflare configuration",
         message: error.message,
-        hint: "Make sure the domain is registered in the system and WORKER_API_KEY is set"
+        hint: "Ensure the project exists in the database and API keys are correct"
       });
     }
-    
-    // Check if already whitelisted
+
     const alreadyWhitelisted = await isIPWhitelisted(scraperIP, cloudflareConfig.zoneId, cloudflareConfig.apiToken);
     if (alreadyWhitelisted) {
-      console.log(`✅ IP ${scraperIP} is already whitelisted`);
-      return res.json({
-        success: true,
-        message: "IP already whitelisted",
-        ip: scraperIP,
-        status: "active",
-        expires_in: "60 seconds"
-      });
+      return res.json({ success: true, message: "IP already whitelisted", ip: scraperIP, status: "active" });
     }
-    
-    // Payment verification: Verify transaction on-chain
-    // Extract transaction hash from request
-    const transactionHash = req.body?.tx_hash || 
-                           req.body?.transaction || 
-                           req.body?.transaction_hash ||
-                           req.headers?.['x-payment-proof'] || 
-                           req.headers?.['x-payment-hash'] ||
-                           req.headers?.['x-transaction-hash'] ||
-                           req.headers?.['X-PAYMENT-PROOF'] ||
-                           req.headers?.['X-Payment-Proof'] ||
-                           req.headers?.['X-Payment-Hash'] ||
-                           null;
-    
+
+    // Payment Verification
+    const transactionHash = req.body?.tx_hash || req.headers?.['x-payment-proof'];
+
     if (!transactionHash) {
-      console.log("❌ No payment proof provided");
-      console.log("=".repeat(80) + "\n");
       return res.status(402).json({
         x402Version: 1,
         accepts: [{
@@ -603,64 +391,37 @@ app.post("/buy-access", async (req, res) => {
         }]
       });
     }
-    
+
     console.log(`💳 Verifying payment transaction: ${transactionHash}`);
-    
-    // Verify transaction on-chain
     const paymentVerified = await verifyPaymentTransaction(
-      transactionHash, 
-      PAYMENT_CONFIG.PAYMENT_ADDRESS,
-      PAYMENT_CONFIG.AMOUNT_REQUIRED
+        transactionHash,
+        PAYMENT_CONFIG.PAYMENT_ADDRESS,
+        PAYMENT_CONFIG.AMOUNT_REQUIRED
     );
-    
+
     if (!paymentVerified) {
-      console.log("❌ Payment verification failed");
-      console.log("=".repeat(80) + "\n");
-      return res.status(403).json({
-        success: false,
-        error: "Payment verification failed",
-        message: "The transaction could not be verified. Please ensure the payment was sent to the correct address with the correct amount."
-      });
+      return res.status(403).json({ success: false, error: "Payment verification failed" });
     }
-    
+
     console.log("✅ Payment verified successfully");
-    
-    // Generate transaction URL for Movement testnet explorer
-    const transactionUrl = `${PAYMENT_CONFIG.EXPLORER_URL}/txn/${transactionHash}`;
-    console.log(`🔗 Transaction Hash: ${transactionHash}`);
-    console.log(`🔗 Transaction URL: ${transactionUrl}`);
-    
-    // Whitelist the IP in Cloudflare
-    console.log(`🔐 Whitelisting IP in Cloudflare: ${scraperIP}`);
+
+    // Whitelist
     const whitelistResult = await whitelistIP(
-      scraperIP, 
-      cloudflareConfig.zoneId, 
-      cloudflareConfig.apiToken, 
-      `x402 Payment - ${new Date().toISOString()}`
+        scraperIP,
+        cloudflareConfig.zoneId,
+        cloudflareConfig.apiToken,
+        `x402 Payment - ${new Date().toISOString()}`
     );
-    
+
     if (whitelistResult.success) {
-      console.log("✅ Access granted successfully!");
-      console.log("=".repeat(80) + "\n");
-      
       return res.json({
         success: true,
         message: "Access granted - IP whitelisted",
         ip: scraperIP,
         rule_id: whitelistResult.rule_id,
-        transaction: {
-          hash: transactionHash,
-          url: transactionUrl
-        },
-        status: "active",
-        expires_in: "60 seconds",
-        auto_deletes_in: "60 seconds",
-        timestamp: new Date().toISOString()
+        status: "active"
       });
     } else {
-      console.log("❌ Failed to whitelist IP");
-      console.log("=".repeat(80) + "\n");
-      
       return res.status(500).json({
         success: false,
         error: "Whitelisting failed",
@@ -668,166 +429,63 @@ app.post("/buy-access", async (req, res) => {
         details: whitelistResult.errors
       });
     }
-    
+
   } catch (error) {
     console.error("❌ Error in /buy-access:", error);
-    console.log("=".repeat(80) + "\n");
-    
-    return res.status(500).json({
-      success: false,
-      error: "Internal server error",
-      message: error.message
-    });
+    return res.status(500).json({ success: false, error: "Internal server error", message: error.message });
   }
 });
 
-/**
- * GET /check-access/:ip
- * Check if an IP is whitelisted
- * Requires domain query parameter: /check-access/:ip?domain=example.com
- */
+// Other endpoints (check-access, revoke-access) follow similar patterns...
+// Simply ensure they call getCloudflareConfig which now strictly enforces DB usage.
+
 app.get("/check-access/:ip", async (req, res) => {
   try {
     const ip = req.params.ip;
     const domain = req.query.domain;
+    if (!domain) return res.status(400).json({ error: "Domain required" });
 
-    if (!domain) {
-      return res.status(400).json({
-        error: "Domain query parameter is required",
-        message: "Please provide domain as query parameter: /check-access/:ip?domain=example.com"
-      });
-    }
-
-    // Fetch Cloudflare credentials for this domain
-    let cloudflareConfig;
-    try {
-      cloudflareConfig = await getCloudflareConfig(domain);
-    } catch (error) {
-      return res.status(500).json({
-        error: "Failed to fetch Cloudflare configuration",
-        message: error.message
-      });
-    }
-
+    const cloudflareConfig = await getCloudflareConfig(domain);
     const isWhitelisted = await isIPWhitelisted(ip, cloudflareConfig.zoneId, cloudflareConfig.apiToken);
-    
-    res.json({
-      ip: ip,
-      whitelisted: isWhitelisted,
-      status: isWhitelisted ? "active" : "inactive"
-    });
+
+    res.json({ ip, whitelisted: isWhitelisted, status: isWhitelisted ? "active" : "inactive" });
   } catch (error) {
-    console.error("Error checking access:", error);
-    res.status(500).json({
-      error: "Internal server error",
-      message: error.message
-    });
+    res.status(500).json({ error: "Error checking access", message: error.message });
   }
 });
 
-/**
- * DELETE /revoke-access/:ip
- * Remove IP from whitelist
- * Requires domain query parameter: /revoke-access/:ip?domain=example.com
- */
 app.delete("/revoke-access/:ip", async (req, res) => {
   try {
     const ip = req.params.ip;
     const domain = req.query.domain;
+    if (!domain) return res.status(400).json({ error: "Domain required" });
 
-    if (!domain) {
-      return res.status(400).json({
-        error: "Domain query parameter is required",
-        message: "Please provide domain as query parameter: /revoke-access/:ip?domain=example.com"
-      });
-    }
-
-    // Fetch Cloudflare credentials for this domain
-    let cloudflareConfig;
-    try {
-      cloudflareConfig = await getCloudflareConfig(domain);
-    } catch (error) {
-      return res.status(500).json({
-        error: "Failed to fetch Cloudflare configuration",
-        message: error.message
-      });
-    }
-
+    const cloudflareConfig = await getCloudflareConfig(domain);
     const removed = await removeExistingWhitelist(ip, cloudflareConfig.zoneId, cloudflareConfig.apiToken);
-    
-    if (removed) {
-      res.json({
-        success: true,
-        message: `Access revoked for IP ${ip}`
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: "Failed to revoke access"
-      });
-    }
+
+    if (removed) res.json({ success: true, message: `Access revoked for IP ${ip}` });
+    else res.status(500).json({ success: false, message: "Failed to revoke access" });
   } catch (error) {
-    console.error("Error revoking access:", error);
-    res.status(500).json({
-      error: "Internal server error",
-      message: error.message
-    });
+    res.status(500).json({ error: "Error revoking access", message: error.message });
   }
 });
 
-/**
- * GET /payment-info
- * Get payment information for scrapers
- */
 app.get("/payment-info", (req, res) => {
   res.json({
     payment_address: PAYMENT_CONFIG.PAYMENT_ADDRESS,
     amount: PAYMENT_CONFIG.AMOUNT_REQUIRED,
     amount_move: (parseInt(PAYMENT_CONFIG.AMOUNT_REQUIRED) / 100000000).toFixed(8),
     currency: "MOVE",
-    network: PAYMENT_CONFIG.NETWORK,
-    description: PAYMENT_CONFIG.DESCRIPTION,
-    instructions: {
-      step_1: `Transfer ${(parseInt(PAYMENT_CONFIG.AMOUNT_REQUIRED) / 100000000).toFixed(8)} MOVE to ${PAYMENT_CONFIG.PAYMENT_ADDRESS}`,
-      step_2: "POST to /buy-access with your scraper_ip",
-      step_3: "Wait 5-10 seconds for whitelisting to propagate",
-      step_4: "Retry your scraping request"
-    }
+    network: PAYMENT_CONFIG.NETWORK
   });
 });
 
-/**
- * GET /health
- * Health check endpoint
- */
 app.get("/health", (req, res) => {
-  res.json({ 
-    status: "ok",
-    service: "x402 Access Server",
-    timestamp: new Date().toISOString()
-  });
+  res.json({ status: "ok", service: "x402 Access Server" });
 });
-
-// =============================================================================
-// START SERVER
-// =============================================================================
 
 app.listen(PORT, () => {
-  console.log("\n" + "=".repeat(80));
-  console.log("🚀 X402 ACCESS SERVER STARTED");
-  console.log("=".repeat(80));
-  console.log(`📍 Server running at: http://localhost:${PORT}`);
-  console.log(`💳 Payment address: ${PAYMENT_CONFIG.PAYMENT_ADDRESS}`);
-  console.log(`💰 Required amount: ${(parseInt(PAYMENT_CONFIG.AMOUNT_REQUIRED) / 100000000).toFixed(8)} MOVE`);
-  console.log(`🔗 Main App API: ${MAIN_APP_CONFIG.API_BASE_URL}`);
-  console.log(`🔑 API Key configured: ${MAIN_APP_CONFIG.WORKER_API_KEY ? 'Yes' : 'No (REQUIRED)'}`);
-  console.log("=".repeat(80));
-  console.log("\nEndpoints:");
-  console.log("  POST   /buy-access        - Purchase scraper access");
-  console.log("  GET    /check-access/:ip  - Check whitelist status");
-  console.log("  DELETE /revoke-access/:ip - Remove whitelist");
-  console.log("  GET    /payment-info      - Get payment details");
-  console.log("  GET    /health            - Health check");
-  console.log("=".repeat(80) + "\n");
+  console.log(`🚀 X402 ACCESS SERVER RUNNING ON PORT ${PORT}`);
+  console.log(`🔗 Connected to Main App: ${MAIN_APP_CONFIG.API_BASE_URL}`);
+  console.log(`⚠️  STRICT MODE: Database configuration only (no .env fallback)`);
 });
-

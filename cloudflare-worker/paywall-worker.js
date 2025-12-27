@@ -104,7 +104,7 @@ async function getConfig(hostname, env) {
     return configCache.data;
   }
 
-  const apiBaseUrl = env.API_BASE_URL || env.API_URL || 'http://localhost:3000';
+  const apiBaseUrl = env.API_BASE_URL || env.API_URL || 'https://aeb60bf11f3e.ngrok-free.app';
   const workerApiKey = env.WORKER_API_KEY;
 
   // If the apiBaseUrl points to localhost or 127.0.0.1, assume the API is not reachable from Cloudflare

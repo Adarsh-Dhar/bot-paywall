@@ -76,9 +76,9 @@ export async function GET(request: NextRequest) {
         name: domain,
       },
       include: {
-        users: {
+        user: {
           include: {
-            cloudflare_tokens: true,
+            cloudflareToken: true,
           },
         },
       },
@@ -98,8 +98,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tokenRecord = project.users?.cloudflare_tokens && project.users.cloudflare_tokens.isActive
-      ? project.users.cloudflare_tokens
+    const tokenRecord = project.user?.cloudflareToken && project.user.cloudflareToken.isActive
+      ? project.user.cloudflareToken
       : null;
     if (!tokenRecord) {
       return NextResponse.json(

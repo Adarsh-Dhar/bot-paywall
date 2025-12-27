@@ -28,7 +28,8 @@ export default function IntegratePage() {
         return;
       }
 
-      setProject(result.data);
+      // @ts-ignore
+      setProject(result.data?);
     } catch (err) {
       console.error("Error fetching project:", err);
       setError("An error occurred while fetching the project");

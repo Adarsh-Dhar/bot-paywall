@@ -96,7 +96,7 @@ if [[ "$any_vars" -eq 1 ]]; then
         gsub(/^[ \t]+|[ \t]+$/,"",res)
         # remove surrounding quotes
         if(res ~ /^".*"$/){ sub(/"/,"",res); sub(/"$/,"",res) }
-        if(res ~ /^\'.*\'$/){ sub("'","",res); sub("'$/","",res) }
+        if(res ~ /^\".*\"$/){ sub("'","",res); sub("'$/","",res) }
         if(res != "") print res
       }
     ' "$ENV_FILE" || true)
@@ -161,3 +161,44 @@ echo "Running: npx wrangler deploy"
 npx wrangler deploy
 
 echo "Deployment complete. Remember: secrets were set using wrangler secret put; verify in Cloudflare Dashboard if needed."
+
+cd /Users/adarsh/Documents/bot-paywall/cloudflare-worker
+
+apply_patch <<'PATCH'
+*** Begin Patch
+*** Update File: deploy_with_env.sh
+@@
+-        # remove surrounding quotes
+-        if(res ~ /^".*"$/){ sub(/"/,"",res); sub(/"$/,"",res) }
+-        if(res ~ /^\'.*\'$/){ sub("'","",res); sub("'$/","",res) }
+-        if(res != "") print res
++        # remove surrounding quotes
++        if(res ~ /^".*"$/){ sub(/^"/,"",res); sub(/"$/,"",res) }
++        if(res ~ /^'\''.*'\''$/){ sub(/^'\''/,"",res); sub(/'\''$/,"",res) }
++        if(res != "") print res
+       }
+     ' "$ENV_FILE" || true)
+@@
+ echo "Deployment complete. Remember: secrets were set using wrangler secret put; verify in Cloudflare Dashboard if needed."
+-
+-cd /Users/adarsh/Documents/bot-paywall/cloudflare-worker
+-apply_patch <<'PATCH'
+-*** Begin Patch
+-*** Update File: deploy_with_env.sh
+-@@
+--        # remove surrounding quotes
+--        if(res ~ /^".*"$/){ sub(/"/,"",res); sub(/"$/,"",res) }
+--        if(res ~ /^\'.*\'$/){ sub("'","",res); sub("'$/","",res) }
+--        if(res != "") print res
+-+        # remove surrounding quotes
+-+        if(res ~ /^".*"$/){ sub(/^"/,"",res); sub(/"$/,"",res) }
+-+        if(res ~ /^'\''.*'\''$/){ sub(/^'\''/,"",res); sub(/'\''$/,"",res) }
+-+        if(res != "") print res
+-      }
+-    ' "$ENV_FILE" || true)
+-@@
+- echo "Deployment complete. Remember: secrets were set using wrangler secret put; verify in Cloudflare Dashboard if needed."
+-*** End Patch
+-PATCH
+*** End Patch
+PATCH

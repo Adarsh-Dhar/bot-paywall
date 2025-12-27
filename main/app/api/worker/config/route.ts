@@ -71,14 +71,14 @@ export async function GET(request: NextRequest) {
     const domain = hostname.replace(/^www\./, '');
 
     // Find project by domain name
-    const project = await prisma.project.findFirst({
+    const project = await prisma.projects.findFirst({
       where: {
         name: domain,
       },
       include: {
-        user: {
+        users: {
           include: {
-            cloudflareTokens: true, // Single optional record (one-to-one relation)
+            cloudflare_tokens: true,
           },
         },
       },
@@ -98,9 +98,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tokenRecords = project.user.cloudflareTokens;
-    // cloudflareTokens is a single optional record (one-to-one relation), not an array
-    const tokenRecord = tokenRecords && tokenRecords.isActive ? tokenRecords : null;
+    const tokenRecord = project.users?.cloudflare_tokens && project.users.cloudflare_tokens.isActive
+      ? project.users.cloudflare_tokens
+      : null;
     if (!tokenRecord) {
       return NextResponse.json(
         { error: `Cloudflare token not found for project owner` },

@@ -28,27 +28,42 @@ export default {
 
       console.log("Request received", { ip: clientIP, path: url.pathname, hostname });
 
-      // Get configuration from database
+      // 1. Get configuration from DB (might fail)
       const config = await getConfig(hostname, env);
-      if (!config) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Configuration not found", 
-            message: `No configuration found for domain: ${hostname}. Please ensure the domain is registered in the system.` 
-          }),
-          { 
-            status: 503,
-            headers: { "Content-Type": "application/json" }
-          }
-        );
+
+      // 2. Extract credentials from Request Headers (Sent by Scraper)
+      // This acts as a fallback or override
+      const headerZoneId = request.headers.get('x-zone-id');
+      const headerSecret = request.headers.get('x-secret-key');
+
+      // 3. Determine which credentials to use
+      // Use header values if present, otherwise fall back to config
+      const activeZoneId = headerZoneId || config?.zoneId;
+      const activeToken = headerSecret || config?.cloudflareToken;
+
+      // Check if we have enough info to proceed
+      if (!activeZoneId || !activeToken) {
+        // Fallback to error if neither config nor headers provided data
+        if (!config) {
+          return new Response(
+            JSON.stringify({
+              error: "Configuration not found",
+              message: `No configuration found for domain: ${hostname}. Please ensure the domain is registered in the system.`
+            }),
+            {
+              status: 503,
+              headers: { "Content-Type": "application/json" }
+            }
+          );
+        }
       }
 
-      // Check if IP is whitelisted (using Cloudflare API)
-      const isWhitelisted = await checkWhitelist(clientIP, config.zoneId, config.cloudflareToken);
-      
+      // 4. Check Whitelist using the determined credentials
+      const isWhitelisted = await checkWhitelist(clientIP, activeZoneId, activeToken);
+
       if (isWhitelisted) {
         console.log("IP whitelisted, allowing access", { ip: clientIP });
-        return forwardToOrigin(request, config.originUrl || url.origin);
+        return forwardToOrigin(request, config?.originUrl || url.origin);
       }
 
       // Check if it's a bot
@@ -58,13 +73,18 @@ export default {
 
       if (isBot) {
         console.log("Bot detected, requiring payment", { ip: clientIP });
-        return generate402Response(clientIP, url.pathname, config);
+        return generate402Response(clientIP, url.pathname, config || {
+          paymentAddress: env.PAYMENT_ADDRESS || DEFAULT_CONFIG.PAYMENT_ADDRESS,
+          priceAmount: env.PRICE_AMOUNT || DEFAULT_CONFIG.PRICE_AMOUNT,
+          priceCurrency: env.PRICE_CURRENCY || DEFAULT_CONFIG.PRICE_CURRENCY,
+          accessServerUrl: env.ACCESS_SERVER_URL || DEFAULT_CONFIG.ACCESS_SERVER_URL,
+        });
       }
 
       // Allow humans
       console.log("Human traffic allowed", { ip: clientIP });
-      return forwardToOrigin(request, config.originUrl || url.origin);
-      
+      return forwardToOrigin(request, config?.originUrl || url.origin);
+
     } catch (error) {
       // Don't crash - return error response
       console.error("Worker error:", error.message, error.stack);
@@ -188,10 +208,11 @@ async function getConfig(hostname, env) {
 // Check if IP is whitelisted using Cloudflare API
 async function checkWhitelist(clientIP, zoneId, cloudflareToken) {
   if (!clientIP || !zoneId || !cloudflareToken) {
-    console.error('Missing required parameters for whitelist check', { 
-      hasIP: !!clientIP, 
+    console.error('Missing required parameters for whitelist check. Cannot verify IP against Cloudflare.', {
+      hasIP: !!clientIP,
       hasZoneId: !!zoneId, 
-      hasToken: !!cloudflareToken 
+      hasToken: !!cloudflareToken,
+      hint: 'Ensure x-zone-id and x-secret-key headers are sent, or configure via environment/API.'
     });
     return false;
   }

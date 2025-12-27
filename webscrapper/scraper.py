@@ -77,6 +77,34 @@ def log(message, level="INFO"):
     icon = icons.get(level, "  ")
     print(f"[{timestamp}] {icon} {message}")
 
+def get_project_credentials(project_id):
+    """
+    Fetch full project details including secrets from the main app.
+    """
+    try:
+        # Assuming your API has an endpoint that returns the secrets for a specific project
+        # You might need to adjust the endpoint path based on your API routes
+        url = f"{CONFIG['main_app_url']}/api/projects/{project_id}"
+
+        log(f"Fetching credentials for project {project_id}...", "INFO")
+        response = requests.get(url, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            # Handle different API response structures
+            project = data.get('project', data)
+            return {
+                'url': project.get('websiteUrl'),
+                'zone_id': project.get('zoneId'),
+                'secret_key': project.get('secretKey')  # or 'api_keys' based on your schema
+            }
+        else:
+            log(f"Failed to fetch project credentials: {response.status_code}", "ERROR")
+            return None
+    except Exception as e:
+        log(f"Error fetching credentials: {e}", "ERROR")
+        return None
+
 def get_payment_info():
     """
     Get payment information from access server.
@@ -309,18 +337,24 @@ def buy_access(scraper_ip, domain):
         traceback.print_exc()  # Print full error for debugging
         return False
 
-def scrape(url):
+def scrape(url, auth_headers=None):
     """
-    Attempt to scrape the URL.
+    Attempt to scrape the URL with optional auth headers.
     Returns (success, content, status_code).
     """
     try:
         log(f"Scraping: {url}", "SCRAPE")
-        
-        response = requests.get(url, headers=BOT_HEADERS, timeout=30)
-        
+
+        # Merge BOT_HEADERS with auth_headers if provided
+        headers = BOT_HEADERS.copy()
+        if auth_headers:
+            headers.update(auth_headers)
+            log("Attached authentication headers (Zone ID & Secret)", "LOCK")
+
+        response = requests.get(url, headers=headers, timeout=30)
+
         log(f"Status: {response.status_code}", "INFO")
-        
+
         if response.status_code == 200:
             log(f"Success! Got {len(response.text)} characters", "SUCCESS")
             return True, response.text, 200
@@ -334,7 +368,7 @@ def scrape(url):
         else:
             log(f"Failed with status {response.status_code}", "ERROR")
             return False, None, response.status_code
-            
+
     except Exception as e:
         log(f"Error: {e}", "ERROR")
         return False, None, 0
@@ -597,7 +631,7 @@ ABOUT THIS SCRAPER:
 
 def main():
     """Main scraping flow with x402 payment."""
-    
+
     # Parse command line arguments
     args = parse_arguments()
 
@@ -612,7 +646,8 @@ def main():
         list_available_projects()
         return 0
 
-    # Determine target URL
+    # Configuration variables
+    auth_headers = None
     target_url = CONFIG['target_url']
 
     if args.url:
@@ -620,13 +655,23 @@ def main():
         if not target_url.startswith('http'):
             target_url = 'https://' + target_url
     elif args.project:
-        project_url = get_project_url(args.project)
-        if project_url:
-            target_url = project_url
-            log(f"Resolved project '{args.project}' to URL: {target_url}", "INFO")
+        # Fetch URL AND Credentials
+        creds = get_project_credentials(args.project)
+        if creds:
+            target_url = creds['url']
+            # Create the headers the Worker expects
+            auth_headers = {
+                'x-zone-id': creds['zone_id'],
+                'x-secret-key': creds['secret_key']
+            }
+            log(f"Resolved Project: {target_url}", "INFO")
         else:
-            log(f"Could not resolve project: {args.project}", "ERROR")
-            return 1
+            # Fallback to old logic if credentials fetch fails
+            project_url = get_project_url(args.project)
+            if project_url:
+                target_url = project_url
+            else:
+                return 1
 
     # Update CONFIG with resolved URL
     CONFIG['target_url'] = target_url
@@ -638,15 +683,15 @@ def main():
     print(f"Access Server: {CONFIG['access_server_url']}")
     print("-" * 80)
     print()
-    
+
     # =========================================================================
     # STEP 1: Try to scrape (should get 402)
     # =========================================================================
     print("STEP 1: Initial scrape attempt")
     print("-" * 40)
-    
-    success, content, status = scrape(CONFIG['target_url'])
-    
+
+    success, content, status = scrape(CONFIG['target_url'], auth_headers)
+
     if success:
         log("Unexpected success - paywall not active?", "INFO")
         log("Saving content anyway...", "SAVE")
@@ -654,13 +699,13 @@ def main():
             f.write(content)
         log("Saved to scraped_content.html", "SUCCESS")
         return 0
-    
+
     if status != 402:
         log("Expected 402 Payment Required, got different error", "ERROR")
         return 1
-    
+
     log("As expected, got blocked (needs payment)", "INFO")
-    
+
     # Extract the client IP from the 402 response
     client_ip = extract_client_ip(content)
     if client_ip:
@@ -668,40 +713,40 @@ def main():
     else:
         log("Could not detect client IP from response", "ERROR")
         log("Will let access server detect it", "INFO")
-    
+
     # Extract domain from target URL
     target_domain = extract_domain_from_url(CONFIG['target_url'])
     if not target_domain:
         log("Could not extract domain from target URL", "ERROR")
         return 1
-    
+
     log(f"Extracted domain: {target_domain}", "INFO")
-    
+
     print()
-    
+
     # =========================================================================
     # STEP 2: Get payment information
     # =========================================================================
     print("STEP 2: Getting payment information")
     print("-" * 40)
-    
+
     payment_info = get_payment_info()
     if payment_info:
         log("Payment details:", "INFO")
         log(f"   Amount: {payment_info.get('amount_move', 'unknown')} MOVE", "INFO")
         log(f"   Address: {payment_info.get('payment_address', 'unknown')}", "INFO")
         log(f"   Network: {payment_info.get('network', 'unknown')}", "INFO")
-    
+
     print()
-    
+
     # =========================================================================
     # STEP 3: Purchase access (x402 payment + whitelisting)
     # =========================================================================
     print("STEP 3: Purchasing access")
     print("-" * 40)
-    
+
     access_granted = buy_access(client_ip, target_domain)
-    
+
     if not access_granted:
         log("Access not granted - check access server logs", "ERROR")
         log("Make sure:", "INFO")
@@ -709,19 +754,19 @@ def main():
         log("  2. You have sufficient MOVE tokens", "INFO")
         log("  3. Your wallet is configured correctly", "INFO")
         return 1
-    
+
     print()
-    
+
     # =========================================================================
     # STEP 4: Wait for whitelisting to propagate
     # =========================================================================
     print("STEP 4: Waiting for whitelisting to propagate")
     print("-" * 40)
-    
+
     wait_time = CONFIG['wait_after_payment']
     log(f"Waiting {wait_time} seconds...", "WAIT")
     time.sleep(wait_time)
-    
+
     # Check access status
     if client_ip:
         is_whitelisted = check_access_status(client_ip, target_domain)
@@ -729,45 +774,45 @@ def main():
             log(f"IP {client_ip} is now whitelisted", "SUCCESS")
         else:
             log(f"IP {client_ip} not yet whitelisted (may need more time)", "INFO")
-    
+
     print()
-    
+
     # =========================================================================
     # STEP 5: Retry scrape (should succeed)
     # =========================================================================
     print("STEP 5: Retry scraping")
     print("-" * 40)
-    
+
     for attempt in range(1, CONFIG['max_retries'] + 1):
         log(f"Attempt {attempt}/{CONFIG['max_retries']}", "INFO")
-        
-        success, content, status = scrape(CONFIG['target_url'])
-        
+
+        success, content, status = scrape(CONFIG['target_url'], auth_headers)
+
         if success:
             print()
             print("=" * 80)
             print("SUCCESS!")
             print("=" * 80)
             log(f"Content length: {len(content)} characters", "INFO")
-            
+
             # Save to file
             with open('scraped_content.html', 'w', encoding='utf-8') as f:
                 f.write(content)
             log("Saved to scraped_content.html", "SAVE")
-            
+
             # Show preview
             print()
             print("Content preview (first 300 chars):")
             print("-" * 40)
             print(content[:300])
             print("-" * 40)
-            
+
             return 0
-        
+
         if attempt < CONFIG['max_retries']:
             log(f"Still blocked, waiting {CONFIG['retry_delay']} seconds before retry...", "WAIT")
             time.sleep(CONFIG['retry_delay'])
-    
+
     print()
     log("Still blocked after all retries!", "ERROR")
     log("Possible issues:", "INFO")
@@ -775,7 +820,7 @@ def main():
     log("  - Cloudflare cache not cleared", "INFO")
     log("  - Wrong IP detected", "INFO")
     log("  - Access server issue", "INFO")
-    
+
     return 1
 
 # =============================================================================

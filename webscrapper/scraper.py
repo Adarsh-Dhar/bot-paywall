@@ -14,11 +14,12 @@ CONFIGURATION:
     - main_app_url: Bot-paywall main app for fetching projects (default: http://localhost:3000)
 
 USAGE:
-    python scraper.py                           # Use default target URL
-    python scraper.py --url https://example.com # Specify a target URL
-    python scraper.py --project 1               # Use bot-paywall project by index
-    python scraper.py --project example.com     # Use bot-paywall project by domain
-    python scraper.py --list-projects           # List all bot-paywall projects
+        python scraper.py                           # Use default target URL
+        python scraper.py --url https://example.com # Specify a target URL
+        python scraper.py --project https://test-cloudflare-website.adarsh.software/  # Use URL to find project
+        python scraper.py --project test-cloudflare-website.adarsh.software           # Use domain to find project
+        python scraper.py --list-projects           # List all bot-paywall projects
+
 """
 
 import requests
@@ -77,16 +78,26 @@ def log(message, level="INFO"):
     icon = icons.get(level, "  ")
     print(f"[{timestamp}] {icon} {message}")
 
-def get_project_credentials(project_id):
+def get_project_credentials(project_url_or_domain):
     """
     Fetch full project details including secrets from the main app.
     Uses the public endpoint that doesn't require authentication.
     Returns zone_id and secret_key needed for Cloudflare whitelisting.
+
+    Args:
+        project_url_or_domain: URL (e.g., https://example.com/) or domain name (e.g., example.com)
     """
     try:
-        url = f"{CONFIG['main_app_url']}/api/projects/public?id={project_id}"
+        # Extract domain from URL if a full URL is provided
+        domain = extract_domain_from_url(project_url_or_domain) if project_url_or_domain.startswith('http') else project_url_or_domain
 
-        log(f"Fetching credentials for project {project_id}...", "INFO")
+        if not domain:
+            log(f"Could not extract domain from: {project_url_or_domain}", "ERROR")
+            return None
+
+        url = f"{CONFIG['main_app_url']}/api/projects/public?domain={domain}"
+
+        log(f"Fetching credentials for domain {domain}...", "INFO")
         response = requests.get(url, timeout=10)
 
         if response.status_code == 200:
@@ -116,7 +127,7 @@ def get_project_credentials(project_id):
                 'secret_key': secret_key
             }
         elif response.status_code == 404:
-            log(f"Project not found: {project_id}", "ERROR")
+            log(f"Project not found for domain: {domain}", "ERROR")
             return None
         else:
             log(f"Failed to fetch project credentials: {response.status_code}", "ERROR")
@@ -610,8 +621,9 @@ ABOUT THIS SCRAPER:
     parser.add_argument(
         '--project', '-p',
         type=str,
-        help='Bot-paywall project to scrape: by index (1,2...), domain name, or project ID'
+        help='Bot-paywall project to scrape: by URL (https://example.com) or domain name (example.com)'
     )
+
 
     parser.add_argument(
         '--list-projects', '-l',

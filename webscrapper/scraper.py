@@ -666,7 +666,6 @@ def main():
     CONFIG['max_retries'] = args.max_retries
 
     # Configuration variables
-    # Configuration variables
     auth_headers = None
     target_url = CONFIG['target_url']
     zone_id = None
@@ -687,46 +686,33 @@ def main():
             log(f"Could not resolve project: {args.project}", "ERROR")
             return 1
 
-
-
     CONFIG['target_url'] = target_url
 
-    print("SIMPLE BOT SCRAPER - x402 Payment Flow")
+    print("\nSIMPLE BOT SCRAPER - x402 Payment Flow")
     print("=" * 80)
     print(f"Target: {CONFIG['target_url']}")
     print(f"Access Server: {CONFIG['access_server_url']}")
     print("-" * 80)
     print()
 
+# =========================================================================
+    # STEP 1: Get client IP (BEFORE payment)
     # =========================================================================
-    # STEP 1: Try to scrape (should get 402)
-    # =========================================================================
-    print("STEP 1: Initial scrape attempt")
+    print("STEP 1: Detecting client IP")
     print("-" * 40)
 
-    success, content, status = scrape(CONFIG['target_url'], auth_headers)
-
-    if success:
-        log("Unexpected success - paywall not active?", "INFO")
-        log("Saving content anyway...", "SAVE")
-        with open('scraped_content.html', 'w') as f:
-            f.write(content)
-        log("Saved to scraped_content.html", "SUCCESS")
-        return 0
-
-    if status != 402:
-        log("Expected 402 Payment Required, got different error", "ERROR")
-        return 1
-
-    log("As expected, got blocked (needs payment)", "INFO")
-
-    # Extract the client IP from the 402 response
-    client_ip = extract_client_ip(content)
-    if client_ip:
-        log(f"Detected client IP: {client_ip}", "INFO")
-    else:
-        log("Could not detect client IP from response", "ERROR")
-        log("Will let access server detect it", "INFO")
+    # Get your actual public IP from an external service
+    client_ip = None
+    try:
+        response = requests.get('https://api.ipify.org?format=json', timeout=5)
+        if response.status_code == 200:
+            client_ip = response.json().get('ip')
+            log(f"Detected public IP: {client_ip}", "INFO")
+        else:
+            log("Could not detect public IP, access server will auto-detect", "INFO")
+    except Exception as e:
+        log(f"Could not fetch public IP: {e}", "INFO")
+        log("Access server will auto-detect", "INFO")
 
     # Extract domain from target URL
     target_domain = extract_domain_from_url(CONFIG['target_url'])
@@ -735,7 +721,6 @@ def main():
         return 1
 
     log(f"Extracted domain: {target_domain}", "INFO")
-
     print()
 
     # =========================================================================
@@ -750,13 +735,12 @@ def main():
         log(f"   Amount: {payment_info.get('amount_move', 'unknown')} MOVE", "INFO")
         log(f"   Address: {payment_info.get('payment_address', 'unknown')}", "INFO")
         log(f"   Network: {payment_info.get('network', 'unknown')}", "INFO")
-
     print()
 
     # =========================================================================
-    # STEP 3: Purchase access (x402 payment + whitelisting)
+    # STEP 3: Purchase access and whitelist IP (BEFORE scraping)
     # =========================================================================
-    print("STEP 3: Purchasing access")
+    print("STEP 3: Purchasing access and whitelisting IP")
     print("-" * 40)
 
     access_granted = buy_access(client_ip, target_domain, zone_id, secret_key)
@@ -778,23 +762,23 @@ def main():
     print("-" * 40)
 
     wait_time = CONFIG['wait_after_payment']
-    log(f"Waiting {wait_time} seconds...", "WAIT")
+    log(f"Waiting {wait_time} seconds for Cloudflare to propagate the whitelist rule...", "WAIT")
     time.sleep(wait_time)
 
     # Check access status
     if client_ip:
         is_whitelisted = check_access_status(client_ip, target_domain)
         if is_whitelisted:
-            log(f"IP {client_ip} is now whitelisted", "SUCCESS")
+            log(f"✓ IP {client_ip} is now whitelisted", "SUCCESS")
         else:
-            log(f"IP {client_ip} not yet whitelisted (may need more time)", "INFO")
+            log(f"IP {client_ip} status check inconclusive (proceeding with scrape)", "INFO")
 
     print()
 
     # =========================================================================
-    # STEP 5: Retry scrape (should succeed)
+    # STEP 5: Scrape the website (NOW that IP is whitelisted)
     # =========================================================================
-    print("STEP 5: Retry scraping")
+    print("STEP 5: Scraping website")
     print("-" * 40)
 
     for attempt in range(1, CONFIG['max_retries'] + 1):
@@ -830,10 +814,10 @@ def main():
     print()
     log("Still blocked after all retries!", "ERROR")
     log("Possible issues:", "INFO")
-    log("  - Whitelisting not propagated yet (wait longer)", "INFO")
-    log("  - Cloudflare cache not cleared", "INFO")
-    log("  - Wrong IP detected", "INFO")
-    log("  - Access server issue", "INFO")
+    log("  - Cloudflare whitelist rule not created", "INFO")
+    log("  - Wrong IP detected or auto-detected", "INFO")
+    log("  - Cloudflare cache needs more time", "INFO")
+    log("  - Access server error", "INFO")
 
     return 1
 

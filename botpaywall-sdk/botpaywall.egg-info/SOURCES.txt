@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+botpaywall/__init__.py
+botpaywall/client.py
+botpaywall/config.py
+botpaywall/payment.py
+botpaywall/utils.py
+botpaywall.egg-info/PKG-INFO
+botpaywall.egg-info/SOURCES.txt
+botpaywall.egg-info/dependency_links.txt
+botpaywall.egg-info/requires.txt
+botpaywall.egg-info/top_level.txt
+examples/simple_scraper.py

@@ -9,8 +9,23 @@ import sys
 import argparse
 from scraper import WebScraper
 from utils import validate_url, save_to_file
+import os
 import logging
+from botpaywall import BotPaywallClient  #added
+from botpaywall.utils import extract_domain_from_url  #added
 
+
+# Load environment variables from .env file
+from pathlib import Path
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                value = value.strip().strip('"').strip("'")
+                os.environ[key] = value
 
 # Configure logging
 logging.basicConfig(
@@ -19,6 +34,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Configuration
+CONFIG = {
+    'access_server_url': 'http://localhost:5000',
+    'main_app_url': 'http://localhost:3000',
+    'max_retries': 3,
+    'wait_after_payment': 10,
+}
 
 def main():
     """Main function to run the web scraper"""
@@ -74,9 +96,42 @@ Examples:
         logger.error(f"Invalid URL: {args.url}")
         sys.exit(1)
 
+    private_key = os.environ.get('WALLET_PRIVATE_KEY')
+
+    if not private_key:
+        logger.error("Private key not provided. Set WALLET_PRIVATE_KEY in .env ")
+        sys.exit(1)
+
+        # Initialize SDK client with actual implementation
+    client = BotPaywallClient(
+        access_server_url=CONFIG['access_server_url'],
+        main_app_url=CONFIG['main_app_url'],
+        private_key=private_key,
+        wait_after_payment=CONFIG['wait_after_payment'],
+        max_retries=CONFIG['max_retries'],
+    )
+
+
     try:
-        # Initialize scraper
-        logger.info(f"Starting to scrape: {args.url}")
+        logger.info(f"Checking paywall status for: {args.url}")
+        # Extract domain from URL
+        target_domain = extract_domain_from_url(args.url)
+        if not target_domain:
+            logger.error("Could not extract domain from URL")
+            sys.exit(1)
+
+        # Buy access using SDK
+        result = client.buy_access(domain=target_domain)
+
+        if not result['success']:
+            logger.error(f"Access not granted: {result.get('error')}")
+            sys.exit(1)
+
+        # Wait for propagation
+        client.wait_for_propagation()
+
+        # Initialize scraper with optional access token
+        logger.info(f"Starting to scrape: {args.url}") # end
         scraper = WebScraper(args.url)
 
         # Scrape the website

@@ -31,6 +31,78 @@ export interface UserCloudflareToken {
 }
 
 /**
+ * Fetch account ID and token name from Cloudflare API
+ */
+async function fetchTokenMetadata(token: string): Promise<{
+  accountId: string | null;
+  tokenName: string | null;
+}> {
+  try {
+    const cleanToken = token.trim().replace(/[\r\n\t\s]+/g, '');
+    let tokenName = null;
+    let accountId = null;
+
+    // Fetch token name
+    try {
+      const verifyResponse = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${cleanToken}`, 'Content-Type': 'application/json' },
+      });
+
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+        if (verifyData.success && verifyData.result) {
+          tokenName = verifyData.result.name || 'API Token';
+        }
+      }
+    } catch (e) {
+      console.warn('Token verify failed:', e instanceof Error ? e.message : e);
+    }
+
+    // Fetch account ID
+    try {
+      const accountsResponse = await fetch('https://api.cloudflare.com/client/v4/accounts', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${cleanToken}`, 'Content-Type': 'application/json' },
+      });
+
+      if (accountsResponse.ok) {
+        const accountsData = await accountsResponse.json();
+        if (accountsData.success && accountsData.result && accountsData.result.length > 0) {
+          accountId = accountsData.result[0].id;
+        }
+      }
+    } catch (e) {
+      console.warn('Accounts endpoint failed:', e instanceof Error ? e.message : e);
+    }
+
+    // Fallback: try zones endpoint
+    if (!accountId) {
+      try {
+        const zonesResponse = await fetch('https://api.cloudflare.com/client/v4/zones?per_page=1', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${cleanToken}`, 'Content-Type': 'application/json' },
+        });
+
+        if (zonesResponse.ok) {
+          const zonesData = await zonesResponse.json();
+          if (zonesData.success && zonesData.result && zonesData.result.length > 0) {
+            accountId = zonesData.result[0].account?.id || null;
+          }
+        }
+      } catch (zonesError) {
+        console.warn('Zones endpoint failed:', zonesError instanceof Error ? zonesError.message : zonesError);
+      }
+    }
+
+    return { accountId, tokenName };
+  } catch (error) {
+    console.error('fetchTokenMetadata error:', error);
+    return { accountId: null, tokenName: null };
+  }
+}
+
+/**
  * Validate a Cloudflare API token by making a test API call
  */
 async function validateCloudflareToken(token: string): Promise<{
@@ -210,6 +282,7 @@ export async function getCloudflareTokenStatus(): Promise<{ hasToken: boolean; i
 
 /**
  * Get user's Cloudflare token info (compatible shape)
+ * NOW FETCHES ACCOUNT ID AND TOKEN NAME DYNAMICALLY FROM CLOUDFLARE API
  */
 export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken | null> {
   try {
@@ -222,13 +295,17 @@ export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken 
       select: { id: true, api_keys: true, createdAt: true, updatedAt: true },
     });
 
-    if (!projectWithToken) return null;
+    if (!projectWithToken || !projectWithToken.api_keys) return null;
+
+    // Decrypt token and fetch metadata from Cloudflare
+    const decryptedToken = decryptToken(projectWithToken.api_keys);
+    const { accountId, tokenName } = await fetchTokenMetadata(decryptedToken);
 
     return {
       id: projectWithToken.id,
       userId,
-      accountId: null,
-      tokenName: 'API Token',
+      accountId,
+      tokenName: tokenName || 'API Token',
       permissions: ['Zone:Read', 'Zone:Edit'],
       isActive: true,
       lastVerified: projectWithToken.updatedAt,

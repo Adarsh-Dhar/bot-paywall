@@ -20,7 +20,7 @@ export default async function Home() {
     status: string;
     nameservers: string;
     lastUpdated: string;
-    websiteUrl: string;
+    websiteUrl?: string | null;
     requestsCount?: number;
   };
 

@@ -16,7 +16,6 @@ const rule = {
 const botAttempts: Array<{ domain: string; botType: string; time: string; action: string }> = [];
 const blockedAttempts: Array<{ source: string; reason: string; time: string }> = [];
 const deploymentLogs: string[] = [];
-const navItems = ["Dashboard", "Domains", "Protection", "Analytics", "Settings"];
 
 interface ProtectedDomain {
   id: string;
@@ -53,53 +52,22 @@ export default function DashboardClient({
     <div className="min-h-screen bg-transparent text-zinc-50">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-10">
         <aside className="sticky top-10 hidden h-[calc(100vh-80px)] w-64 shrink-0 lg:block">
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur card-surface">
-            <div className="glow" />
-            <div className="relative space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#f5c518]/30 bg-[#f5c518]/15 text-lg font-semibold text-[#f5c518]">
-                  GK
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400">Gatekeeper</p>
-                  <p className="text-lg font-semibold">Bot Firewall</p>
-                </div>
-              </div>
-              <div className="divider" />
-              <nav className="space-y-2">
-                {navItems.map((item, idx) => (
-                  <div
-                    key={item}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors cursor-pointer ${
-                      idx === 0
-                        ? "bg-white/10 text-white border border-white/10"
-                        : "hover:bg-white/5 text-zinc-300"
-                    }`}
-                    onClick={() => {
-                      if (idx === 1) router.push('/domains');
-                    }}
-                  >
-                    <span>{item}</span>
-                    {idx === 0 && (
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-[#f5c518]">
-                        Live
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </nav>
-              <div className="divider" />
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-zinc-300">
-                <p className="font-semibold text-white">Connect Cloudflare</p>
-                <p className="mt-1 text-zinc-400">
-                  Connect your Cloudflare account to enable bot protection.
-                </p>
-                <button onClick={handleConnectCloudflare} className="mt-4 w-full rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-3 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
-                  Connect Now
-                </button>
-              </div>
-            </div>
-          </div>
+          {/*<div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur card-surface">*/}
+          {/*  <div className="glow" />*/}
+          {/*  <div className="relative space-y-6">*/}
+          {/*    <div className="flex items-center gap-3">*/}
+          {/*      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#f5c518]/30 bg-[#f5c518]/15 text-lg font-semibold text-[#f5c518]">*/}
+          {/*        GK*/}
+          {/*      </div>*/}
+          {/*      <div>*/}
+          {/*        <p className="text-sm text-zinc-400">Gatekeeper</p>*/}
+          {/*        <p className="text-lg font-semibold">Bot Firewall</p>*/}
+          {/*      </div>*/}
+          {/*    </div>*/}
+          {/*    <div className="divider" />*/}
+
+          {/*  </div>*/}
+          {/*</div>*/}
         </aside>
 
         <main className="flex-1 space-y-8">
@@ -117,9 +85,6 @@ export default function DashboardClient({
                 className="rounded-lg border border-emerald-400/40 bg-emerald-400/20 px-4 py-2 text-sm font-semibold text-emerald-400 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-400/25"
               >
                 Manage Domains
-              </button>
-              <button className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
-                Documentation
               </button>
               <button onClick={handleConnectCloudflare} className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
                 Connect Cloudflare

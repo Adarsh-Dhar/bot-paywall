@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { encryptToken } from '@/lib/token-encryption';
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
 
@@ -206,7 +207,7 @@ export async function saveProjectWithToken(
             nameservers: nameservers || [],
             status: 'ACTIVE',
             updatedAt: new Date(),
-            api_keys: cleanedToken,
+            api_keys: encryptToken(cleanedToken),
           },
         });
       } else {
@@ -223,7 +224,8 @@ export async function saveProjectWithToken(
             status: 'ACTIVE',
             secretKey: secretKey,
             requestsCount: 0,
-            api_keys: cleanedToken,
+            api_keys: encryptToken(cleanedToken),
+
           },
         });
       }

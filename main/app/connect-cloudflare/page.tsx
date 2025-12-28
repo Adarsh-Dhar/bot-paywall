@@ -241,7 +241,7 @@ export default function ConnectCloudflarePage() {
   }
 
   function handleComplete() {
-    router.push('/dashboard');
+    router.push('/');
   }
 
   function copyToClipboard(text: string) {
@@ -411,7 +411,7 @@ export default function ConnectCloudflarePage() {
                       <div className="flex items-center">
                         <span className="text-zinc-400 w-32">Zone</span>
                         <span className="text-zinc-500 mx-2">→</span>
-                        <span className="text-zinc-300">Zone</span>
+                        <span className="text-zinc-300">Firewall Services</span>
                         <span className="text-zinc-500 mx-2">→</span>
                         <span className="text-emerald-400 font-semibold">Edit</span>
                       </div>
@@ -531,17 +531,19 @@ export default function ConnectCloudflarePage() {
                   Domain Name <span className="text-red-400">*</span>
                 </label>
                 <input
-                  type="text"
-                  id="domainName"
-                  value={domainName}
-                  onChange={(e) => setDomainName(e.target.value)}
-                  placeholder="example.com"
-                  className="w-full px-4 py-2 border border-white/20 bg-white/5 text-white rounded-md focus:ring-2 focus:ring-[#f5c518]/40 focus:border-[#f5c518]/60 placeholder-zinc-500"
-                  disabled={lookingUpZone}
+                    type="text"
+                    id="domainName"
+                    value={domainName}
+                    readOnly
+                    placeholder="example.com"
+                    className="w-full px-4 py-2 border border-white/20 bg-white/10 text-zinc-300 rounded-md cursor-not-allowed placeholder-zinc-500"
                 />
+
+
                 <p className="mt-1 text-xs text-zinc-400">
-                  The domain name (auto-filled from URL)
+                  Auto-generated from website URL (not editable)
                 </p>
+
               </div>
 
               {/* API Token */}

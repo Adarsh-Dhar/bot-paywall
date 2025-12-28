@@ -53,8 +53,8 @@ CONFIG = {
 # =============================================================================
 
 BOT_HEADERS = {
-    'User-Agent': 'SimpleBot/1.0 python-requests',  # Clear bot identifier
-    'Accept': '*/*',  # Bot-like accept header
+    'User-Agent': 'BotPaywall-Scraper/1.0 python-requests',  # Explicitly identifies as scraper for Worker bot detection
+    'Accept': 'application/json',  # Bot-like accept header
 }
 
 # =============================================================================
@@ -81,9 +81,9 @@ def get_project_credentials(project_id):
     """
     Fetch full project details including secrets from the main app.
     Uses the public endpoint that doesn't require authentication.
+    Returns zone_id and secret_key needed for Cloudflare whitelisting.
     """
     try:
-        # Use the public endpoint with id query parameter (no auth required)
         url = f"{CONFIG['main_app_url']}/api/projects/public?id={project_id}"
 
         log(f"Fetching credentials for project {project_id}...", "INFO")
@@ -100,10 +100,20 @@ def get_project_credentials(project_id):
                 log("No project data in response", "ERROR")
                 return None
 
+            zone_id = project.get('zoneId')
+            secret_key = project.get('secretKey')
+
+            if not zone_id or not secret_key:
+                log("Missing zoneId or secretKey in project data", "ERROR")
+                return None
+
+            log(f"✓ Zone ID: {zone_id[:20]}...", "SUCCESS")
+            log(f"✓ API Token: {secret_key[:20]}...", "SUCCESS")
+
             return {
                 'url': project.get('websiteUrl'),
-                'zone_id': project.get('zoneId'),
-                'secret_key': project.get('secretKey')
+                'zone_id': zone_id,
+                'secret_key': secret_key
             }
         elif response.status_code == 404:
             log(f"Project not found: {project_id}", "ERROR")
@@ -119,6 +129,7 @@ def get_project_credentials(project_id):
     except Exception as e:
         log(f"Error fetching credentials: {e}", "ERROR")
         return None
+
 
 
 def get_payment_info():
@@ -210,148 +221,146 @@ def make_blockchain_payment(payment_address, amount):
     # Run the async function
     return asyncio.run(_make_payment())        
 
-def buy_access(scraper_ip, domain):
+def buy_access(scraper_ip, domain, zone_id=None, secret_key=None):
     """
     Purchase access for scraper IP.
     Args:
         scraper_ip: The IP address of the scraper
-        domain: The domain name (e.g., 'test-cloudflare-website.adarsh.software')
+        domain: The domain name
+        zone_id: Cloudflare Zone ID (required for whitelisting)
+        secret_key: Cloudflare API token (required for whitelisting)
     """
     try:
+        # Build request payload
+        payload = {
+            'scraper_ip': scraper_ip,
+            'domain': domain
+        }
+
+        # Add Cloudflare credentials if provided
+        if zone_id and secret_key:
+            payload['zone_id'] = zone_id
+            payload['secret_key'] = secret_key
+            log(f"Using Cloudflare credentials for zone: {zone_id[:20]}...", "INFO")
+        else:
+            log("WARNING: No Cloudflare credentials provided - whitelisting may fail", "ERROR")
+
         # First attempt - will get 402 with payment instructions
         response = requests.post(
             f"{CONFIG['access_server_url']}/buy-access",
-            json={
-                'scraper_ip': scraper_ip,
-                'domain': domain
-            },
+            json=payload,
             timeout=120
         )
-        
+
         if response.status_code == 402:
-            # Extract payment details from x402 response
             payment_header = response.headers.get('X-PAYMENT-RESPONSE')
             payment_data = response.json()
-            
+
             log("Making blockchain payment...", "PAYMENT")
-            
-            # Extract payment info from x402 response structure
-            # x402 response format: { 'x402Version': 1, 'accepts': [{ 'payTo': '...', 'maxAmountRequired': '...', ... }] }
+
             accepts = payment_data.get('accepts', [])
             if not accepts or len(accepts) == 0:
                 log(f"Invalid payment data: no accepts array found", "ERROR")
-                log(f"Full response: {payment_data}", "ERROR")
                 return False
-            
-            # Get the first payment option
+
             payment_option = accepts[0]
-            
-            # Extract payment address (payTo field in x402 format)
             payment_address = payment_option.get('payTo')
-            
-            # Extract amount (maxAmountRequired is in octas, convert to MOVE)
-            # 1000000 octas = 0.01 MOVE (8 decimal places)
             max_amount_octas = payment_option.get('maxAmountRequired')
+
             if max_amount_octas:
-                # Convert from octas to MOVE (divide by 100000000)
                 amount_move = int(max_amount_octas) / 100000000
             else:
                 amount_move = None
-            
+
             if not payment_address or not amount_move:
                 log(f"Invalid payment data: missing payTo or maxAmountRequired", "ERROR")
-                log(f"Payment option: {payment_option}", "ERROR")
-                log(f"Full response: {payment_data}", "ERROR")
                 return False
-            
+
             log(f"Payment Address: {payment_address}", "INFO")
             log(f"Amount: {amount_move} MOVE ({max_amount_octas} octas)", "INFO")
-            
-            # MAKE ACTUAL PAYMENT
-            # Pass amount in octas (the raw blockchain amount) as integer
+
+            # Make payment
             amount_octas_int = int(max_amount_octas)
             tx_hash = make_blockchain_payment(payment_address, amount_octas_int)
-            
+
             log(f"Payment made: {tx_hash}", "SUCCESS")
-            
-            # Wait a moment for transaction to be confirmed on blockchain
+
+            # Wait for blockchain confirmation
             log("Waiting for transaction confirmation...", "WAIT")
-            time.sleep(3)  # Wait 3 seconds for blockchain confirmation
-            
-            # Retry request WITH PAYMENT PROOF
-            # x402 middleware expects payment proof in header
+            time.sleep(3)
+
+            # Retry with payment proof AND Cloudflare credentials
+            retry_payload = {
+                'scraper_ip': scraper_ip,
+                'domain': domain,
+                'tx_hash': tx_hash
+            }
+
+            # Include Cloudflare credentials in retry
+            if zone_id and secret_key:
+                retry_payload['zone_id'] = zone_id
+                retry_payload['secret_key'] = secret_key
+
             log(f"Retrying request with payment proof: {tx_hash}", "INFO")
             response = requests.post(
                 f"{CONFIG['access_server_url']}/buy-access",
-                json={
-                    'scraper_ip': scraper_ip,
-                    'domain': domain,
-                    'tx_hash': tx_hash  # Include payment proof in body too
-                },
+                json=retry_payload,
                 headers={
-                    'X-PAYMENT-PROOF': tx_hash,  # x402 payment proof header
-                    'X-Payment-Proof': tx_hash,  # Alternative header format
-                    'X-Payment-Hash': tx_hash    # Another common format
+                    'X-PAYMENT-PROOF': tx_hash,
+                    'X-Payment-Proof': tx_hash,
+                    'X-Payment-Hash': tx_hash
                 },
                 timeout=120
             )
-            
+
             log(f"Response status: {response.status_code}", "INFO")
-            if response.status_code != 200:
-                try:
-                    error_data = response.json()
-                    log(f"Error response: {error_data}", "ERROR")
-                except:
-                    log(f"Error response text: {response.text}", "ERROR")
-            
+
             if response.status_code == 200:
                 data = response.json()
                 log("Access granted!", "SUCCESS")
                 log(f"   IP: {data.get('ip', 'unknown')}", "INFO")
                 log(f"   Status: {data.get('status', 'unknown')}", "INFO")
                 if 'rule_id' in data:
-                    log(f"   Rule ID: {data['rule_id']}", "INFO")
-                # Log transaction details if available
+                    log(f"   Cloudflare Rule ID: {data['rule_id']}", "SUCCESS")
                 if 'transaction' in data:
                     tx_info = data['transaction']
                     if 'hash' in tx_info:
                         log(f"   Transaction Hash: {tx_info['hash']}", "INFO")
-                    if 'url' in tx_info:
-                        log(f"   Transaction URL: {tx_info['url']}", "INFO")
                 return True
             else:
                 log(f"Failed after payment: {response.status_code}", "ERROR")
+                try:
+                    error_data = response.json()
+                    log(f"Error response: {error_data}", "ERROR")
+                except:
+                    log(f"Error response text: {response.text}", "ERROR")
                 return False
-        
+
         elif response.status_code == 200:
-            # Access granted (maybe already whitelisted)
             data = response.json()
             log("Access granted!", "SUCCESS")
             log(f"   IP: {data.get('ip', 'unknown')}", "INFO")
             log(f"   Status: {data.get('status', 'unknown')}", "INFO")
             return True
-        
+
         else:
-            # Other error
             log(f"Failed to purchase access: {response.status_code}", "ERROR")
             try:
                 error_data = response.json()
                 log(f"   Error: {error_data.get('error', 'unknown')}", "ERROR")
-                log(f"   Message: {error_data.get('message', 'unknown')}", "ERROR")
             except:
                 log(f"   Response: {response.text}", "ERROR")
-            
             return False
-            
+
     except requests.exceptions.Timeout:
-        log("Request timed out - x402 payment may take longer", "ERROR")
-        log("Please check the access server logs", "INFO")
+        log("Request timed out", "ERROR")
         return False
     except Exception as e:
         log(f"Error purchasing access: {e}", "ERROR")
         import traceback
-        traceback.print_exc()  # Print full error for debugging
+        traceback.print_exc()
         return False
+
 
 def scrape(url, auth_headers=None):
     """
@@ -657,8 +666,11 @@ def main():
     CONFIG['max_retries'] = args.max_retries
 
     # Configuration variables
+    # Configuration variables
     auth_headers = None
     target_url = CONFIG['target_url']
+    zone_id = None
+    secret_key = None
 
     if args.url:
         target_url = args.url
@@ -668,12 +680,14 @@ def main():
         creds = get_project_credentials(args.project)
         if creds:
             target_url = creds['url']
-            # Let the Worker fetch credentials from the database API
-            auth_headers = None
+            zone_id = creds['zone_id']
+            secret_key = creds['secret_key']
             log(f"Resolved Project: {target_url}", "INFO")
         else:
             log(f"Could not resolve project: {args.project}", "ERROR")
             return 1
+
+
 
     CONFIG['target_url'] = target_url
 
@@ -745,7 +759,7 @@ def main():
     print("STEP 3: Purchasing access")
     print("-" * 40)
 
-    access_granted = buy_access(client_ip, target_domain)
+    access_granted = buy_access(client_ip, target_domain, zone_id, secret_key)
 
     if not access_granted:
         log("Access not granted - check access server logs", "ERROR")

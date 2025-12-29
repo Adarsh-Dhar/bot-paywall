@@ -87,7 +87,7 @@ async function getConfig(hostname, env) {
   }
 
   // Use the API_BASE_URL defined in wrangler.toml
-  const apiBaseUrl = env.API_BASE_URL || env.API_URL || 'http://localhost:3000';
+  const apiBaseUrl = env.API_BASE_URL;
   const workerApiKey = env.WORKER_API_KEY;
 
   try {

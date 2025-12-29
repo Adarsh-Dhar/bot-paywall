@@ -22,7 +22,7 @@ export async function GET() {
     // Ensure cleanup service is running
     botCleanupService.start();
     
-    const allowedBots = await prisma.botsAllowed.findMany({
+    const allowedBots = await prisma.botAllowed.findMany({
       orderBy: { createdAt: 'desc' },
     });
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Ensure cleanup service is running
     botCleanupService.start();
 
-    const existingBot = await prisma.botsAllowed.findUnique({
+    const existingBot = await prisma.botAllowed.findUnique({
       where: { ipAddress: validatedData.ipAddress },
     });
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newBot = await prisma.botsAllowed.create({
+    const newBot = await prisma.botAllowed.create({
       data: {
         ipAddress: validatedData.ipAddress,
         reason: validatedData.reason,
@@ -106,7 +106,7 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const validatedData = deleteSchema.parse(body);
 
-    const existingBot = await prisma.botsAllowed.findUnique({
+    const existingBot = await prisma.botAllowed.findUnique({
       where: { ipAddress: validatedData.ipAddress },
     });
 
@@ -117,7 +117,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.botsAllowed.delete({
+    await prisma.botAllowed.delete({
       where: { ipAddress: validatedData.ipAddress },
     });
 

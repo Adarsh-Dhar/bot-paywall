@@ -26,9 +26,22 @@ export async function verifyAccessToken(token: string): Promise<AccessTokenPaylo
     // Verify token using jose (Edge-compatible)
     const { payload } = await jwtVerify(token, secret);
     
-    // Type assertion to AccessTokenPayload
-    const decoded = payload as AccessTokenPayload;
-    
+    // Validate the payload has required fields and construct a typed object
+    if (typeof payload.userId !== 'string' || typeof payload.email !== 'string') {
+      // Debug logging in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Auth] Token payload missing required fields:', payload);
+      }
+      return null;
+    }
+
+    const decoded: AccessTokenPayload = {
+      userId: payload.userId,
+      email: payload.email,
+      iat: typeof payload.iat === 'number' ? payload.iat : undefined,
+      exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+    };
+
     // Debug logging in development
     if (process.env.NODE_ENV === 'development') {
       console.log('[Auth] Token verified successfully:', {
@@ -112,4 +125,3 @@ export async function authFromRequest(request: NextRequest): Promise<AuthResult 
     return null;
   }
 }
-

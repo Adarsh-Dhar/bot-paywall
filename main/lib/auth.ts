@@ -52,7 +52,7 @@ export function verifyAccessToken(token: string): AccessTokenPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
     return decoded;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -118,8 +118,8 @@ export async function auth(): Promise<AuthResult | null> {
       userId: payload.userId,
       email: payload.email,
     };
-  } catch (error) {
-    console.error('Auth error:', error);
+  } catch (_error) {
+    console.error('Auth error:', _error);
     return null;
   }
 }
@@ -147,8 +147,8 @@ export function authFromRequest(request: NextRequest): AuthResult | null {
       userId: payload.userId,
       email: payload.email,
     };
-  } catch (error) {
-    console.error('Auth from request error:', error);
+  } catch (_error) {
+    console.error('Auth from request error:', _error);
     return null;
   }
 }

@@ -34,9 +34,10 @@ ENV/
 *~
 
 # Output files
-scraped_test-paywall-website.adarsh.software_20251228_055235.json
+scraped_*.json
 scraped_*.txt
 scraped_*.html
+scrape/
 
 # Logs
 *.log

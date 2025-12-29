@@ -68,13 +68,17 @@ export async function GET(request: NextRequest) {
     try {
       // Attempt to decrypt
       cloudflareToken = decryptToken(project.api_keys);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If decryption fails due to format, assume it is a plain text token (manual entry)
-      if (err.message === 'Invalid encrypted token format' || err.message.includes('format')) {
+      if (err instanceof Error && (err.message === 'Invalid encrypted token format' || err.message.includes('format'))) {
         console.warn(`⚠️ API: Token for ${project.name} is not encrypted. Using as plain text.`);
         cloudflareToken = project.api_keys;
       } else {
-        console.error('Token decryption failed:', err);
+        if (err instanceof Error) {
+          console.error('Token decryption failed:', err);
+        } else {
+          console.error('Token decryption failed:', String(err));
+        }
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
       }
     }

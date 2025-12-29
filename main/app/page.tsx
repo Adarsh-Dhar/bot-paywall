@@ -1,3 +1,6 @@
+// /app/page.tsx
+export const dynamic = 'force-dynamic';
+
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getProjects } from '@/app/actions/dashboard';
@@ -14,31 +17,34 @@ export default async function Home() {
   const projectsResult = await getProjects();
   const projects = projectsResult.success ? projectsResult.data : [];
 
-  type ProtectedDomain = {
+  // Use a different local type name to avoid colliding with the component's ProtectedDomain
+  type DomainView = {
     id: string;
     name: string;
     status: string;
     nameservers: string;
     lastUpdated: string;
     websiteUrl?: string | null;
-    requestsCount?: number;
+    // Ensure requestsCount is a number (not optional) to match DashboardClient's expectation
+    requestsCount: number;
   };
 
-  const protectedDomains: ProtectedDomain[] = projects?.map((project) => ({
+  const protectedDomains: DomainView[] = projects?.map((project) => ({
     id: project.id,
     name: project.name,
     status: project.status || 'PENDING_NS',
     nameservers: 'Cloudflare NS',
     lastUpdated: new Date(project.updatedAt).toLocaleDateString(),
     websiteUrl: project.websiteUrl,
-    requestsCount: project.requestsCount,
+    // Provide a default of 0 when undefined so the type is always number
+    requestsCount: project.requestsCount ?? 0,
   })) || [];
 
   return (
-    <DashboardClient 
-      protectedDomains={protectedDomains}
-      totalDomains={protectedDomains.length}
-      threatsBlocked={0}
-    />
+      <DashboardClient
+          protectedDomains={protectedDomains}
+          totalDomains={protectedDomains.length}
+          threatsBlocked={0}
+      />
   );
 }

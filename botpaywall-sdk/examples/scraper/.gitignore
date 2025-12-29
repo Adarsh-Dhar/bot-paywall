@@ -37,6 +37,7 @@ ENV/
 scraped_*.json
 scraped_*.txt
 scraped_*.html
+scrape/
 
 # Logs
 *.log

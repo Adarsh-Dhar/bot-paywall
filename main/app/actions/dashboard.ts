@@ -178,14 +178,8 @@ export async function createProject(formData: FormData) {
           requestsCount: 0,
           status: 'PENDING_NS',
           secretKey: rawApiKey, // Using the API key as secret key for now
-        },
-      })
-
-      await tx.apiKey.create({
-        data: {
-          projectId: project.id,
-          keyHash: keyHash,
-          prefix: 'gk_live_',
+          // Store the key hash on the project's `api_keys` field (schema no longer has a separate api_keys table)
+          api_keys: keyHash,
         },
       })
 

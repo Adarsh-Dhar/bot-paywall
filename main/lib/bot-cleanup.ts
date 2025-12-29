@@ -53,7 +53,7 @@ export class BotCleanupService {
     try {
       const expiryTime = new Date(Date.now() - this.EXPIRY_TIME_MS);
       
-      const result = await prisma.botsAllowed.deleteMany({
+      const result = await prisma.botAllowed.deleteMany({
         where: {
           createdAt: {
             lt: expiryTime,
@@ -75,7 +75,7 @@ export class BotCleanupService {
   async triggerCleanup(): Promise<number> {
     const expiryTime = new Date(Date.now() - this.EXPIRY_TIME_MS);
     
-    const result = await prisma.botsAllowed.deleteMany({
+    const result = await prisma.botAllowed.deleteMany({
       where: {
         createdAt: {
           lt: expiryTime,

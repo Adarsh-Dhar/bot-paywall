@@ -29,7 +29,7 @@ describe('Bot Payment System Integration', () => {
 
   beforeEach(async () => {
     // Clean up any existing test data
-    await testPrisma.botsAllowed.deleteMany({
+    await testPrisma.botAllowed.deleteMany({
       where: {
         ipAddress: {
           startsWith: '192.168.1.'
@@ -61,7 +61,7 @@ describe('Bot Payment System Integration', () => {
 
   afterAll(async () => {
     // Clean up test data
-    await testPrisma.botsAllowed.deleteMany({
+    await testPrisma.botAllowed.deleteMany({
       where: {
         ipAddress: {
           startsWith: '192.168.1.'
@@ -106,7 +106,7 @@ describe('Bot Payment System Integration', () => {
       expect(paymentResult.ruleId).toBeDefined();
 
       // Verify database entry was created
-      const dbEntry = await testPrisma.botsAllowed.findUnique({
+      const dbEntry = await testPrisma.botAllowed.findUnique({
         where: { ipAddress: testIP }
       });
       
@@ -118,7 +118,7 @@ describe('Bot Payment System Integration', () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Verify cleanup occurred (entry should be updated with expiration)
-      const updatedEntry = await testPrisma.botsAllowed.findUnique({
+      const updatedEntry = await testPrisma.botAllowed.findUnique({
         where: { ipAddress: testIP }
       });
       
@@ -165,7 +165,7 @@ describe('Bot Payment System Integration', () => {
 
       // Verify all database entries were created
       for (const ip of testIPs) {
-        const dbEntry = await testPrisma.botsAllowed.findUnique({
+        const dbEntry = await testPrisma.botAllowed.findUnique({
           where: { ipAddress: ip }
         });
         expect(dbEntry).toBeTruthy();
@@ -191,7 +191,7 @@ describe('Bot Payment System Integration', () => {
       expect(paymentResult.error).toBeDefined();
 
       // Verify no database entry was created
-      const dbEntry = await testPrisma.botsAllowed.findUnique({
+      const dbEntry = await testPrisma.botAllowed.findUnique({
         where: { ipAddress: testIP }
       });
       
@@ -230,7 +230,7 @@ describe('Bot Payment System Integration', () => {
       expect(secondResult.success).toBe(true);
 
       // Verify database has entries
-      const dbEntries = await testPrisma.botsAllowed.findMany({
+      const dbEntries = await testPrisma.botAllowed.findMany({
         where: { ipAddress: testIP }
       });
       
@@ -363,7 +363,7 @@ describe('Bot Payment System Integration', () => {
       await botPaymentSystem.processPayment(mockTransactionId, testIP);
 
       // Verify entry exists
-      let dbEntry = await testPrisma.botsAllowed.findUnique({
+      let dbEntry = await testPrisma.botAllowed.findUnique({
         where: { ipAddress: testIP }
       });
       expect(dbEntry).toBeTruthy();
@@ -375,7 +375,7 @@ describe('Bot Payment System Integration', () => {
       await botPaymentSystem.forceCleanup();
 
       // Entry should be removed or marked as expired
-      dbEntry = await testPrisma.botsAllowed.findUnique({
+      dbEntry = await testPrisma.botAllowed.findUnique({
         where: { ipAddress: testIP }
       });
 

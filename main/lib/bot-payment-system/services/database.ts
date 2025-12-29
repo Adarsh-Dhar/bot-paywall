@@ -18,7 +18,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    */
   async addBotEntry(entry: BotAllowedEntry): Promise<void> {
     try {
-      await this.prisma.botsAllowed.create({
+      await this.prisma.botAllowed.create({
         data: {
           ipAddress: entry.ipAddress,
           reason: entry.reason,
@@ -44,7 +44,7 @@ export class DatabaseServiceImpl implements DatabaseService {
       if (updates.ipAddress) updateData.ipAddress = updates.ipAddress;
       if (updates.reason) updateData.reason = updates.reason;
 
-      await this.prisma.botsAllowed.update({
+      await this.prisma.botAllowed.update({
         where: { id },
         data: updateData
       });
@@ -58,7 +58,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    */
   async getBotEntry(ip: string): Promise<BotAllowedEntry | null> {
     try {
-      const entry = await this.prisma.botsAllowed.findUnique({
+      const entry = await this.prisma.botAllowed.findUnique({
         where: { ipAddress: ip }
       });
 
@@ -78,7 +78,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    */
   async ipExists(ip: string): Promise<boolean> {
     try {
-      const count = await this.prisma.botsAllowed.count({
+      const count = await this.prisma.botAllowed.count({
         where: { ipAddress: ip }
       });
       return count > 0;
@@ -94,7 +94,7 @@ export class DatabaseServiceImpl implements DatabaseService {
     try {
       const reason = `Payment verified: ${paymentRecord.transactionId} (${paymentRecord.amount} ${paymentRecord.currency})`;
       
-      const entry = await this.prisma.botsAllowed.create({
+      const entry = await this.prisma.botAllowed.create({
         data: {
           ipAddress: ip,
           reason,
@@ -114,7 +114,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    */
   async markEntryAsExpired(id: string, expirationTime: Date): Promise<void> {
     try {
-      await this.prisma.botsAllowed.update({
+      await this.prisma.botAllowed.update({
         where: { id },
         data: {
           reason: `${await this.getEntryReason(id)} - Expired at ${expirationTime.toISOString()}`,
@@ -131,7 +131,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    */
   async getAllBotEntries(): Promise<BotAllowedEntry[]> {
     try {
-      const entries = await this.prisma.botsAllowed.findMany({
+      const entries = await this.prisma.botAllowed.findMany({
         orderBy: { createdAt: 'desc' }
       });
 
@@ -146,7 +146,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    */
   async removeExpiredEntries(olderThan: Date): Promise<number> {
     try {
-      const result = await this.prisma.botsAllowed.deleteMany({
+      const result = await this.prisma.botAllowed.deleteMany({
         where: {
           createdAt: {
             lt: olderThan
@@ -171,7 +171,7 @@ export class DatabaseServiceImpl implements DatabaseService {
    * Private helper to get entry reason
    */
   private async getEntryReason(id: string): Promise<string> {
-    const entry = await this.prisma.botsAllowed.findUnique({
+    const entry = await this.prisma.botAllowed.findUnique({
       where: { id },
       select: { reason: true }
     });

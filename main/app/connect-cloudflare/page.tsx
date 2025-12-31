@@ -12,14 +12,14 @@ import { lookupZoneId, saveDomainToDatabase, getZonesForToken, type ZoneLookupRe
 import { getZonesWithProvidedToken, saveProjectWithToken } from '@/app/actions/cloudflare-project';
 
 export default function ConnectCloudflarePage() {
+    // State to hold the generated gatekeeper secret for display
+    const [gatekeeperSecret, setGatekeeperSecret] = useState<string | null>(null);
   const router = useRouter();
   const [token, setToken] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [domainName, setDomainName] = useState('');
+  // ...existing code...
   const [projectApiToken, setProjectApiToken] = useState('');
-  const [selectedZoneId, setSelectedZoneId] = useState('');
-  const [manualZoneId, setManualZoneId] = useState('');
-  const [useManualZoneId, setUseManualZoneId] = useState(false);
+  const [zoneId, setZoneId] = useState('');
   const [loading, setLoading] = useState(false);
   const [lookingUpZone, setLookingUpZone] = useState(false);
   const [fetchingZones, setFetchingZones] = useState(false);
@@ -65,24 +65,21 @@ export default function ConnectCloudflarePage() {
     }
   }
 
-  async function fetchZonesWithProjectToken() {
-    if (!projectApiToken.trim()) {
-      setError('Please enter the API token first');
-      return;
-    }
-
+  async function fetchZoneIdFromToken(token: string) {
     setFetchingZones(true);
     setError(null);
     try {
-      const result = await getZonesWithProvidedToken(projectApiToken.trim());
-      if (result.success && result.zones) {
+      const result = await getZonesWithProvidedToken(token);
+      if (result.success && result.zones && result.zones.length > 0) {
+        setZoneId(result.zones[0].id);
         setAvailableZones(result.zones);
-        setUseManualZoneId(false); // Switch to dropdown mode
       } else {
-        setError(result.message || 'Failed to fetch zones');
+        setError(result.message || 'Failed to fetch zone ID');
+        setZoneId('');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch zones');
+      setError(err instanceof Error ? err.message : 'Failed to fetch zone ID');
+      setZoneId('');
     } finally {
       setFetchingZones(false);
     }
@@ -141,49 +138,66 @@ export default function ConnectCloudflarePage() {
     }
   }
 
+  useEffect(() => {
+    if (projectApiToken.trim()) {
+      fetchZoneIdFromToken(projectApiToken.trim());
+    } else {
+      setZoneId('');
+      setAvailableZones([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectApiToken]);
+
   async function handleProjectSubmit(e: React.FormEvent) {
+        // Helper to generate a random 32-character string
+        function generateGatekeeperSecret() {
+          const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          let result = '';
+          for (let i = 0; i < 32; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return result;
+        }
     e.preventDefault();
     setError(null);
+
 
     if (!websiteUrl.trim()) {
       setError('Please enter the website URL');
       return;
     }
-
-    if (!domainName.trim()) {
-      setError('Please enter the domain name');
-      return;
-    }
-
     if (!projectApiToken.trim()) {
       setError('Please enter the Cloudflare API token for this project');
       return;
     }
 
-    // Allow either manual zone ID or selected from dropdown
-    const finalZoneId = useManualZoneId ? manualZoneId : selectedZoneId;
-
-    if (!finalZoneId) {
-      setError('Please either fetch zones and select one, or enter Zone ID manually');
-      return;
-    }
-
-    // Validate zone ID format
-    if (!/^[a-f0-9]{32}$/i.test(finalZoneId)) {
-      setError('Invalid Zone ID format. Should be 32 hexadecimal characters.');
-      return;
-    }
-
-    // Validate website URL format
+    // Use a single validatedUrl variable for all logic
     let validatedUrl = websiteUrl.trim();
     if (!validatedUrl.startsWith('http://') && !validatedUrl.startsWith('https://')) {
       validatedUrl = 'https://' + validatedUrl;
     }
-
+    let domain = '';
     try {
-      new URL(validatedUrl);
+      const parsedUrl = new URL(validatedUrl);
+      domain = parsedUrl.hostname.replace(/^www\./, '');
+      // Basic domain format validation
+      if (!/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(domain)) {
+        setError('Invalid domain format in website URL');
+        return;
+      }
     } catch {
       setError('Please enter a valid website URL');
+      return;
+    }
+
+    // Use the fetched zone ID only
+    if (!zoneId) {
+      setError('Zone ID could not be determined from the API token.');
+      return;
+    }
+    // Validate zone ID format
+    if (!/^[a-f0-9]{32}$/i.test(zoneId)) {
+      setError('Invalid Zone ID format. Should be 32 hexadecimal characters.');
       return;
     }
 
@@ -191,24 +205,12 @@ export default function ConnectCloudflarePage() {
       setLookingUpZone(true);
 
       // If using manual zone ID, we need to get zone info from Cloudflare
-      let selectedZone = availableZones.find(z => z.id === finalZoneId);
-
-      if (!selectedZone && useManualZoneId) {
-        // Try to get zone info for manual entry
-        selectedZone = {
-          id: finalZoneId,
-          name: domainName.trim(),
-          status: 'active',
-          nameservers: [],
-        };
-      }
-
+      const selectedZone = availableZones.find(z => z.id === zoneId);
       if (!selectedZone) {
-        setError('Selected zone not found');
+        setError('Zone not found for the provided API token.');
         return;
       }
 
-      // Set zone result for display
       setZoneResult({
         success: true,
         zoneId: selectedZone.id,
@@ -217,15 +219,19 @@ export default function ConnectCloudflarePage() {
         nameservers: selectedZone.nameservers,
         message: `Zone found: ${selectedZone.name}`,
       });
-
-      // Save the project with its own API token
+      // Generate a unique gatekeeper_secret for this domain
+      const secret = generateGatekeeperSecret();
+      // Save the project with gatekeeper_secret
       const saveResult = await saveProjectWithToken(
         validatedUrl,
-        domainName.trim(),
+        domain,
         projectApiToken.trim(),
         selectedZone.id,
-        selectedZone.nameservers
+        selectedZone.nameservers,
+        secret
       );
+      // Store the secret in state for display
+      setGatekeeperSecret(secret);
 
       if (!saveResult.success) {
         setError(saveResult.message || 'Failed to save project to database');
@@ -267,28 +273,9 @@ export default function ConnectCloudflarePage() {
     setLoading(false);
   }
 
-  // Auto-fill domain name from website URL
+  // Website URL change handler (no domain auto-fill)
   function handleWebsiteUrlChange(url: string) {
     setWebsiteUrl(url);
-    try {
-      let cleanUrl = url.trim();
-      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-        cleanUrl = 'https://' + cleanUrl;
-      }
-      const parsedUrl = new URL(cleanUrl);
-      const hostname = parsedUrl.hostname.replace(/^www\./, '');
-      setDomainName(hostname);
-
-      // Try to auto-select matching zone
-      const matchingZone = availableZones.find(z =>
-        hostname === z.name || hostname.endsWith('.' + z.name)
-      );
-      if (matchingZone) {
-        setSelectedZoneId(matchingZone.id);
-      }
-    } catch {
-      // Invalid URL, don't auto-fill
-    }
   }
 
   if (loadingInfo) {
@@ -525,26 +512,7 @@ export default function ConnectCloudflarePage() {
                 </p>
               </div>
 
-              {/* Domain Name */}
-              <div>
-                <label htmlFor="domainName" className="block text-sm font-medium text-white mb-2">
-                  Domain Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                    type="text"
-                    id="domainName"
-                    value={domainName}
-                    readOnly
-                    placeholder="example.com"
-                    className="w-full px-4 py-2 border border-white/20 bg-white/10 text-zinc-300 rounded-md cursor-not-allowed placeholder-zinc-500"
-                />
 
-
-                <p className="mt-1 text-xs text-zinc-400">
-                  Auto-generated from website URL (not editable)
-                </p>
-
-              </div>
 
               {/* API Token */}
               <div>
@@ -573,102 +541,25 @@ export default function ConnectCloudflarePage() {
                 </p>
               </div>
 
-              {/* Zone ID Section */}
+              {/* Zone ID Display */}
               <div className="border-t border-white/10 pt-4">
                 <label className="block text-sm font-medium text-white mb-3">
                   Zone ID <span className="text-red-400">*</span>
                 </label>
-
-                {/* Toggle between auto-fetch and manual */}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    type="button"
-                    onClick={() => setUseManualZoneId(false)}
-                    className={`flex-1 px-4 py-2 rounded-md transition-colors ${
-                      !useManualZoneId
-                        ? 'bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518]'
-                        : 'bg-white/5 border border-white/20 text-zinc-400 hover:bg-white/10'
-                    }`}
-                  >
-                    Fetch from Token
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUseManualZoneId(true)}
-                    className={`flex-1 px-4 py-2 rounded-md transition-colors ${
-                      useManualZoneId
-                        ? 'bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518]'
-                        : 'bg-white/5 border border-white/20 text-zinc-400 hover:bg-white/10'
-                    }`}
-                  >
-                    Enter Manually
-                  </button>
-                </div>
-
-                {/* Auto-fetch zones */}
-                {!useManualZoneId && (
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={fetchZonesWithProjectToken}
-                      disabled={fetchingZones || !projectApiToken.trim()}
-                      className="w-full px-4 py-2 bg-blue-500/20 border border-blue-500/40 text-blue-300 rounded-md hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {fetchingZones ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-300/20 border-t-blue-300" />
-                          Fetching zones...
-                        </span>
-                      ) : (
-                        'Fetch Available Zones'
-                      )}
-                    </button>
-
-                    {availableZones.length > 0 && (
-                      <select
-                        value={selectedZoneId}
-                        onChange={(e) => setSelectedZoneId(e.target.value)}
-                        className="w-full px-4 py-2 border border-white/20 bg-white/5 text-white rounded-md focus:ring-2 focus:ring-[#f5c518]/40 focus:border-[#f5c518]/60"
-                        disabled={lookingUpZone}
-                      >
-                        <option value="" className="bg-slate-800">Select a zone...</option>
-                        {availableZones.map((zone) => (
-                          <option key={zone.id} value={zone.id} className="bg-slate-800">
-                            {zone.name} ({zone.status}) - {zone.id}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                {fetchingZones ? (
+                  <div className="flex items-center gap-2 text-blue-300">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-300/20 border-t-blue-300" />
+                    Fetching zone ID...
                   </div>
-                )}
-
-                {/* Manual zone ID input */}
-                {useManualZoneId && (
-                  <div>
-                    <input
-                      type="text"
-                      value={manualZoneId}
-                      onChange={(e) => setManualZoneId(e.target.value)}
-                      placeholder="Enter 32-character Zone ID (e.g., 1a2b3c4d...)"
-                      className="w-full px-4 py-2 border border-white/20 bg-white/5 text-white rounded-md focus:ring-2 focus:ring-[#f5c518]/40 focus:border-[#f5c518]/60 placeholder-zinc-500 font-mono text-sm"
-                      disabled={lookingUpZone}
-                    />
-                    <p className="mt-1 text-xs text-zinc-400">
-                      Find your Zone ID in Cloudflare Dashboard → Select Domain → Overview (right sidebar)
-                    </p>
-                  </div>
-                )}
-
-                {/* Selected Zone Info */}
-                {((selectedZoneId && !useManualZoneId) || (manualZoneId && useManualZoneId)) && (
+                ) : zoneId ? (
                   <div className="mt-3 bg-blue-500/10 border border-blue-500/30 rounded-md p-3">
                     <p className="text-sm text-blue-300">
                       <strong>Zone ID:</strong>{' '}
-                      <code className="bg-black/30 px-2 py-1 rounded text-xs">
-                        {useManualZoneId ? manualZoneId : selectedZoneId}
-                      </code>
+                      <code className="bg-black/30 px-2 py-1 rounded text-xs">{zoneId}</code>
                     </p>
                   </div>
+                ) : (
+                  <div className="text-sm text-red-400">No zone ID found for this API token.</div>
                 )}
               </div>
 
@@ -684,10 +575,8 @@ export default function ConnectCloudflarePage() {
                   disabled={
                     lookingUpZone ||
                     !websiteUrl.trim() ||
-                    !domainName.trim() ||
                     !projectApiToken.trim() ||
-                    (!useManualZoneId && !selectedZoneId) ||
-                    (useManualZoneId && !manualZoneId.trim())
+                    !zoneId
                   }
                   className="flex-1 px-6 py-3 bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518] rounded-md hover:bg-[#f5c518]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
@@ -718,17 +607,32 @@ export default function ConnectCloudflarePage() {
               </h3>
               
               <div className="space-y-4">
+                                <div>
+                                  <p className="text-sm font-medium text-emerald-200 mb-2">Gatekeeper Secret:</p>
+                                  {gatekeeperSecret ? (
+                                    <div className="flex items-center gap-2">
+                                      <code className="flex-1 text-xs font-mono bg-black/30 border border-emerald-400/30 px-3 py-2 rounded text-emerald-100">
+                                        {gatekeeperSecret}
+                                      </code>
+                                      <button
+                                        onClick={() => copyToClipboard(gatekeeperSecret)}
+                                        className="p-2 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-400/20 rounded transition-colors"
+                                        title="Copy Gatekeeper Secret"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-red-400">Secret not generated</span>
+                                  )}
+                                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-emerald-200 mb-1">Website URL:</p>
                     <p className="text-emerald-100 font-mono">{websiteUrl}</p>
                   </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-emerald-200 mb-1">Domain:</p>
-                    <p className="text-emerald-100 font-mono">{domainName}</p>
-                  </div>
-                  
                   <div>
                     <p className="text-sm font-medium text-emerald-200 mb-1">Status:</p>
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${

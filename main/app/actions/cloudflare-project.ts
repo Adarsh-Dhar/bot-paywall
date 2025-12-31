@@ -124,7 +124,8 @@ export async function saveProjectWithToken(
   domainName: string,
   apiToken: string,
   zoneId: string,
-  nameservers?: string[]
+  nameservers?: string[],
+  gatekeeperSecret?: string
 ): Promise<SaveProjectResult> {
   try {
     // Validate inputs
@@ -188,47 +189,35 @@ export async function saveProjectWithToken(
         },
       });
 
-      // Check if project with this domain already exists for this user
+      // Check if project with this domain or websiteUrl already exists (globally)
       const existingProject = await tx.project.findFirst({
         where: {
-          userId: userId,
-          name: validatedDomain,
+          OR: [
+            { domainName: validatedDomain },
+            { websiteUrl: validatedUrl }
+          ]
         },
       });
 
       if (existingProject) {
-        // Update existing project
-        return await tx.project.update({
-          where: { id: existingProject.id },
-          data: {
-            zoneId: zoneId,
-            websiteUrl: validatedUrl,
-            domainName: validatedDomain,
-            nameservers: nameservers || [],
-            status: 'ACTIVE',
-            updatedAt: new Date(),
-            api_keys: encryptToken(cleanedToken),
-          },
-        });
-      } else {
-        // Create new project
-        const secretKey = crypto.randomBytes(32).toString('hex');
-        return await tx.project.create({
-          data: {
-            userId: userId,
-            name: validatedDomain,
-            domainName: validatedDomain,
-            websiteUrl: validatedUrl,
-            zoneId: zoneId,
-            nameservers: nameservers || [],
-            status: 'ACTIVE',
-            secretKey: secretKey,
-            requestsCount: 0,
-            api_keys: encryptToken(cleanedToken),
-
-          },
-        });
+        throw new Error('A project with this domain or website URL already exists.');
       }
+
+      // Create new project with provided gatekeeperSecret
+      return await tx.project.create({
+        data: {
+          userId: userId,
+          name: validatedDomain,
+          domainName: validatedDomain,
+          websiteUrl: validatedUrl,
+          zoneId: zoneId,
+          nameservers: nameservers || [],
+          status: 'ACTIVE',
+          secretKey: gatekeeperSecret || crypto.randomBytes(32).toString('hex'),
+          requestsCount: 0,
+          api_keys: encryptToken(cleanedToken),
+        },
+      });
     });
 
     return {
@@ -244,6 +233,14 @@ export async function saveProjectWithToken(
         success: false,
         message: 'Invalid domain: ' + error.issues.map((e: any) => e.message).join(', '),
         error: 'VALIDATION_ERROR',
+      };
+    }
+    // Handle duplicate error
+    if (error instanceof Error && error.message.includes('already exists')) {
+      return {
+        success: false,
+        message: error.message,
+        error: 'DUPLICATE',
       };
     }
 

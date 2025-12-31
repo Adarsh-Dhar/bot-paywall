@@ -4,6 +4,7 @@ Configuration module for BotPaywall SDK.
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict
+import os
 
 
 DEFAULT_BOT_HEADERS = {
@@ -28,8 +29,8 @@ class BotPaywallConfig:
         request_timeout: HTTP request timeout in seconds
         bot_headers: Headers to use for bot identification
     """
-    access_server_url: str = process.env.ACCESS_SERVER_URL
-    main_app_url: str = process.env.MAIN_APP_API_URL
+    access_server_url: str = "http://localhost:5000"
+    main_app_url: str = "http://localhost:3000"
     private_key: Optional[str] = None
     network_url: str = "https://testnet.movementnetwork.xyz/v1"
     max_retries: int = 3

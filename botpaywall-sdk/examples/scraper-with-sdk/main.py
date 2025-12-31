@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 CONFIG = {
-    'access_server_url': process.env.ACCESS_SERVER_URL,
-    'main_app_url': process.env.MAIN_APP_API_URL,
+    'access_server_url': "http://localhost:5000",
+    'main_app_url': "http://localhost:3000",
     'max_retries': 3,
     'wait_after_payment': 10,
 }

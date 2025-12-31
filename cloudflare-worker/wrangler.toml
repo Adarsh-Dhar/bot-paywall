@@ -7,4 +7,4 @@ binding = "PAYWALL_DB"
 id = "f573def1f793421a800f1551bdc53378"
 
 [vars]
-API_BASE_URL = "https://d2b57a8a3394.ngrok-free.app"
+API_BASE_URL = "https://77f02bdf5f8f.ngrok-free.app"

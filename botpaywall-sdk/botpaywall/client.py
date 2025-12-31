@@ -12,6 +12,7 @@ import requests
 from .config import BotPaywallConfig
 from .payment import PaymentClient
 from .utils import log, extract_domain_from_url
+import os
 
 
 class BotPaywallClient:
@@ -38,8 +39,8 @@ class BotPaywallClient:
 
     def __init__(
         self,
-        access_server_url: str = process.env.ACCESS_SERVER_URL,
-        main_app_url: str = process.env.MAIN_APP_API_URL,
+        access_server_url: str = "http://localhost:5000",
+        main_app_url: str = "http://localhost:3000",
         private_key: Optional[str] = None,
         wait_after_payment: int = 10,
         max_retries: int = 3,

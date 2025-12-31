@@ -34,8 +34,8 @@ from botpaywall.utils import extract_domain_from_url
 
 # Initialize the client
 client = BotPaywallClient(
-    access_server_url='http://localhost:5000',
-    main_app_url='http://localhost:3000',
+    access_server_url=process.env.ACCESS_SERVER_URL,
+    main_app_url=process.env.MAIN_APP_API_URL,
     private_key='your-wallet-private-key',
 )
 
@@ -68,8 +68,8 @@ else:
 
 ```python
 CONFIG = {
-    'access_server_url': 'http://localhost:5000',
-    'main_app_url': 'http://localhost:3000',
+    'access_server_url': process.env.ACCESS_SERVER_URL,
+    'main_app_url': process.env.MAIN_APP_API_URL,
     'max_retries': 3,
     'wait_after_payment': 10,
 }
@@ -190,8 +190,8 @@ logger = logging.getLogger(__name__)
 
 # Step 3: Define configuration
 CONFIG = {
-    'access_server_url': 'http://localhost:5000',
-    'main_app_url': 'http://localhost:3000',
+    'access_server_url': process.env.ACCESS_SERVER_URL,
+    'main_app_url': process.env.MAIN_APP_API_URL,
     'max_retries': 3,
     'wait_after_payment': 10,
 }
@@ -287,8 +287,8 @@ from botpaywall.utils import extract_domain_from_url
 import os
 
 client = BotPaywallClient(
-    access_server_url='http://localhost:5000',
-    main_app_url='http://localhost:3000',
+    access_server_url=process.env.ACCESS_SERVER_URL,
+    main_app_url=process.env.MAIN_APP_API_URL,
     private_key=os.environ['WALLET_PRIVATE_KEY'],
 )
 
@@ -320,8 +320,8 @@ def scrape_with_paywall(url: str) -> dict | None:
         raise ValueError("WALLET_PRIVATE_KEY not set")
     
     client = BotPaywallClient(
-        access_server_url='http://localhost:5000',
-        main_app_url='http://localhost:3000',
+        access_server_url=process.env.ACCESS_SERVER_URL,
+        main_app_url=process.env.MAIN_APP_API_URL,
         private_key=private_key,
         max_retries=3,
     )
@@ -362,8 +362,8 @@ import os
 def main():
     parser = argparse.ArgumentParser(description='BotPaywall-enabled scraper')
     parser.add_argument('url', help='URL to scrape')
-    parser.add_argument('--access-server', default='http://localhost:5000')
-    parser.add_argument('--main-app', default='http://localhost:3000')
+    parser.add_argument('--access-server', default=process.env.ACCESS_SERVER_URL)
+    parser.add_argument('--main-app', default=process.env.MAIN_APP_API_URL)
     args = parser.parse_args()
     
     client = BotPaywallClient(

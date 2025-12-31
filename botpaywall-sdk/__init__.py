@@ -9,8 +9,8 @@ BotPaywall SDK
 #     from botpaywall import BotPaywallClient
 #
 #     client = BotPaywallClient(
-#         access_server_url="http://localhost:5000",
-#         main_app_url="http://localhost:3000",
+#         access_server_url="ACCESS_SERVER_URL",
+#         main_app_url=process.env.MAIN_APP_API_URL,
 #         private_key="your_private_key"
 #     )
 #

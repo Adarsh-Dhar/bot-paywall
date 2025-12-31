@@ -15,8 +15,8 @@ def main():
     parser = argparse.ArgumentParser(description='Simple scraper using BotPaywall SDK')
     parser.add_argument('--domain', '-d', required=True, help='Domain to scrape')
     parser.add_argument('--private-key', '-k', required=True, help='Private key for payments')
-    parser.add_argument('--access-server', default='http://localhost:5000')
-    parser.add_argument('--main-app', default='http://localhost:3000')
+    parser.add_argument('--access-server', default=process.env.ACCESS_SERVER_URL)
+    parser.add_argument('--main-app', default=process.env.MAIN_APP_API_URL)
     parser.add_argument('--output', '-o', default='output.html', help='Output file')
     args = parser.parse_args()
 

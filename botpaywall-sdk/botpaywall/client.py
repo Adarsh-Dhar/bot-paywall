@@ -25,7 +25,7 @@ class BotPaywallClient:
 
     Example:
         >>> client = BotPaywallClient(
-        ...     access_server_url="http://localhost:5000",
+        ...     access_server_url=process.env.ACCESS_SERVER_URL,
         ...     private_key="your_private_key"
         ... )
         >>> project = client.get_project_credentials("example.com")
@@ -38,8 +38,8 @@ class BotPaywallClient:
 
     def __init__(
         self,
-        access_server_url: str = "http://localhost:5000",
-        main_app_url: str = "http://localhost:3000",
+        access_server_url: str = process.env.ACCESS_SERVER_URL,
+        main_app_url: str = process.env.MAIN_APP_API_URL,
         private_key: Optional[str] = None,
         wait_after_payment: int = 10,
         max_retries: int = 3,

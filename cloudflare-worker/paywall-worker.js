@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   PAYMENT_ADDRESS: "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b",
   PRICE_AMOUNT: "0.01",
   PRICE_CURRENCY: "MOVE",
-  ACCESS_SERVER_URL: "http://localhost:5000",
+  ACCESS_SERVER_URL: process.env.ACCESS_SERVER_URL,
 };
 
 export default {

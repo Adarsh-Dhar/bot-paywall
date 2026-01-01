@@ -176,15 +176,9 @@ export default function ConnectCloudflarePage() {
     if (!validatedUrl.startsWith('http://') && !validatedUrl.startsWith('https://')) {
       validatedUrl = 'https://' + validatedUrl;
     }
-    let domain = '';
+    
     try {
-      const parsedUrl = new URL(validatedUrl);
-      domain = parsedUrl.hostname.replace(/^www\./, '');
-      // Basic domain format validation
-      if (!/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(domain)) {
-        setError('Invalid domain format in website URL');
-        return;
-      }
+      new URL(validatedUrl);
     } catch {
       setError('Please enter a valid website URL');
       return;
@@ -221,10 +215,9 @@ export default function ConnectCloudflarePage() {
       });
       // Generate a unique gatekeeper_secret for this domain
       const secret = generateGatekeeperSecret();
-      // Save the project with gatekeeper_secret
+      // Save the project with gatekeeper_secret (no domain parameter)
       const saveResult = await saveProjectWithToken(
         validatedUrl,
-        domain,
         projectApiToken.trim(),
         selectedZone.id,
         selectedZone.nameservers,

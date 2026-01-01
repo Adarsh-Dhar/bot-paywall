@@ -268,37 +268,32 @@ export async function saveDomainToDatabase(
       const existingProject = await tx.project.findFirst({
         where: {
           userId: userId,
-          name: validatedDomain,
+          websiteUrl: websiteUrl || `https://${validatedDomain}`,
         },
       });
 
       if (existingProject) {
-        // Update existing project with zone ID and api_keys
+        // Update existing project with zone ID and api_token
         return await tx.project.update({
           where: { id: existingProject.id },
           data: {
             zoneId: zoneId,
-            websiteUrl: websiteUrl || existingProject.websiteUrl,
-            nameservers: nameservers || [],
             status: 'ACTIVE',
             updatedAt: new Date(),
-            api_keys: cloudflareToken || undefined,
+            api_token: cloudflareToken || existingProject.api_token,
           },
         });
       } else {
-        // Create new project with the domain, zone ID, and api_keys
+        // Create new project with the websiteUrl, zone ID, and api_token
         const secretKey = crypto.randomBytes(32).toString('hex');
         return await tx.project.create({
           data: {
             userId: userId,
-            name: validatedDomain,
             websiteUrl: websiteUrl || `https://${validatedDomain}`,
             zoneId: zoneId,
-            nameservers: nameservers || [],
             status: 'ACTIVE',
             secretKey: secretKey,
-            requestsCount: 0,
-            api_keys: cloudflareToken || undefined,
+            api_token: cloudflareToken || '',
           },
         });
       }

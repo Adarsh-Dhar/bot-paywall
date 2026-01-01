@@ -70,7 +70,7 @@ export async function registerDomain(domain: string): Promise<RegisterDomainResu
     const existingProject = await prisma.project.findFirst({
       where: {
         userId: userId,
-        name: domain,
+        websiteUrl: { contains: domain },
       },
     });
 
@@ -97,9 +97,8 @@ export async function registerDomain(domain: string): Promise<RegisterDomainResu
     const project = await prisma.project.create({
       data: {
         userId: userId,
-        name: domain,
+        websiteUrl: `https://${domain}`,
         zoneId: zoneResult.zoneId,
-        nameservers: zoneResult.nameservers || [],
         status: zoneResult.status === 'active' ? 'ACTIVE' : 'PENDING_NS',
         secretKey: gatekeeperToken,
       },
@@ -119,7 +118,7 @@ export async function registerDomain(domain: string): Promise<RegisterDomainResu
       success: true,
       project: {
         id: project.id,
-        name: project.name,
+        name: project.websiteUrl,
         zoneId: project.zoneId!,
         gatekeeperToken: project.secretKey,
         status: project.status,
@@ -156,7 +155,7 @@ export async function getUserProjects(): Promise<ProjectWithToken[]> {
 
     return projects.map((project: any) => ({
       id: project.id,
-      name: project.name,
+      name: project.websiteUrl,
       zoneId: project.zoneId,
       status: project.status,
       gatekeeperToken: project.secretKey,
@@ -192,7 +191,7 @@ export async function getProject(projectId: string): Promise<ProjectWithToken | 
 
     return {
       id: project.id,
-      name: project.name,
+      name: project.websiteUrl,
       zoneId: project.zoneId,
       status: project.status,
       gatekeeperToken: project.secretKey,

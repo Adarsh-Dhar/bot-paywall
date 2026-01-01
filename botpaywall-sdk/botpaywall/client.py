@@ -42,6 +42,7 @@ class BotPaywallClient:
         access_server_url: str = "http://localhost:5000",
         main_app_url: str = "http://localhost:3000",
         private_key: Optional[str] = None,
+        secret_key: Optional[str] = None,
         wait_after_payment: int = 10,
         max_retries: int = 3,
         retry_delay: int = 5,
@@ -71,9 +72,72 @@ class BotPaywallClient:
 
         self.payment_client = PaymentClient(self.config)
 
+        # Auto-fetch project details if secret_key provided
+        self.project_details: Optional[Dict[str, Any]] = None
+        self.project_secret_key = secret_key
+        if secret_key:
+            self.project_details = self.get_project_by_secret_key(secret_key)
+
     # =========================================================================
     # Project Management
     # =========================================================================
+
+    def get_project_by_secret_key(self, secret_key: str) -> Optional[Dict[str, Any]]:
+        """Fetch project details using a project's `secret_key`."""
+        try:
+            url = f"{self.config.main_app_url}/api/projects/public?secretKey={secret_key}"
+            log(f"Fetching project details by secret key...", "INFO")
+            response = requests.get(url, timeout=self.config.request_timeout)
+
+            if response.status_code == 200:
+                data = response.json()
+                if not data.get('success'):
+                    log(f"API returned success=false: {data.get('error', 'Unknown error')}", "ERROR")
+                    return None
+
+                project = data.get('project')
+                if not project:
+                    log("No project data in response", "ERROR")
+                    return None
+
+                website_url = project.get('websiteUrl')
+                zone_id = project.get('zoneId')
+                secret_key_resp = project.get('secretKey')
+                api_token = project.get('api_token')
+                domain = extract_domain_from_url(website_url) if website_url else None
+
+                if not zone_id or not secret_key_resp:
+                    log("Missing zoneId or secretKey in project data", "ERROR")
+                    return None
+
+                log(f"✓ Website URL: {website_url}", "SUCCESS")
+                log(f"✓ Zone ID: {zone_id[:20]}...", "SUCCESS")
+                log(f"✓ Secret Key: {secret_key_resp[:20]}...", "SUCCESS")
+
+                # Provide both snake_case and camelCase keys for backward compatibility
+                project_details = {
+                    'website_url': website_url,
+                    'zone_id': zone_id,
+                    'secret_key': secret_key_resp,
+                    'api_token': api_token,
+                    'domain': domain,
+                    'websiteUrl': website_url,
+                    'zoneId': zone_id,
+                    'secretKey': secret_key_resp,
+                }
+
+                self.project_details = project_details
+                return project_details
+            elif response.status_code == 404:
+                log("Project not found for secret key", "ERROR")
+                return None
+            else:
+                log(f"Failed to fetch project details: {response.status_code}", "ERROR")
+                return None
+
+        except Exception as e:
+            log(f"Error fetching project details by secret key: {e}", "ERROR")
+            return None
 
     def get_project_credentials(self, project_url_or_domain: str) -> Optional[Dict[str, Any]]:
         """
@@ -333,7 +397,7 @@ class BotPaywallClient:
 
     def buy_access(
         self,
-        domain: str,
+        domain: Optional[str] = None,
         zone_id: Optional[str] = None,
         secret_key: Optional[str] = None,
         scraper_ip: Optional[str] = None
@@ -347,15 +411,24 @@ class BotPaywallClient:
         3. Retry with payment proof
 
         Args:
-            domain: The domain name to access
-            zone_id: Cloudflare Zone ID (required for whitelisting)
-            secret_key: Cloudflare API token (required for whitelisting)
+            domain: The domain name to access. If omitted, tries project.website_url.
+            zone_id: Cloudflare Zone ID (pulled from project details when absent)
+            secret_key: Cloudflare API token (prefers project.api_token)
             scraper_ip: IP to whitelist (auto-detected if not provided)
 
         Returns:
             Dict with 'success' boolean and additional info
         """
         try:
+            if self.project_details:
+                zone_id = zone_id or self.project_details.get('zone_id') or self.project_details.get('zoneId')
+                secret_key = secret_key or self.project_details.get('api_token') or self.project_details.get('secret_key') or self.project_details.get('secretKey')
+                if not domain:
+                    domain = self.project_details.get('domain') or extract_domain_from_url(self.project_details.get('website_url', ''))
+
+            if not domain:
+                return {'success': False, 'error': 'Domain is required to buy access'}
+
             if not scraper_ip:
                 scraper_ip = self.detect_public_ip()
 

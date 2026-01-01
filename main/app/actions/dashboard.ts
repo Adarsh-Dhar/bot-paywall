@@ -47,10 +47,9 @@ export async function getProjects() {
       select: {
         id: true,
         userId: true,
-        name: true,
         websiteUrl: true,
+        zoneId: true,
         status: true,
-        requestsCount: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -95,9 +94,9 @@ export async function getProject(projectId: string) {
       select: {
         id: true,
         userId: true,
-        name: true,
         websiteUrl: true,
-        requestsCount: true,
+        zoneId: true,
+        status: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -127,8 +126,9 @@ export async function getProject(projectId: string) {
 }
 
 /**
- * Create a new project with an API key
- * Returns the raw API key (only shown once)
+ * Create a new project
+ * Note: With the new schema, projects are created via connect-cloudflare flow
+ * This function is kept for backward compatibility if needed
  */
 export async function createProject(formData: FormData) {
   try {
@@ -142,55 +142,32 @@ export async function createProject(formData: FormData) {
     }
     const { userId, email } = authResult
 
-    const name = formData.get('name') as string
-    const website_url = formData.get('website_url') as string | null
+    const websiteUrl = formData.get('website_url') as string | null
 
     // Validate input
-    if (!name || name.trim().length === 0) {
+    if (!websiteUrl || websiteUrl.trim().length === 0) {
       return {
         success: false,
-        error: 'Project name is required',
+        error: 'Website URL is required',
         statusCode: 400,
       }
     }
-
-    // Generate API key
-    const rawApiKey = generateApiKey()
-    const keyHash = await hashApiKey(rawApiKey)
 
     // Ensure user exists in database
     await prisma.user.upsert({
       where: { userId: userId },
       update: {},
-        create: {
-          userId: userId,
-          email: email,
-        },
+      create: {
+        userId: userId,
+        email: email,
+      },
     });
 
-    // Create project with API key in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const project = await tx.project.create({
-        data: {
-          userId,
-          name: name.trim(),
-          websiteUrl: website_url?.trim() || null,
-          requestsCount: 0,
-          status: 'PENDING_NS',
-          secretKey: rawApiKey, // Using the API key as secret key for now
-          // Store the key hash on the project's `api_keys` field (schema no longer has a separate api_keys table)
-          api_keys: keyHash,
-        },
-      })
-
-      return project
-    })
-
+    // Return error - projects should be created via connect-cloudflare flow
     return {
-      success: true,
-      projectId: result.id,
-      apiKey: rawApiKey, // Return raw key only once
-      statusCode: 201,
+      success: false,
+      error: 'Please use the Connect Cloudflare flow to create projects',
+      statusCode: 400,
     }
   } catch (error) {
     console.error('Error in createProject:', error)
@@ -204,7 +181,8 @@ export async function createProject(formData: FormData) {
 
 /**
  * Increment the usage counter for a project
- * Increments by a random value between 1 and 50
+ * Note: This function is no longer used with the new schema
+ * Keeping for backward compatibility
  */
 export async function incrementUsage(projectId: string) {
   try {
@@ -218,7 +196,7 @@ export async function incrementUsage(projectId: string) {
     }
     const { userId } = authResult
 
-    // Verify user owns the project and increment usage
+    // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
@@ -226,7 +204,6 @@ export async function incrementUsage(projectId: string) {
       },
       select: {
         id: true,
-        requestsCount: true,
       },
     })
 
@@ -238,20 +215,8 @@ export async function incrementUsage(projectId: string) {
       }
     }
 
-    // Generate random increment (1-50)
-    const increment = Math.floor(Math.random() * 50) + 1
-    const newCount = project.requestsCount + increment
-
-    // Update requests_count
-    const updatedProject = await prisma.project.update({
-      where: { id: projectId },
-      data: { requestsCount: newCount },
-      select: { requestsCount: true },
-    })
-
     return {
       success: true,
-      requests_count: updatedProject.requestsCount,
       statusCode: 200,
     }
   } catch (error) {

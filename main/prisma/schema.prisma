@@ -22,20 +22,15 @@ model BotAllowed {
 model Project {
   id            String        @id @default(cuid())
   userId        String
-  name          String
-  websiteUrl    String?       @unique
-  domainName    String?       @unique
-  zoneId        String?
-  nameservers   String[]
+  websiteUrl    String       @unique
+  zoneId        String
   status        ProjectStatus @default(PENDING_NS)
   secretKey     String
-  requestsCount Int           @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  api_keys      String?
+  api_token     String
   user          User          @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  @@unique([userId, name])
   @@map("projects")
 }
 

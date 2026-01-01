@@ -118,19 +118,16 @@ export async function getZonesWithProvidedToken(apiToken: string): Promise<GetZo
 
 /**
  * Save project with its own API token and zone ID
+ * Domain is extracted from websiteUrl, not stored separately
  */
 export async function saveProjectWithToken(
   websiteUrl: string,
-  domainName: string,
   apiToken: string,
   zoneId: string,
   nameservers?: string[],
   gatekeeperSecret?: string
 ): Promise<SaveProjectResult> {
   try {
-    // Validate inputs
-    const validatedDomain = domainSchema.parse(domainName);
-
     if (!zoneId || !/^[a-f0-9]{32}$/i.test(zoneId)) {
       return {
         success: false,
@@ -189,33 +186,26 @@ export async function saveProjectWithToken(
         },
       });
 
-      // Check if project with this domain or websiteUrl already exists (globally)
+      // Check if project with this websiteUrl already exists (globally)
       const existingProject = await tx.project.findFirst({
         where: {
-          OR: [
-            { domainName: validatedDomain },
-            { websiteUrl: validatedUrl }
-          ]
-        },
+          websiteUrl: validatedUrl
+        }
       });
 
       if (existingProject) {
-        throw new Error('A project with this domain or website URL already exists.');
+        throw new Error('A project with this website URL already exists.');
       }
 
       // Create new project with provided gatekeeperSecret
       return await tx.project.create({
         data: {
           userId: userId,
-          name: validatedDomain,
-          domainName: validatedDomain,
           websiteUrl: validatedUrl,
           zoneId: zoneId,
-          nameservers: nameservers || [],
           status: 'ACTIVE',
           secretKey: gatekeeperSecret || crypto.randomBytes(32).toString('hex'),
-          requestsCount: 0,
-          api_keys: encryptToken(cleanedToken),
+          api_token: encryptToken(cleanedToken),
         },
       });
     });
@@ -223,7 +213,7 @@ export async function saveProjectWithToken(
     return {
       success: true,
       projectId: result.id,
-      message: `Project "${validatedDomain}" saved successfully`,
+      message: `Project saved successfully`,
     };
   } catch (error) {
     console.error('saveProjectWithToken error:', error);
@@ -231,7 +221,7 @@ export async function saveProjectWithToken(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        message: 'Invalid domain: ' + error.issues.map((e: any) => e.message).join(', '),
+        message: 'Validation error: ' + error.issues.map((e: any) => e.message).join(', '),
         error: 'VALIDATION_ERROR',
       };
     }

@@ -23,30 +23,11 @@ export async function GET(request: NextRequest) {
     const cleanHostname = hostname.replace(/^www\./, '');
     console.log(`🔍 API: Searching for config for: ${cleanHostname}`);
 
-    // 3. Smart Project Search
+    // 3. Find project by websiteUrl containing hostname
     let project = await prisma.project.findFirst({
-      where: { name: cleanHostname },
-      select: { id: true, name: true, zoneId: true, websiteUrl: true, api_keys: true }
+      where: { websiteUrl: { contains: cleanHostname } },
+      select: { id: true, websiteUrl: true, zoneId: true, api_token: true }
     });
-
-    if (!project) {
-      console.log(`⚠️ API: No name match. Checking URL...`);
-      project = await prisma.project.findFirst({
-        where: { websiteUrl: { contains: cleanHostname } },
-        select: { id: true, name: true, zoneId: true, websiteUrl: true, api_keys: true }
-      });
-    }
-
-    if (!project) {
-      const parts = cleanHostname.split('.');
-      if (parts.length > 2) {
-        const rootDomain = parts.slice(-2).join('.');
-        project = await prisma.project.findFirst({
-          where: { name: rootDomain },
-          select: { id: true, name: true, zoneId: true, websiteUrl: true, api_keys: true }
-        });
-      }
-    }
 
     // 4. Validate
     if (!project) {
@@ -58,8 +39,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Zone ID missing in project' }, { status: 404 });
     }
 
-    if (!project.api_keys) {
-      console.error(`❌ API: Project ${project.name} has no api_keys configured`);
+    if (!project.api_token) {
+      console.error(`❌ API: Project ${project.websiteUrl} has no api_token configured`);
       return NextResponse.json({ error: 'Cloudflare token not found' }, { status: 404 });
     }
 
@@ -67,12 +48,12 @@ export async function GET(request: NextRequest) {
     let cloudflareToken: string;
     try {
       // Attempt to decrypt
-      cloudflareToken = decryptToken(project.api_keys);
+      cloudflareToken = decryptToken(project.api_token);
     } catch (err: unknown) {
       // If decryption fails due to format, assume it is a plain text token (manual entry)
       if (err instanceof Error && (err.message === 'Invalid encrypted token format' || err.message.includes('format'))) {
-        console.warn(`⚠️ API: Token for ${project.name} is not encrypted. Using as plain text.`);
-        cloudflareToken = project.api_keys;
+        console.warn(`⚠️ API: Token for ${project.websiteUrl} is not encrypted. Using as plain text.`);
+        cloudflareToken = project.api_token;
       } else {
         if (err instanceof Error) {
           console.error('Token decryption failed:', err);
@@ -84,15 +65,15 @@ export async function GET(request: NextRequest) {
     }
 
     // 6. Return Config
-    console.log(`✅ API: Config found for ${project.name}`);
+    console.log(`✅ API: Config found for ${project.websiteUrl}`);
 
     return NextResponse.json({
       success: true,
-      domain: project.name,
+      domain: cleanHostname,
       zoneId: project.zoneId,
       cloudflareToken: cloudflareToken,
       projectId: project.id,
-      originUrl: project.websiteUrl || `https://${project.name}`,
+      originUrl: project.websiteUrl || `https://${cleanHostname}`,
     });
 
   } catch (error) {

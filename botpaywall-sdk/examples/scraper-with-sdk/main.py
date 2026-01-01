@@ -2,7 +2,7 @@
 """
 Web Scraper - Main Entry Point
 Scrapes website content from a URL provided via command line
-Usage: python main.py <website-url>
+Usage: python main.py <website-url> --secret-key <project-secret-key>
 """
 
 import sys
@@ -59,8 +59,17 @@ Examples:
 
     parser.add_argument(
         'url',
+        nargs='?',
+        default=None,
         type=str,
-        help='The website URL to scrape'
+        help='The website URL to scrape. If omitted, the project website_url from secret key is used.'
+    )
+
+    parser.add_argument(
+        '--secret-key', '-sk',
+        type=str,
+        required=True,
+        help='Secret key to fetch project credentials from bot-paywall'
     )
 
     parser.add_argument(
@@ -91,37 +100,69 @@ Examples:
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
-    # Validate URL
-    if not validate_url(args.url):
-        logger.error(f"Invalid URL: {args.url}")
-        sys.exit(1)
-
     private_key = os.environ.get('WALLET_PRIVATE_KEY')
 
     if not private_key:
         logger.error("Private key not provided. Set WALLET_PRIVATE_KEY in .env ")
         sys.exit(1)
 
-        # Initialize SDK client with actual implementation
+    # Initialize SDK client with actual implementation
     client = BotPaywallClient(
         access_server_url=CONFIG['access_server_url'],
         main_app_url=CONFIG['main_app_url'],
         private_key=private_key,
+        secret_key=args.secret_key,
         wait_after_payment=CONFIG['wait_after_payment'],
         max_retries=CONFIG['max_retries'],
     )
 
+    if not client.project_details:
+        logger.error("Could not fetch project details using the provided secret key")
+        sys.exit(1)
+
 
     try:
-        logger.info(f"Checking paywall status for: {args.url}")
-        # Extract domain from URL
-        target_domain = extract_domain_from_url(args.url)
-        if not target_domain:
-            logger.error("Could not extract domain from URL")
+        target_url = args.url or client.project_details.get('website_url') or client.project_details.get('websiteUrl')
+        if not target_url:
+            logger.error("No URL provided and project has no website_url")
             sys.exit(1)
 
+        if not validate_url(target_url):
+            logger.error(f"Invalid URL: {target_url}")
+            sys.exit(1)
+
+        logger.info(f"Checking paywall status for: {target_url}")
+        # Extract domain from URL or project
+        target_domain = extract_domain_from_url(target_url) or client.project_details.get('domain')
+        if not target_domain:
+            logger.error("Could not determine domain from URL")
+            sys.exit(1)
+
+        # Determine credentials
+        zone_id = None
+        secret_key_for_access = None
+
+        if client.project_details:
+            zone_id = client.project_details.get('zone_id') or client.project_details.get('zoneId')
+            secret_key_for_access = (
+                client.project_details.get('api_token')
+                or client.project_details.get('secret_key')
+                or client.project_details.get('secretKey')
+            )
+            logger.info("Using credentials from secret key lookup")
+        else:
+            credentials = client.get_project_credentials(target_domain)
+            if credentials:
+                zone_id = credentials.get('zone_id')
+                secret_key_for_access = credentials.get('secret_key')
+                logger.info("Using credentials from domain lookup")
+
         # Buy access using SDK
-        result = client.buy_access(domain=target_domain)
+        result = client.buy_access(
+            domain=target_domain,
+            zone_id=zone_id,
+            secret_key=secret_key_for_access
+        )
 
         if not result['success']:
             logger.error(f"Access not granted: {result.get('error')}")
@@ -131,8 +172,8 @@ Examples:
         client.wait_for_propagation()
 
         # Initialize scraper with optional access token
-        logger.info(f"Starting to scrape: {args.url}") # end
-        scraper = WebScraper(args.url)
+        logger.info(f"Starting to scrape: {target_url}") # end
+        scraper = WebScraper(target_url)
 
         # Scrape the website
         data = scraper.scrape()
@@ -142,7 +183,7 @@ Examples:
             sys.exit(1)
 
         # Save results
-        output_file = save_to_file(data, args.url, args.output, args.format)
+        output_file = save_to_file(data, target_url, args.output, args.format)
 
         logger.info(f"Successfully scraped {args.url}")
         logger.info(f"Results saved to: {output_file}")

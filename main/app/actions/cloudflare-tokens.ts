@@ -2,7 +2,7 @@
 
 /**
  * Cloudflare Token Management Actions
- * Tokens are stored on Project.api_keys (encrypted)
+ * Tokens are stored on Project.api_token (encrypted)
  */
 
 import { auth } from '@/lib/auth';
@@ -236,7 +236,7 @@ export async function saveCloudflareToken(token: string): Promise<CloudflareToke
 
     const updateResult = await prisma.project.updateMany({
       where: { userId },
-      data: { api_keys: encryptedToken, updatedAt: new Date() },
+      data: { api_token: encryptedToken, updatedAt: new Date() },
     });
 
     console.log(`✅ Updated Cloudflare token for ${updateResult.count} projects`);
@@ -270,8 +270,8 @@ export async function getCloudflareTokenStatus(): Promise<{ hasToken: boolean; i
     if (!authResult) return { hasToken: false, isActive: false };
 
     const projectWithToken = await prisma.project.findFirst({
-      where: { userId: authResult.userId, api_keys: { not: null } },
-      select: { api_keys: true, updatedAt: true },
+      where: { userId: authResult.userId, api_token: { not: null } },
+      select: { api_token: true, updatedAt: true },
     });
 
     return { hasToken: !!projectWithToken, isActive: !!projectWithToken, lastVerified: projectWithToken?.updatedAt };
@@ -291,14 +291,14 @@ export async function getUserCloudflareTokenInfo(): Promise<UserCloudflareToken 
     const { userId } = authResult;
 
     const projectWithToken = await prisma.project.findFirst({
-      where: { userId, api_keys: { not: null } },
-      select: { id: true, api_keys: true, createdAt: true, updatedAt: true },
+      where: { userId, api_token: { not: null } },
+      select: { id: true, api_token: true, createdAt: true, updatedAt: true },
     });
 
-    if (!projectWithToken || !projectWithToken.api_keys) return null;
+    if (!projectWithToken || !projectWithToken.api_token) return null;
 
     // Decrypt token and fetch metadata from Cloudflare
-    const decryptedToken = decryptToken(projectWithToken.api_keys);
+    const decryptedToken = decryptToken(projectWithToken.api_token);
     const { accountId, tokenName } = await fetchTokenMetadata(decryptedToken);
 
     return {
@@ -328,12 +328,12 @@ export async function getUserCloudflareToken(): Promise<string | null> {
     const { userId } = authResult;
 
     const projectWithToken = await prisma.project.findFirst({
-      where: { userId, api_keys: { not: null } },
-      select: { api_keys: true },
+      where: { userId, api_token: { not: null } },
+      select: { api_token: true },
     });
 
-    if (!projectWithToken?.api_keys) return null;
-    return decryptToken(projectWithToken.api_keys);
+    if (!projectWithToken?.api_token) return null;
+    return decryptToken(projectWithToken.api_token);
   } catch (error) {
     console.error('getUserCloudflareToken error:', error);
     return null;
@@ -351,7 +351,7 @@ export async function removeCloudflareToken(): Promise<{ success: boolean; error
 
     await prisma.project.updateMany({
       where: { userId },
-      data: { api_keys: null },
+      data: { api_token: null },
     });
 
     revalidatePath('/dashboard');

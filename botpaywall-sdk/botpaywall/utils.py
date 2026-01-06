@@ -5,6 +5,13 @@ Utility functions for BotPaywall SDK.
 from datetime import datetime
 from urllib.parse import urlparse
 from typing import Optional, Dict, Any
+import os
+import hashlib
+
+try:
+    from Crypto.Cipher import AES
+except ImportError:  # pragma: no cover - dependency missing at runtime
+    AES = None
 
 
 LOG_ICONS = {
@@ -89,3 +96,48 @@ def format_move_amount(octas: int) -> float:
 def octas_from_move(move: float) -> int:
     """Convert MOVE tokens to octas."""
     return int(move * 100_000_000)
+
+
+def _pkcs7_unpad(data: bytes) -> bytes:
+    """Remove PKCS7 padding."""
+    if not data:
+        raise ValueError("Invalid padding")
+    pad_len = data[-1]
+    if pad_len == 0 or pad_len > len(data):
+        raise ValueError("Invalid padding")
+    if data[-pad_len:] != bytes([pad_len]) * pad_len:
+        raise ValueError("Invalid padding")
+    return data[:-pad_len]
+
+
+def decrypt_token(encrypted_token: str, key_env: str = "TOKEN_ENCRYPTION_KEY") -> Optional[str]:
+    """Decrypt a token encrypted with aes-256-cbc using scrypt-derived key.
+
+    Mirrors main/lib/token-encryption.ts logic: split iv:cipher, derive key via scrypt
+    using env key and salt "salt", decrypt, then PKCS7 unpad.
+    Returns plaintext or None if decrypt fails or dependency missing.
+    """
+    if AES is None:
+        log("pycryptodome is required to decrypt api_token", "ERROR")
+        return None
+
+    try:
+        parts = encrypted_token.split(":")
+        if len(parts) != 2:
+            raise ValueError("Invalid encrypted token format")
+
+        iv = bytes.fromhex(parts[0])
+        ciphertext = bytes.fromhex(parts[1])
+
+        secret = os.environ.get(key_env)
+        if not secret:
+            raise ValueError(f"Missing {key_env} environment variable")
+
+        key = hashlib.scrypt(secret.encode(), salt=b"salt", n=16384, r=8, p=1, dklen=32)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        plaintext_padded = cipher.decrypt(ciphertext)
+        plaintext = _pkcs7_unpad(plaintext_padded)
+        return plaintext.decode("utf-8")
+    except Exception as e:
+        log(f"Token decryption failed: {e}", "ERROR")
+        return None

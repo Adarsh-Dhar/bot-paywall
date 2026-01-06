@@ -11,7 +11,7 @@ import requests
 
 from .config import BotPaywallConfig
 from .payment import PaymentClient
-from .utils import log, extract_domain_from_url
+from .utils import log, extract_domain_from_url, decrypt_token
 import os
 
 
@@ -104,6 +104,11 @@ class BotPaywallClient:
                 zone_id = project.get('zoneId')
                 secret_key_resp = project.get('secretKey')
                 api_token = project.get('api_token')
+                # Decrypt api_token if encrypted (iv:cipher hex) using TOKEN_ENCRYPTION_KEY
+                if api_token and ':' in api_token:
+                    decrypted = decrypt_token(api_token)
+                    if decrypted:
+                        api_token = decrypted
                 domain = extract_domain_from_url(website_url) if website_url else None
 
                 if not zone_id or not secret_key_resp:

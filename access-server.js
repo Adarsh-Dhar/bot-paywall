@@ -294,30 +294,43 @@ function scheduleWhitelistDeletion(ip, zoneId, apiToken, delaySeconds = 60) {
 async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment", autoDeleteAfterSeconds = 300) {
   if (!zoneId || !apiToken) throw new Error("Zone ID and API token required");
 
-  // Debug: Log token preview
   console.log(`🔑 Cloudflare API call with token: ${apiToken.substring(0, 8)}...`);
+  console.log(`💾 Whitelisting IP: ${ip} for zone: ${zoneId}`);
 
   try {
+    // Remove existing whitelist rule first
     await removeExistingWhitelist(ip, zoneId, apiToken);
 
+    // Use IP Access Rules endpoint with mode="whitelist"
     const url = `${CLOUDFLARE_API_BASE}/zones/${zoneId}/firewall/access_rules/rules`;
+    console.log(`📤 POST to: ${url}`);
+    
+    const requestBody = {
+      mode: "whitelist",
+      configuration: {
+        target: "ip",
+        value: ip
+      },
+      notes: notes
+    };
+    
+    console.log(`📦 Payload: ${JSON.stringify(requestBody, null, 2)}`);
+    
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        mode: "whitelist",
-        configuration: { target: "ip", value: ip },
-        notes: notes
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const data = await response.json();
+    console.log(`☁️ Cloudflare Response Status: ${response.status}`);
+    console.log(`☁️ Cloudflare Response: ${JSON.stringify(data, null, 2)}`);
 
     if (data.success) {
-      console.log(`✅ Successfully whitelisted requesting IP`);
+      console.log(`✅ Successfully whitelisted IP ${ip}`);
       scheduleWhitelistDeletion(ip, zoneId, apiToken, autoDeleteAfterSeconds);
       return {
         success: true,
@@ -326,7 +339,7 @@ async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment", autoDel
         auto_deletes_in: `${autoDeleteAfterSeconds} seconds`
       };
     } else {
-      console.error(`❌ Failed to whitelist IP:`, data.errors);
+      console.error(`❌ Failed to whitelist IP:`, JSON.stringify(data, null, 2));
       return { success: false, message: "Failed to whitelist IP", errors: data.errors };
     }
   } catch (error) {
@@ -345,7 +358,11 @@ app.post("/buy-access", async (req, res) => {
     console.log("🔵 NEW ACCESS REQUEST");
     console.log("=".repeat(80));
 
-    const scraperIP = req.body.scraper_ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    // Prioritize client-provided scraper_ip, then server-detected IP
+    // Client provides the actual egress IP from api.ipify.org, which is more reliable than header detection
+    const clientProvidedIP = req.body.scraper_ip || req.query.scraper_ip;
+    const detectedIP = req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    const scraperIP = clientProvidedIP || detectedIP;
     const domain = req.body.domain || req.query.domain;
 
     if (!scraperIP) return res.status(400).json({ success: false, error: "No IP address provided" });
@@ -410,7 +427,8 @@ app.post("/buy-access", async (req, res) => {
         scraperIP,
         cloudflareConfig.zoneId,
         cloudflareConfig.apiToken,
-        `x402 Payment - ${new Date().toISOString()}`
+        `x402 Payment - ${new Date().toISOString()}`,
+        600  // Auto-delete after 10 minutes (extended from 5 minutes)
     );
 
     if (whitelistResult.success) {

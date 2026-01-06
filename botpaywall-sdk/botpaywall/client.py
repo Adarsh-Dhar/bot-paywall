@@ -70,6 +70,12 @@ class BotPaywallClient:
         )
         self.config.update(**kwargs)
 
+        # Initialize session with spoofed User-Agent for Cloudflare Bot Fight Mode bypass
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
+
         self.payment_client = PaymentClient(self.config)
 
         # Auto-fetch project details if secret_key provided
@@ -87,7 +93,7 @@ class BotPaywallClient:
         try:
             url = f"{self.config.main_app_url}/api/projects/public?secretKey={secret_key}"
             log(f"Fetching project details by secret key...", "INFO")
-            response = requests.get(url, timeout=self.config.request_timeout)
+            response = self.session.get(url, timeout=self.config.request_timeout)
 
             if response.status_code == 200:
                 data = response.json()
@@ -169,7 +175,7 @@ class BotPaywallClient:
             url = f"{self.config.main_app_url}/api/projects/public?domain={domain}"
 
             log(f"Fetching credentials for domain {domain}...", "INFO")
-            response = requests.get(url, timeout=self.config.request_timeout)
+            response = self.session.get(url, timeout=self.config.request_timeout)
 
             if response.status_code == 200:
                 data = response.json()
@@ -221,7 +227,7 @@ class BotPaywallClient:
         try:
             log("Fetching available projects from bot-paywall main app...", "INFO")
 
-            response = requests.get(
+            response = self.session.get(
                 f"{self.config.main_app_url}/api/projects/public",
                 timeout=self.config.request_timeout
             )
@@ -286,7 +292,7 @@ class BotPaywallClient:
             The website URL or None if not found
         """
         try:
-            response = requests.get(
+            response = self.session.get(
                 f"{self.config.main_app_url}/api/projects/public",
                 timeout=self.config.request_timeout
             )
@@ -354,7 +360,7 @@ class BotPaywallClient:
             Public IP address or None if detection fails
         """
         try:
-            response = requests.get('https://api.ipify.org?format=json', timeout=5)
+            response = self.session.get('https://api.ipify.org?format=json', timeout=5)
             if response.status_code == 200:
                 ip = response.json().get('ip')
                 log(f"Detected public IP: {ip}", "INFO")
@@ -375,7 +381,7 @@ class BotPaywallClient:
             True if whitelisted, False otherwise
         """
         try:
-            response = requests.get(
+            response = self.session.get(
                 f"{self.config.access_server_url}/check-access/{ip}",
                 params={'domain': domain},
                 timeout=self.config.request_timeout
@@ -452,7 +458,7 @@ class BotPaywallClient:
             else:
                 log("WARNING: No Cloudflare credentials provided - whitelisting may fail", "ERROR")
 
-            response = requests.post(
+            response = self.session.post(
                 f"{self.config.access_server_url}/buy-access",
                 json=payload,
                 timeout=120
@@ -476,7 +482,7 @@ class BotPaywallClient:
                     retry_payload['secret_key'] = secret_key
 
                 log(f"Retrying request with payment proof: {tx_hash}", "INFO")
-                response = requests.post(
+                response = self.session.post(
                     f"{self.config.access_server_url}/buy-access",
                     json=retry_payload,
                     headers={

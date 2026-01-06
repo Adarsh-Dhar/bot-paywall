@@ -14,13 +14,15 @@ logger = logging.getLogger(__name__)
 class WebScraper:
     """Web scraper class to extract content from websites"""
 
-    def __init__(self, url, timeout=10):
+    def __init__(self, url, timeout=10, zone_id=None, secret_key=None):
         """
         Initialize the web scraper
 
         Args:
             url (str): The URL to scrape
             timeout (int): Request timeout in seconds
+            zone_id (str): Cloudflare Zone ID for paywall identification
+            secret_key (str): Cloudflare Secret Key for paywall identification
         """
         self.url = url
         self.timeout = timeout
@@ -31,6 +33,12 @@ class WebScraper:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        
+        # Add Cloudflare paywall credentials if provided
+        if zone_id:
+            self.headers['x-zone-id'] = zone_id
+        if secret_key:
+            self.headers['x-secret-key'] = secret_key
 
     def fetch_page(self):
         """

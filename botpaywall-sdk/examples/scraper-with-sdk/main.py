@@ -244,9 +244,9 @@ Examples:
         except Exception as e:
             logger.warning(f"Could not re-check egress IP: {e}")
 
-        # Initialize scraper with optional access token
-        logger.info(f"Starting to scrape: {target_url}") # end
-        scraper = WebScraper(target_url)
+        # Initialize scraper with Cloudflare credentials
+        logger.info(f"Starting to scrape: {target_url}")
+        scraper = WebScraper(target_url, zone_id=zone_id, secret_key=secret_key_for_access)
 
         # Scrape the website
         data = scraper.scrape()

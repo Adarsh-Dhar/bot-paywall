@@ -24,10 +24,11 @@ describe('Payment Verification Properties', () => {
 
   describe('Property 3: Successful payment verification extracts IP address', () => {
     test('successful payment verification should always extract IP address', async () => {
+      const expectedIP = '1.2.3.4';
       // Mock successful IP extraction
       mockExec.mockImplementation((command, callback) => {
         if (typeof callback === 'function') {
-          callback(null, { stdout: '210.212.2.133\n', stderr: '' } as any);
+          callback(null, { stdout: `${expectedIP}\n`, stderr: '' } as any);
         }
         return {} as any;
       });
@@ -40,7 +41,7 @@ describe('Payment Verification Properties', () => {
             const ip = await paymentService.extractPayerIP();
             
             // IP should be extracted successfully
-            expect(ip).toBe('210.212.2.133');
+            expect(ip).toBe(expectedIP);
             expect(typeof ip).toBe('string');
             expect(ip.length).toBeGreaterThan(0);
           }

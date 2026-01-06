@@ -65,29 +65,7 @@ describe('IP Format Validation Property Tests', () => {
     );
   });
 
-  /**
-   * Property: For the specific IP 210.212.2.133, validation should always pass
-   */
-  it('should always validate the specific configured IP 210.212.2.133', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.constant('210.212.2.133'),
-        async (specificIP) => {
-          // Validate the specific IP
-          const isValid = validateIPAddress(specificIP);
-          expect(isValid).toBe(true);
-          
-          // Format the specific IP
-          const formattedIP = formatIPForCloudflare(specificIP);
-          expect(formattedIP).toBe(specificIP);
-          
-          // Verify it remains valid after formatting
-          expect(validateIPAddress(formattedIP)).toBe(true);
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
+  // Removed hardcoded specific-IP property; validation already covered generically
 
   /**
    * Property: For any IP with leading zeros, formatting should remove them

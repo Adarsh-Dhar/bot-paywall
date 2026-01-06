@@ -36,11 +36,6 @@ export function validateIPAddress(ip: string): boolean {
   const firstOctet = parseInt(octets[0]);
   const secondOctet = parseInt(octets[1]);
   
-  // Allow the specific configured IP 210.212.2.133
-  if (ip === '210.212.2.133') {
-    return true;
-  }
-  
   // Check for common reserved ranges (optional validation)
   // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8
   if (firstOctet === 10 || 

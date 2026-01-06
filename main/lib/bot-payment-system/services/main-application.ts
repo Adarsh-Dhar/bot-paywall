@@ -59,7 +59,8 @@ export class BotPaymentSystemApplication {
       cleanupDelayMs: config.cleanupDelayMs || 60000, // 60 seconds
       maxRetryAttempts: config.maxRetryAttempts || 3,
       retryBaseDelayMs: config.retryBaseDelayMs || 1000,
-      configuredClientIP: config.configuredClientIP || process.env.CONFIGURED_CLIENT_IP || '210.212.2.133'
+      // Do not hardcode a fallback IP; rely on explicit config/env or dynamic detection downstream
+      configuredClientIP: config.configuredClientIP || process.env.CONFIGURED_CLIENT_IP
     };
 
     // Initialize services

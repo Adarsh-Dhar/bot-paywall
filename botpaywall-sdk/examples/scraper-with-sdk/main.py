@@ -11,6 +11,8 @@ from scraper import WebScraper
 from utils import validate_url, save_to_file
 import os
 import logging
+import requests
+import time
 from botpaywall import BotPaywallClient  #added
 from botpaywall.utils import extract_domain_from_url  #added
 
@@ -39,7 +41,8 @@ CONFIG = {
     'access_server_url': "http://localhost:5000",
     'main_app_url': "http://localhost:3000",
     'max_retries': 3,
-    'wait_after_payment': 10,
+    # Wait longer for Cloudflare rule propagation when egress IP differs or zones are slower
+    'wait_after_payment': 45,
 }
 
 def main():
@@ -70,6 +73,13 @@ Examples:
         type=str,
         required=True,
         help='Secret key to fetch project credentials from bot-paywall'
+    )
+
+    parser.add_argument(
+        '--scraper-ip',
+        type=str,
+        default=None,
+        help='Override the detected public IP to whitelist'
     )
 
     parser.add_argument(
@@ -157,19 +167,82 @@ Examples:
                 secret_key_for_access = credentials.get('secret_key')
                 logger.info("Using credentials from domain lookup")
 
-        # Buy access using SDK
+        # Detect scraper egress IP (actual IP used by requests); allow manual override if provided
+        def detect_ip() -> str:
+            return requests.get('https://api.ipify.org', timeout=5).text.strip()
+
+        try:
+            detected_ip = args.scraper_ip.strip() if args.scraper_ip else detect_ip()
+        except Exception as e:
+            logger.error(f"Could not determine scraper IP: {e}")
+            sys.exit(1)
+
+        logger.info("Detected scraper egress IP")
+
+        # Whitelist the detected IP
         result = client.buy_access(
             domain=target_domain,
             zone_id=zone_id,
-            secret_key=secret_key_for_access
+            secret_key=secret_key_for_access,
+            scraper_ip=detected_ip
         )
 
         if not result['success']:
-            logger.error(f"Access not granted: {result.get('error')}")
+            logger.error(f"Access not granted for {detected_ip}: {result.get('error')}")
             sys.exit(1)
 
         # Wait for propagation
         client.wait_for_propagation()
+
+        # Confirm whitelist before scraping; retry a few times
+        for attempt in range(8):
+            try:
+                is_whitelisted = client.check_access_status(detected_ip, target_domain)
+                if is_whitelisted:
+                    break
+                time.sleep(5)
+            except Exception:
+                time.sleep(5)
+
+        # Final IP check just before scraping; if new IP appears, whitelist it once more
+        try:
+            current_ip = detect_ip()
+            if current_ip and current_ip != detected_ip:
+                logger.warning("Egress IP changed; whitelisting it...")
+                result = client.buy_access(
+                    domain=target_domain,
+                    zone_id=zone_id,
+                    secret_key=secret_key_for_access,
+                    scraper_ip=current_ip
+                )
+                if not result['success']:
+                    logger.error(f"Access not granted after IP change: {result.get('error')}")
+                    sys.exit(1)
+                client.wait_for_propagation()
+
+                # Confirm whitelist after change
+                for attempt in range(8):
+                    try:
+                        is_whitelisted = client.check_access_status(current_ip, target_domain)
+                        if is_whitelisted:
+                            break
+                        time.sleep(5)
+                    except Exception:
+                        time.sleep(5)
+
+                detected_ip = current_ip
+            else:
+                # If IP unchanged, still ensure whitelist is active before scraping
+                for attempt in range(8):
+                    try:
+                        is_whitelisted = client.check_access_status(detected_ip, target_domain)
+                        if is_whitelisted:
+                            break
+                        time.sleep(5)
+                    except Exception:
+                        time.sleep(5)
+        except Exception as e:
+            logger.warning(f"Could not re-check egress IP: {e}")
 
         # Initialize scraper with optional access token
         logger.info(f"Starting to scrape: {target_url}") # end

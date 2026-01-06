@@ -25,24 +25,18 @@ describe('IP Configuration Property Tests', () => {
 
   /**
    * **Feature: x402-payment-integration-fix, Property 21: IP determination uses configured address**
-   * Property: For any client IP determination, the system should use the IP address 210.212.2.133 as specified in the user's configuration
+   * Property: For any client IP determination, the system should use the configured IP if provided
    */
   it('should always use configured IP when provided', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.constant('210.212.2.133'), // The specific configured IP
+        fc.ipV4(),
         async (configuredIP) => {
-          // Create payment verification service with configured IP
           const paymentService = new PaymentVerificationServiceImpl(configuredIP);
 
-          // Extract IP address
           const extractedIP = await paymentService.extractPayerIP();
 
-          // Verify that the configured IP is used
           expect(extractedIP).toBe(configuredIP);
-          expect(extractedIP).toBe('210.212.2.133');
-
-          // Verify that curl was NOT called since we have a configured IP
           expect(exec).not.toHaveBeenCalled();
         }
       ),
@@ -233,41 +227,5 @@ describe('IP Configuration Property Tests', () => {
     );
   });
 
-  /**
-   * Property: For the specific configured IP 210.212.2.133, system should always use it
-   */
-  it('should always use the specific configured IP 210.212.2.133', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.constant('210.212.2.133'),
-        async (specificIP) => {
-          // Create payment verification service with the specific IP
-          const paymentService = new PaymentVerificationServiceImpl(specificIP);
-
-          // Extract IP address multiple times
-          const results = await Promise.all([
-            paymentService.extractPayerIP(),
-            paymentService.extractPayerIP(),
-            paymentService.extractPayerIP(),
-            paymentService.extractPayerIP(),
-            paymentService.extractPayerIP()
-          ]);
-
-          // Verify all results are the specific IP
-          results.forEach(ip => {
-            expect(ip).toBe('210.212.2.133');
-          });
-
-          // Verify consistency across all calls
-          const uniqueIPs = new Set(results);
-          expect(uniqueIPs.size).toBe(1);
-          expect(uniqueIPs.has('210.212.2.133')).toBe(true);
-
-          // Verify curl was never called
-          expect(exec).not.toHaveBeenCalled();
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
+  // Removed hardcoded-specific IP property; generic configured IP coverage above
 });

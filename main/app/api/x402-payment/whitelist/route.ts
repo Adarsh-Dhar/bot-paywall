@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
         enableFileLogging: false,
         cleanupDelayMs: 60000, // 60 seconds
         monitoringCheckInterval: 5000, // 5 seconds
-        configuredClientIP: '210.212.2.133',
+        // Use env/explicit configuration only; no hardcoded IP
+        configuredClientIP: process.env.CONFIGURED_CLIENT_IP,
         webscrapperPath: process.cwd().replace('/main', '') + '/webscrapper'
       });
     }

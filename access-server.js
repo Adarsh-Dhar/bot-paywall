@@ -283,7 +283,7 @@ async function removeExistingWhitelist(ip, zoneId, apiToken) {
 function scheduleWhitelistDeletion(ip, zoneId, apiToken, delaySeconds = 60) {
   return setTimeout(async () => {
     try {
-      console.log(`⏰ Auto-deleting whitelist for IP: ${ip}`);
+      console.log(`⏰ Auto-deleting whitelist rule`);
       await removeExistingWhitelist(ip, zoneId, apiToken);
     } catch (error) {
       console.error(`❌ Error auto-deleting whitelist: ${error.message}`);
@@ -291,7 +291,7 @@ function scheduleWhitelistDeletion(ip, zoneId, apiToken, delaySeconds = 60) {
   }, delaySeconds * 1000);
 }
 
-async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment", autoDeleteAfterSeconds = 60) {
+async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment", autoDeleteAfterSeconds = 300) {
   if (!zoneId || !apiToken) throw new Error("Zone ID and API token required");
 
   // Debug: Log token preview
@@ -317,7 +317,7 @@ async function whitelistIP(ip, zoneId, apiToken, notes = "x402 Payment", autoDel
     const data = await response.json();
 
     if (data.success) {
-      console.log(`✅ Successfully whitelisted IP: ${ip}`);
+      console.log(`✅ Successfully whitelisted requesting IP`);
       scheduleWhitelistDeletion(ip, zoneId, apiToken, autoDeleteAfterSeconds);
       return {
         success: true,

@@ -86,7 +86,7 @@ export class PaymentVerificationServiceImpl implements PaymentVerificationServic
    */
   async extractPayerIP(): Promise<string> {
     try {
-      // Use configured IP if available (for specific client IP like 210.212.2.133)
+      // Use configured IP if provided
       if (this.configuredIP) {
         return this.configuredIP;
       }

@@ -114,8 +114,7 @@ describe('IP Validation Properties', () => {
         '1.1.1.1',
         '127.0.0.1',
         '0.0.0.0',
-        '255.255.255.255',
-        '210.212.2.133' // The specific IP from the requirements
+        '255.255.255.255'
       ];
 
       knownValidIPs.forEach(ip => {

@@ -12,10 +12,11 @@ const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Cloudflare API Integration Tests', () => {
   let cloudflareClient: CloudflareClientImpl;
+  const TEST_IP = process.env.CONFIGURED_CLIENT_IP || '1.2.3.4';
   const testConfig = {
     apiToken: 'test-api-token',
     zoneId: 'test-zone-id',
-    clientIP: '210.212.2.133'
+    clientIP: TEST_IP
   };
 
   beforeEach(() => {
@@ -112,7 +113,7 @@ describe('Cloudflare API Integration Tests', () => {
           mode: 'whitelist',
           configuration: {
             target: 'ip',
-            value: '210.212.2.133'
+            value: TEST_IP
           },
           notes: 'Test rule 1'
         },
@@ -155,7 +156,7 @@ describe('Cloudflare API Integration Tests', () => {
    * Test listing access rules filtered by IP
    */
   it('should list access rules filtered by IP', async () => {
-    const filterIP = '210.212.2.133';
+    const filterIP = TEST_IP;
     const mockFilteredResponse = {
       success: true,
       result: [

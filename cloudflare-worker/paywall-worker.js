@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   PAYMENT_ADDRESS: "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b",
   PRICE_AMOUNT: "0.01",
   PRICE_CURRENCY: "MOVE",
-  ACCESS_SERVER_URL: "https://0eb3ec557c9e.ngrok-free.app ",
+  ACCESS_SERVER_URL: "https://3d61f6fae7b4.ngrok-free.app",
 };
 
 export default {

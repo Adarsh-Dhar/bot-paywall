@@ -54,35 +54,7 @@ export default function ZoneStatusDisplay({ domain, autoLookup = false }: ZoneSt
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
       
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Zone Lookup</p>
-          <h3 className="mt-2 text-xl font-semibold text-white">Domain Zone Information</h3>
-          <p className="mt-1 text-sm text-zinc-400">
-            Find Zone IDs for WAF rule deployment
-          </p>
-        </div>
-      </div>
 
-      {!autoLookup && (
-        <div className="flex gap-3 mb-4">
-          <input
-            type="text"
-            value={inputDomain}
-            onChange={(e) => setInputDomain(e.target.value)}
-            placeholder="Enter domain (e.g., example.com)"
-            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#f5c518]/50 focus:border-[#f5c518]/50"
-            onKeyPress={(e) => e.key === 'Enter' && handleLookupZone()}
-          />
-          <button
-            onClick={() => handleLookupZone()}
-            disabled={isLookingUp || !inputDomain.trim()}
-            className="px-4 py-2 bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518] rounded-lg hover:bg-[#f5c518]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-          >
-            {isLookingUp ? 'Looking up...' : 'Lookup Zone'}
-          </button>
-        </div>
-      )}
 
       {zoneResult && (
         <div className={`rounded-xl border p-4 ${

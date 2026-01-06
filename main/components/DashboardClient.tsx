@@ -229,24 +229,6 @@ export default function DashboardClient({
           </section>
 
           <section className="grid gap-6 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 card-surface">
-              <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Bot Protection Status</p>
-                  <h3 className="text-lg font-semibold text-white">Gatekeeper is ready</h3>
-                </div>
-              </div>
-              <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-sm text-zinc-300 mb-2">Your bot firewall is active and protecting your domains</p>
-                <p className="text-xs text-zinc-500">Gatekeeper automatically detects and challenges suspicious bot traffic</p>
-              </div>
-            </div>
-
             <ZoneStatusDisplay />
           </section>
         </main>

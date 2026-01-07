@@ -106,8 +106,9 @@ Connect your domain to the worker:
 1. Open your Gatekeeper dashboard at your main app URL
 2. Go to **Connect Cloudflare** section
 3. Add your Cloudflare API token with these permissions:
-   - Zone.Firewall Services: Edit
-   - Zone.Zone: Read
+  - Account → Account WAF → Read
+  - Zone → Zone → Read
+  - Zone → Firewall Services → Edit
 4. Add your domain to start protection
 5. The worker will automatically fetch configuration from the dashboard
 

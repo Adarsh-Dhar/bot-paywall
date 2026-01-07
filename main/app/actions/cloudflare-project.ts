@@ -177,12 +177,13 @@ export async function saveProjectWithToken(
     // Use a transaction to ensure user exists and project is created
     const result = await prisma.$transaction(async (tx) => {
       // Ensure user exists in database
+      // Use email (unique) to avoid conflicts when the same email is reused with a new userId
       await tx.user.upsert({
-        where: { userId: userId },
-        update: {},
+        where: { email },
+        update: { userId },
         create: {
-          userId: userId,
-          email: email,
+          userId,
+          email,
         },
       });
 

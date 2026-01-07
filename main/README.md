@@ -85,7 +85,7 @@ Visit `http://localhost:3000`
 ## Workflow
 
 ### Phase 1: Project Setup (Connect Cloudflare)
-1. User creates a Cloudflare API token (Zone:Read, Firewall:Edit)
+1. User creates a Cloudflare API token with permissions: Account → Account WAF → Read, Zone → Zone → Read, Zone → Firewall Services → Edit
 2. App fetches available zones for the token
 3. User selects domain (zone) and creates a project
 4. App generates a unique Gatekeeper secret and saves the project

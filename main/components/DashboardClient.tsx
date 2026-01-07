@@ -118,7 +118,7 @@ export default function DashboardClient({
                       {domain.status}
                     </span>
                     <button
-                      onClick={() => router.push(`/domains`)}
+                      onClick={() => router.push(`/connect-cloudflare`)}
                       className="text-gray-400 transition hover:text-gray-600"
                     >
                       <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@ export default function DashboardClient({
                 Connect your first domain to start protecting it with Gatekeeper
               </p>
               <button
-                onClick={() => router.push('/domains')}
+                onClick={() => router.push('/connect-cloudflare')}
                 className="rounded-lg border-2 border-yellow-400 bg-yellow-400 px-8 py-3 font-bold text-gray-900 transition hover:bg-yellow-500"
               >
                 Add Your First Domain

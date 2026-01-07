@@ -359,7 +359,7 @@ export default function ConnectCloudflarePage() {
                       Click the button below to open Cloudflare&apos;s API token creation page:
                     </p>
                     <a
-                      href="https://dash.cloudflare.com/profile/api-tokens/create"
+                      href="https://dash.cloudflare.com/profile/api-tokens"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 transition-colors font-bold shadow-md"
@@ -524,7 +524,7 @@ export default function ConnectCloudflarePage() {
                 <p className="mt-2 text-xs text-gray-600 font-medium">
                   A Cloudflare API token with Zone:Read and Zone:Edit permissions.{' '}
                   <a
-                    href="https://dash.cloudflare.com/profile/api-tokens/create"
+                    href="https://dash.cloudflare.com/profile/api-tokens"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-yellow-700 hover:text-yellow-900 font-bold"

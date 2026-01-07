@@ -86,7 +86,9 @@ async function getCloudflareConfig(domain) {
           zoneId: data.zoneId,
           apiToken: data.cloudflareToken,
           domain: data.domain,
-          projectId: data.projectId
+          projectId: data.projectId,
+          paymentAddress: data.paymentAddress,
+          paymentAmount: data.paymentAmount
         };
         // Cache the config
         configCache.set(domain, { config, timestamp: Date.now() });
@@ -128,7 +130,9 @@ async function getCloudflareConfig(domain) {
             zoneId: data.zoneId,
             apiToken: data.cloudflareToken,
             domain: data.domain,
-            projectId: data.projectId
+            projectId: data.projectId,
+            paymentAddress: data.paymentAddress,
+            paymentAmount: data.paymentAmount
           };
           // Cache the config for both the original domain and root domain
           configCache.set(domain, { config, timestamp: Date.now() });
@@ -539,6 +543,10 @@ app.post("/buy-access", async (req, res) => {
 
     // Payment Verification
     const transactionHash = req.body?.tx_hash || req.headers?.['x-payment-proof'];
+    
+    // Use project-specific payment config if available, otherwise fall back to default
+    const paymentAddress = cloudflareConfig.paymentAddress || PAYMENT_CONFIG.PAYMENT_ADDRESS;
+    const paymentAmount = cloudflareConfig.paymentAmount || PAYMENT_CONFIG.AMOUNT_REQUIRED;
 
     if (!transactionHash) {
       return res.status(402).json({
@@ -547,21 +555,23 @@ app.post("/buy-access", async (req, res) => {
           scheme: "exact",
           network: PAYMENT_CONFIG.NETWORK,
           asset: PAYMENT_CONFIG.ASSET,
-          maxAmountRequired: PAYMENT_CONFIG.AMOUNT_REQUIRED,
+          maxAmountRequired: paymentAmount,
           resource: `${req.protocol}://${req.get('host')}${req.path}`,
           description: PAYMENT_CONFIG.DESCRIPTION,
           mimeType: "application/json",
-          payTo: PAYMENT_CONFIG.PAYMENT_ADDRESS,
+          payTo: paymentAddress,
           maxTimeoutSeconds: PAYMENT_CONFIG.TIMEOUT_SECONDS
         }]
       });
     }
 
     console.log(`💳 Verifying payment transaction: ${transactionHash}`);
+    console.log(`💰 Using payment address: ${paymentAddress}`);
+    console.log(`💰 Using payment amount: ${paymentAmount} octas`);
     const paymentVerified = await verifyPaymentTransaction(
         transactionHash,
-        PAYMENT_CONFIG.PAYMENT_ADDRESS,
-        PAYMENT_CONFIG.AMOUNT_REQUIRED
+        paymentAddress,
+        paymentAmount
     );
 
     if (!paymentVerified) {
@@ -636,14 +646,46 @@ app.delete("/revoke-access/:ip", async (req, res) => {
   }
 });
 
-app.get("/payment-info", (req, res) => {
-  res.json({
-    payment_address: PAYMENT_CONFIG.PAYMENT_ADDRESS,
-    amount: PAYMENT_CONFIG.AMOUNT_REQUIRED,
-    amount_move: (parseInt(PAYMENT_CONFIG.AMOUNT_REQUIRED) / 100000000).toFixed(8),
-    currency: "MOVE",
-    network: PAYMENT_CONFIG.NETWORK
-  });
+app.get("/payment-info", async (req, res) => {
+  try {
+    const domain = req.query.domain;
+    
+    // If domain is provided, try to get project-specific payment config
+    let paymentAddress = PAYMENT_CONFIG.PAYMENT_ADDRESS;
+    let paymentAmount = PAYMENT_CONFIG.AMOUNT_REQUIRED;
+    
+    if (domain) {
+      try {
+        const cloudflareConfig = await getCloudflareConfig(domain);
+        if (cloudflareConfig.paymentAddress) {
+          paymentAddress = cloudflareConfig.paymentAddress;
+        }
+        if (cloudflareConfig.paymentAmount) {
+          paymentAmount = cloudflareConfig.paymentAmount;
+        }
+      } catch (error) {
+        // If config fetch fails, use defaults
+        console.log(`⚠️  Could not fetch project config for ${domain}, using defaults`);
+      }
+    }
+    
+    res.json({
+      payment_address: paymentAddress,
+      amount: paymentAmount,
+      amount_move: (parseInt(paymentAmount) / 100000000).toFixed(8),
+      currency: "MOVE",
+      network: PAYMENT_CONFIG.NETWORK
+    });
+  } catch (error) {
+    // Fallback to default config on error
+    res.json({
+      payment_address: PAYMENT_CONFIG.PAYMENT_ADDRESS,
+      amount: PAYMENT_CONFIG.AMOUNT_REQUIRED,
+      amount_move: (parseInt(PAYMENT_CONFIG.AMOUNT_REQUIRED) / 100000000).toFixed(8),
+      currency: "MOVE",
+      network: PAYMENT_CONFIG.NETWORK
+    });
+  }
 });
 
 app.get("/health", (req, res) => {

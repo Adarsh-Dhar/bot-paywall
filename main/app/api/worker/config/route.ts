@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     // 3. Find project by websiteUrl containing hostname
     let project = await prisma.project.findFirst({
       where: { websiteUrl: { contains: cleanHostname } },
-      select: { id: true, websiteUrl: true, zoneId: true, api_token: true }
+      select: { id: true, websiteUrl: true, zoneId: true, api_token: true, paymentAddress: true, paymentAmount: true }
     });
 
     // 4. Validate
@@ -74,6 +74,8 @@ export async function GET(request: NextRequest) {
       cloudflareToken: cloudflareToken,
       projectId: project.id,
       originUrl: project.websiteUrl || `https://${cleanHostname}`,
+      paymentAddress: project.paymentAddress || null,
+      paymentAmount: project.paymentAmount || null,
     });
 
   } catch (error) {

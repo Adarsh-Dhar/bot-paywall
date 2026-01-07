@@ -20,6 +20,8 @@ export default function ConnectCloudflarePage() {
   // ...existing code...
   const [projectApiToken, setProjectApiToken] = useState('');
   const [zoneId, setZoneId] = useState('');
+  const [paymentAddress, setPaymentAddress] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [lookingUpZone, setLookingUpZone] = useState(false);
   const [fetchingZones, setFetchingZones] = useState(false);
@@ -215,13 +217,15 @@ export default function ConnectCloudflarePage() {
       });
       // Generate a unique gatekeeper_secret for this domain
       const secret = generateGatekeeperSecret();
-      // Save the project with gatekeeper_secret (no domain parameter)
+      // Save the project with gatekeeper_secret and payment info
       const saveResult = await saveProjectWithToken(
         validatedUrl,
         projectApiToken.trim(),
         selectedZone.id,
         selectedZone.nameservers,
-        secret
+        secret,
+        paymentAddress.trim() || undefined,
+        paymentAmount.trim() || undefined
       );
       // Store the secret in state for display
       setGatekeeperSecret(secret);
@@ -554,6 +558,44 @@ export default function ConnectCloudflarePage() {
                 ) : (
                   <div className="text-sm font-medium text-red-600">No zone ID found for this API token.</div>
                 )}
+              </div>
+
+              {/* Payment Address */}
+              <div className="border-t-2 border-gray-200 pt-6">
+                <label htmlFor="paymentAddress" className="block text-sm font-bold text-gray-900 mb-2">
+                  Payment Address <span className="text-gray-500 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  id="paymentAddress"
+                  value={paymentAddress}
+                  onChange={(e) => setPaymentAddress(e.target.value)}
+                  placeholder="0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b"
+                  className="w-full px-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 placeholder-gray-500 font-mono text-sm"
+                  disabled={lookingUpZone}
+                />
+                <p className="mt-2 text-xs text-gray-600 font-medium">
+                  The MOVE token address where payments will be sent. Leave empty to use default.
+                </p>
+              </div>
+
+              {/* Payment Amount */}
+              <div>
+                <label htmlFor="paymentAmount" className="block text-sm font-bold text-gray-900 mb-2">
+                  Payment Amount (in octas) <span className="text-gray-500 text-xs">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  id="paymentAmount"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="1000000"
+                  className="w-full px-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 placeholder-gray-500 font-mono text-sm"
+                  disabled={lookingUpZone}
+                />
+                <p className="mt-2 text-xs text-gray-600 font-medium">
+                  The payment amount in octas (smallest unit). 1000000 octas = 0.01 MOVE. Leave empty to use default.
+                </p>
               </div>
 
               {error && (

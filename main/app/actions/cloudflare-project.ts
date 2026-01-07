@@ -125,7 +125,9 @@ export async function saveProjectWithToken(
   apiToken: string,
   zoneId: string,
   nameservers?: string[],
-  gatekeeperSecret?: string
+  gatekeeperSecret?: string,
+  paymentAddress?: string,
+  paymentAmount?: string
 ): Promise<SaveProjectResult> {
   try {
     if (!zoneId || !/^[a-f0-9]{32}$/i.test(zoneId)) {
@@ -198,7 +200,7 @@ export async function saveProjectWithToken(
         throw new Error('A project with this website URL already exists.');
       }
 
-      // Create new project with provided gatekeeperSecret
+      // Create new project with provided gatekeeperSecret and payment info
       return await tx.project.create({
         data: {
           userId: userId,
@@ -207,6 +209,8 @@ export async function saveProjectWithToken(
           status: 'ACTIVE',
           secretKey: gatekeeperSecret || crypto.randomBytes(32).toString('hex'),
           api_token: encryptToken(cleanedToken),
+          paymentAddress: paymentAddress?.trim() ? paymentAddress.trim() : undefined,
+          paymentAmount: paymentAmount?.trim() ? paymentAmount.trim() : undefined,
         },
       });
     });

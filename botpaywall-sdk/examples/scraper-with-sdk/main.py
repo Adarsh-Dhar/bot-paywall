@@ -41,8 +41,8 @@ CONFIG = {
     'access_server_url': "http://localhost:5000",
     'main_app_url': "http://localhost:3000",
     'max_retries': 3,
-    # Wait longer for Cloudflare rule propagation when egress IP differs or zones are slower
-    'wait_after_payment': 45,
+    # Wait for Cloudflare rule propagation
+    'wait_after_payment': 10,
 }
 
 def main():

@@ -5,20 +5,22 @@ import fetch from "node-fetch";
 import "dotenv/config";
 
 // Startup diagnostic
+const ACCESS_SERVER_URL = process.env.ACCESS_SERVER_URL || 'http://localhost:5000';
+const urlObj = new URL(ACCESS_SERVER_URL);
+const PORT = parseInt(urlObj.port) || 5000;
+
 console.log('Startup diagnostic:', {
-  has_WORKER_API_KEY: !!process.env.WORKER_API_KEY,
   has_ACCESS_SERVER_API_KEY: !!process.env.ACCESS_SERVER_API_KEY,
   has_MAIN_APP_API_URL: !!process.env.MAIN_APP_API_URL,
-  port: process.env.PORT || process.env.SERVER_PORT || 5000
+  ACCESS_SERVER_URL: ACCESS_SERVER_URL
 });
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Main app API configuration
 const MAIN_APP_CONFIG = {
   API_BASE_URL: process.env.MAIN_APP_API_URL ,
-  WORKER_API_KEY: (process.env.WORKER_API_KEY || process.env.ACCESS_SERVER_API_KEY || '').trim()
+  ACCESS_SERVER_API_KEY: process.env.ACCESS_SERVER_API_KEY?.trim() || ''
 };
 
 // Cloudflare API base URL
@@ -37,12 +39,12 @@ async function getCloudflareConfig(domain) {
     throw new Error("Domain is required to fetch Cloudflare configuration");
   }
 
-  if (!MAIN_APP_CONFIG.WORKER_API_KEY) {
-    throw new Error("WORKER_API_KEY or ACCESS_SERVER_API_KEY environment variable is required");
+  if (!MAIN_APP_CONFIG.ACCESS_SERVER_API_KEY) {
+    throw new Error("ACCESS_SERVER_API_KEY environment variable is required");
   }
 
   // Debug: Log API key info
-  const apiKeyPreview = MAIN_APP_CONFIG.WORKER_API_KEY.trim().substring(0, 8) + '...';
+  const apiKeyPreview = MAIN_APP_CONFIG.ACCESS_SERVER_API_KEY.trim().substring(0, 8) + '...';
   console.log(`🔑 Using API key: ${apiKeyPreview}`);
 
   // Try the full hostname first
@@ -55,8 +57,8 @@ async function getCloudflareConfig(domain) {
 
     const response = await fetch(url, {
       headers: {
-        'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim(),
-        'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim()}`,
+        'X-API-Key': MAIN_APP_CONFIG.ACCESS_SERVER_API_KEY.trim(),
+        'Authorization': `Bearer ${MAIN_APP_CONFIG.ACCESS_SERVER_API_KEY.trim()}`,
         'Content-Type': 'application/json'
       }
     });
@@ -93,8 +95,8 @@ async function getCloudflareConfig(domain) {
           `${MAIN_APP_CONFIG.API_BASE_URL}/api/worker/config?hostname=${encodeURIComponent(rootDomain)}`,
           {
             headers: {
-              'X-Worker-API-Key': MAIN_APP_CONFIG.WORKER_API_KEY.trim(),
-              'Authorization': `Bearer ${MAIN_APP_CONFIG.WORKER_API_KEY.trim()}`,
+              'X-API-Key': MAIN_APP_CONFIG.ACCESS_SERVER_API_KEY.trim(),
+              'Authorization': `Bearer ${MAIN_APP_CONFIG.ACCESS_SERVER_API_KEY.trim()}`,
               'Content-Type': 'application/json'
             }
           }
@@ -503,7 +505,7 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 X402 ACCESS SERVER RUNNING ON PORT ${PORT}`);
+  console.log(`🚀 X402 ACCESS SERVER RUNNING AT ${ACCESS_SERVER_URL}`);
   console.log(`🔗 Connected to Main App: ${MAIN_APP_CONFIG.API_BASE_URL}`);
   console.log(`⚠️  STRICT MODE: Database configuration only (no .env fallback)`);
 });

@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Authenticate
     const apiKey = request.headers.get('X-Worker-API-Key') || request.headers.get('Authorization')?.replace('Bearer ', '');
-    const expectedApiKey = process.env.WORKER_API_KEY || process.env.ACCESS_SERVER_API_KEY;
+    const expectedApiKey = process.env.ACCESS_SERVER_API_KEY;
 
     if (!expectedApiKey || !apiKey || apiKey.trim() !== expectedApiKey.trim()) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

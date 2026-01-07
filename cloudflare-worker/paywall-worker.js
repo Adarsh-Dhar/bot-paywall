@@ -10,13 +10,6 @@ let configCache = {
   expiresAt: 0,
 };
 
-// Default configuration (fallback)
-const DEFAULT_CONFIG = {
-  PAYMENT_ADDRESS: "0xea859ca79b267afdb7bd7702cd93c4e7c0db16ecaca862fb38c63d928f821a1b",
-  PRICE_AMOUNT: "0.01",
-  PRICE_CURRENCY: "MOVE",
-  ACCESS_SERVER_URL: "https://3d61f6fae7b4.ngrok-free.app",
-};
 
 export default {
   async fetch(request, env, ctx) {
@@ -88,7 +81,7 @@ async function getConfig(hostname, env) {
 
   // Use the API_BASE_URL defined in wrangler.toml
   const apiBaseUrl = env.API_BASE_URL;
-  const workerApiKey = env.WORKER_API_KEY;
+  const workerApiKey = env.ACCESS_SERVER_API_KEY;
 
   try {
     const response = await fetch(

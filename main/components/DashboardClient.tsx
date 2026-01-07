@@ -1,9 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import CloudflareConnectionStatus from '@/components/CloudflareConnectionStatus';
-import ZoneStatusDisplay from '@/components/ZoneStatusDisplay';
-import TokenVerificationStatus from '@/components/TokenVerificationStatus';
 
 const codePreview = String.raw`// Gatekeeper WAF Rule
 const rule = {
@@ -49,189 +46,109 @@ export default function DashboardClient({
   };
 
   return (
-    <div className="min-h-screen bg-transparent text-zinc-50">
-      <div className="mx-auto flex max-w-7xl gap-6 px-6 py-10">
-        <aside className="sticky top-10 hidden h-[calc(100vh-80px)] w-64 shrink-0 lg:block">
-          {/*<div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur card-surface">*/}
-          {/*  <div className="glow" />*/}
-          {/*  <div className="relative space-y-6">*/}
-          {/*    <div className="flex items-center gap-3">*/}
-          {/*      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#f5c518]/30 bg-[#f5c518]/15 text-lg font-semibold text-[#f5c518]">*/}
-          {/*        GK*/}
-          {/*      </div>*/}
-          {/*      <div>*/}
-          {/*        <p className="text-sm text-zinc-400">Gatekeeper</p>*/}
-          {/*        <p className="text-lg font-semibold">Bot Firewall</p>*/}
-          {/*      </div>*/}
-          {/*    </div>*/}
-          {/*    <div className="divider" />*/}
-
-          {/*  </div>*/}
-          {/*</div>*/}
-        </aside>
-
-        <main className="flex-1 space-y-8">
-          <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50">
+      <div className="mx-auto max-w-7xl px-6 py-16">
+        {/* Header */}
+        <header className="mb-16">
+          <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm text-zinc-400">Gatekeeper · Bot Firewall</p>
-              <h1 className="text-3xl font-semibold text-white">Protection Dashboard</h1>
-              <p className="text-sm text-zinc-500">
-                {totalDomains} domains protected • {threatsBlocked} threats blocked today
+              <h1 className="text-5xl font-bold text-gray-900 tracking-tight">Gatekeeper</h1>
+              <p className="mt-3 text-lg text-gray-600">
+                Bot Firewall Dashboard
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-4">
               <button 
-                onClick={() => router.push('/domains')}
-                className="rounded-lg border border-emerald-400/40 bg-emerald-400/20 px-4 py-2 text-sm font-semibold text-emerald-400 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-400/25"
+                onClick={handleConnectCloudflare} 
+                className="rounded-lg border-2 border-yellow-400 bg-yellow-400 px-8 py-3 text-sm font-semibold text-gray-900 shadow-md transition hover:bg-yellow-500 hover:shadow-lg"
               >
-                Manage Domains
-              </button>
-              <button onClick={handleConnectCloudflare} className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25">
-                Connect Cloudflare
+                + Connect Cloudflare
               </button>
             </div>
-          </header>
+          </div>
+        </header>
 
-          <section className="grid gap-4 lg:grid-cols-2">
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Getting Started</p>
-                  <h2 className="mt-2 text-xl font-semibold">Sign In & Setup</h2>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Connect your Cloudflare account to get started.
-                  </p>
-                </div>
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-zinc-300">
-                  Secure by design
-                </span>
-              </div>
-              <div className="mt-6">
-                <CloudflareConnectionStatus />
-              </div>
+        {/* Protected Domains Section */}
+        <section className="mb-12 rounded-2xl bg-white p-8 shadow-md">
+          <div className="mb-8">
+            <div className="mb-4">
+              <span className="inline-block rounded-full bg-yellow-200 px-4 py-1 text-xs font-bold text-yellow-900 uppercase tracking-wider">Protected Domains</span>
             </div>
-
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 card-surface">
-              <div className="glow" />
-              <div className="relative flex items-center justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Protection Stats</p>
-                  <h2 className="mt-2 text-xl font-semibold">Threats & Domains</h2>
-                  <p className="mt-1 text-sm text-zinc-400">Real-time protection metrics</p>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
-                  Live
-                </div>
-              </div>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/10 bg-[#121420] p-4 shadow-inner">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Threats Blocked</p>
-                  <p className="mt-2 text-3xl font-semibold text-white">{threatsBlocked}</p>
-                  <p className="mt-1 text-xs text-emerald-400">All systems normal</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-[#121420] p-4 shadow-inner">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Protected Domains</p>
-                  <p className="mt-2 text-3xl font-semibold text-white">{totalDomains}</p>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    {totalDomains === 0 ? 'Add your first domain' : 'Domains active'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <TokenVerificationStatus />
-
-          {/* Connected Domains Section */}
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 card-surface">
-            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+            <div className="flex items-center gap-4">
               <div>
-                <p className="text-sm uppercase tracking-[0.18em] text-[#f5c518]">Protected Domains</p>
-                <h3 className="text-lg font-semibold text-white">Connected Domains</h3>
-                <p className="text-xs text-zinc-400 mt-1">
+                <h3 className="text-2xl font-bold text-gray-900">Connected Domains</h3>
+                <p className="mt-1 text-sm text-gray-600">
                   {protectedDomains.length > 0 
                     ? `${protectedDomains.length} domain${protectedDomains.length !== 1 ? 's' : ''} connected`
                     : 'No domains connected yet'}
                 </p>
               </div>
-              <button 
+            </div>
+          </div>
+
+          {protectedDomains.length > 0 ? (
+            <div className="space-y-3">
+              {protectedDomains.map((domain) => (
+                <div
+                  key={domain.id}
+                  className="flex items-center justify-between rounded-xl border-2 border-gray-200 bg-gradient-to-r from-yellow-50 to-amber-50 px-6 py-5 transition hover:border-yellow-300 hover:shadow-md"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-300 to-yellow-400">
+                      <svg className="h-6 w-6 text-gray-900 font-bold" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c6.627 0 12 5.373 12 12s-5.373 12-12 12S0 18.627 0 12 5.373 0 12 0zm0 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">{domain.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {domain.websiteUrl ? domain.websiteUrl : 'No website URL'}
+                        {domain.requestsCount > 0 && ` • ${domain.requestsCount} requests`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`rounded-full px-4 py-1 text-sm font-bold ${
+                      domain.status === 'PROTECTED' || domain.status === 'Active' 
+                        ? 'bg-yellow-200 text-yellow-900'
+                        : domain.status === 'PENDING_NS'
+                        ? 'bg-orange-200 text-orange-900'
+                        : 'bg-gray-200 text-gray-900'
+                    }`}>
+                      {domain.status}
+                    </span>
+                    <button
+                      onClick={() => router.push(`/domains`)}
+                      className="text-gray-400 transition hover:text-gray-600"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-yellow-100 mb-4">
+                <svg className="h-10 w-10 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m0 0h6m-6-6V0m0 12v6m6-6h6m0 0h6" />
+                </svg>
+              </div>
+              <p className="font-bold text-gray-900 mb-2 text-lg">No domains connected</p>
+              <p className="text-sm text-gray-600 mb-6">
+                Connect your first domain to start protecting it with Gatekeeper
+              </p>
+              <button
                 onClick={() => router.push('/domains')}
-                className="rounded-lg border border-emerald-400/40 bg-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-400/25"
+                className="rounded-lg border-2 border-yellow-400 bg-yellow-400 px-8 py-3 font-bold text-gray-900 transition hover:bg-yellow-500"
               >
-                {protectedDomains.length > 0 ? 'Manage' : 'Add Domain'}
+                Add Your First Domain
               </button>
             </div>
-            <div className="p-6">
-              {protectedDomains.length > 0 ? (
-                <div className="space-y-3">
-                  {protectedDomains.map((domain) => (
-                    <div
-                      key={domain.id}
-                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/15">
-                          <svg className="h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-white">{domain.name}</p>
-                          <p className="text-xs text-zinc-400">
-                            {domain.websiteUrl ? domain.websiteUrl : 'No website URL'}
-                            {domain.requestsCount > 0 && ` • ${domain.requestsCount} requests`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          domain.status === 'PROTECTED' || domain.status === 'Active' 
-                            ? 'bg-emerald-400/20 text-emerald-400 border border-emerald-400/30'
-                            : domain.status === 'PENDING_NS'
-                            ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                            : 'bg-zinc-400/20 text-zinc-400 border border-zinc-400/30'
-                        }`}>
-                          {domain.status}
-                        </span>
-                        <button
-                          onClick={() => router.push(`/domains`)}
-                          className="text-zinc-400 hover:text-white transition-colors"
-                        >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 mb-4">
-                    <svg className="h-8 w-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-semibold text-white mb-1">No domains connected</p>
-                  <p className="text-xs text-zinc-400 mb-4">
-                    Connect your first domain to start protecting it with Gatekeeper
-                  </p>
-                  <button
-                    onClick={() => router.push('/domains')}
-                    className="rounded-lg border border-[#f5c518]/40 bg-[#f5c518]/20 px-4 py-2 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] hover:bg-[#f5c518]/25"
-                  >
-                    Add Your First Domain
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-2">
-            <ZoneStatusDisplay />
-          </section>
-        </main>
+          )}
+        </section>
       </div>
     </div>
   );

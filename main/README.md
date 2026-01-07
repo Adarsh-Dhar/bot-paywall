@@ -4,13 +4,13 @@ Intelligent bot detection and domain protection using Cloudflare WAF rules with 
 
 ## Features
 
-- 🔐 **Domain Registration** - Register domains with Cloudflare
-- 🤖 **Bot Detection** - Intelligent bot detection with WAF rules
-- 🔑 **Secret Key Authentication** - Protect access with secret keys
-- 📊 **Project Management** - Manage multiple protected domains
-- 🔄 **Automatic Verification** - Auto-detect nameserver updates
-- 🐳 **Docker Setup** - Local PostgreSQL + Redis containers
-- 🔒 **Secure Token Storage** - Encrypted Cloudflare API tokens
+- 🔐 **Project Setup** - Connect Cloudflare and link zones
+- 🤖 **Bot Detection** - WAF rules to challenge bad bots
+- 🔑 **Gatekeeper Secret** - Per-project secret key authentication
+- 📊 **Dashboard** - Manage protected domains
+- 🔄 **Zone Discovery** - Auto-fetch zones from Cloudflare token
+- 🐳 **Docker Setup** - Local PostgreSQL containers
+- 🔒 **Encrypted Token Storage** - AES-256 token encryption
 
 ## Quick Start
 
@@ -19,7 +19,6 @@ Intelligent bot detection and domain protection using Cloudflare WAF rules with 
 - Node.js 18+
 - pnpm
 - Docker & Docker Compose
-- Clerk account (for authentication)
 - Cloudflare account (for domain protection)
 
 ### Setup
@@ -45,13 +44,10 @@ Add your credentials:
 # Database
 DATABASE_URL="postgresql://gatekeeper_user:gatekeeper_password@localhost:5432/gatekeeper"
 
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
-CLERK_SECRET_KEY=your_clerk_secret
-
-# Cloudflare
-CLOUDFLARE_API_TOKEN=your_cloudflare_token
-CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
+# Auth (JWT)
+JWT_SECRET=your_jwt_secret
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
 
 # Token Encryption
 TOKEN_ENCRYPTION_KEY=your_32_byte_hex_key
@@ -66,17 +62,19 @@ Visit `http://localhost:3000`
 
 ## Architecture
 
-### Server Actions
-- `registerDomain()` - Create Cloudflare zone and save project
-- `verifyAndConfigure()` - Verify nameservers and deploy WAF rule
-- `getProjectsByUser()` - Fetch user's protected domains
-- `getProjectById()` - Get single project details
+### Core Modules
+- `lib/auth.ts` - JWT auth helpers (cookies + headers)
+- `lib/token-encryption.ts` - AES-256-CBC encryption/decryption
+- `lib/cloudflare-api.ts` - Cloudflare API utilities (WAF rules)
+- `lib/prisma.ts` - Prisma client
 
-### Cloudflare Integration
-- `createCloudflareZone()` - Create DNS zone
-- `getCloudflareZoneStatus()` - Check zone activation status
-- `deployWAFRule()` - Deploy bot detection rule
-- `getOrCreateRuleset()` - Manage WAF rulesets
+### Server Actions (app/actions)
+- `dashboard.ts` - Fetch projects for user
+- `cloudflare-tokens.ts` - Save/remove user Cloudflare API token
+- `cloudflare-project.ts` - Save project with token + zone metadata
+- `cloudflare-skip-rule.ts` - Deploy WAF rule (skip/allow logic)
+- `cloudflare-token-verification.ts` - List zones for a token
+- `cloudflare-verification.ts` - Cloudflare operations + checks
 
 ### Database Schema (Prisma)
 - `User` - User accounts (linked to Clerk)
@@ -86,25 +84,20 @@ Visit `http://localhost:3000`
 
 ## Workflow
 
-### Phase 1: Domain Registration
-1. User enters domain name
-2. System creates Cloudflare zone
-3. Generates secret key for bot authentication
-4. Saves project to database
-5. Shows nameservers to user
+### Phase 1: Project Setup (Connect Cloudflare)
+1. User creates a Cloudflare API token (Zone:Read, Firewall:Edit)
+2. App fetches available zones for the token
+3. User selects domain (zone) and creates a project
+4. App generates a unique Gatekeeper secret and saves the project
 
-### Phase 2: Nameserver Update
-1. User updates nameservers at registrar
-2. User clicks "Verify Now"
-3. System checks Cloudflare zone status
-4. If active, deploys WAF rule
-5. Updates project status to "protected"
+### Phase 2: WAF Rule Deployment
+1. App deploys bot detection WAF rules to the selected zone
+2. Requests with missing/incorrect secret are challenged
 
 ### Phase 3: Protection Active
-- All requests go through Cloudflare
-- WAF rule blocks bots without secret key
-- Legitimate users pass through
-- Requests with correct `x-bot-password` header allowed
+- Traffic flows through Cloudflare
+- Bad bots are challenged or blocked
+- Requests with correct `x-bot-password` are allowed
 
 ## WAF Rule Logic
 
@@ -117,11 +110,18 @@ Action: `managed_challenge` (shows CAPTCHA)
 
 ## API Endpoints
 
-### Deprecated Endpoints
+- `POST /api/auth/signin` - Sign in (JWT)
+- `POST /api/auth/signup` - Sign up (JWT)
+- `POST /api/auth/signout` - Sign out
+- `GET  /api/auth/me` - Current user
+- `POST /api/projects/public` - Project info for worker
+- `POST /api/worker/config` - Worker config (decrypt tokens)
+- `POST /api/x402-payment/verify` - Payment verification
+- `POST /api/x402-payment/whitelist` - Payment whitelist
+
+### Deprecated
 - `POST /api/paywall/deploy` - Returns 410 Gone
 - `POST /api/paywall/verify` - Returns 410 Gone
-
-These endpoints are no longer supported. Use Gatekeeper domain protection instead.
 
 ## Database Management
 
@@ -209,10 +209,11 @@ vercel deploy
 - Check container logs: `pnpm docker:logs`
 - Verify DATABASE_URL in `.env`
 
-## Documentation
+## UI Overview
 
-- [Prisma Migration Guide](./PRISMA_MIGRATION_COMPLETE.md)
-- [Cloudflare Token Setup](./CLOUDFLARE_TOKEN_SETUP.md)
+- Dashboard (home): shows projects/domains
+- Connect Cloudflare: create project, generate Gatekeeper secret
+- Sign In / Sign Up: JWT-based authentication
 
 ## License
 

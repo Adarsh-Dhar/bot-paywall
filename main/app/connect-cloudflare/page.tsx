@@ -273,42 +273,42 @@ export default function ConnectCloudflarePage() {
 
   if (loadingInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#f5c518]/20 border-t-[#f5c518] mx-auto" />
-          <div className="text-zinc-400">Loading...</div>
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-yellow-400/20 border-t-yellow-400 mx-auto" />
+          <div className="text-gray-600 font-medium">Loading...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Connect Your Cloudflare Account
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-gray-900 mb-3">
+            Connect Cloudflare
           </h1>
-          <p className="text-zinc-400">
+          <p className="text-lg text-gray-600">
             {step === 'project' && 'Set up your website project with Cloudflare integration'}
             {step === 'complete' && 'Setup complete! Your domain is ready for protection'}
           </p>
         </div>
 
         {/* Progress Indicator */}
-        <div className="flex items-center justify-center mb-8">
+        <div className="flex items-center justify-center mb-12">
           <div className="flex items-center space-x-4">
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-              step === 'project' ? 'border-[#f5c518] bg-[#f5c518]/20 text-[#f5c518]' : 
-              'border-emerald-400 bg-emerald-400/20 text-emerald-400'
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 font-bold ${
+              step === 'project' ? 'border-yellow-400 bg-yellow-400 text-gray-900' : 
+              'border-yellow-400 bg-yellow-400 text-gray-900'
             }`}>
               {step === 'project' ? '1' : '✓'}
             </div>
-            <div className={`w-16 h-0.5 ${step === 'project' ? 'bg-zinc-600' : 'bg-emerald-400'}`} />
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-              step === 'complete' ? 'border-[#f5c518] bg-[#f5c518]/20 text-[#f5c518]' : 
-              'border-zinc-600 bg-zinc-800 text-zinc-400'
+            <div className={`w-20 h-1 ${step === 'project' ? 'bg-gray-300' : 'bg-yellow-400'}`} />
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 font-bold ${
+              step === 'complete' ? 'border-yellow-400 bg-yellow-400 text-gray-900' : 
+              'border-gray-300 bg-gray-100 text-gray-400'
             }`}>
               2
             </div>
@@ -317,13 +317,13 @@ export default function ConnectCloudflarePage() {
 
         {/* Existing Token Info */}
         {existingToken && step !== 'token' && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-6 mb-8">
+          <div className="bg-yellow-100 border-2 border-yellow-300 rounded-2xl p-6 mb-8 shadow-md">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-emerald-300 mb-2">
+                <h3 className="text-xl font-bold text-yellow-900 mb-3">
                   ✓ Connected to Cloudflare
                 </h3>
-                <div className="space-y-1 text-sm text-emerald-200">
+                <div className="space-y-2 text-sm text-yellow-800">
                   <p><strong>Token Name:</strong> {existingToken.tokenName || 'N/A'}</p>
                   <p><strong>Account ID:</strong> {existingToken.accountId || 'N/A'}</p>
                   <p><strong>Last Verified:</strong> {existingToken.lastVerified ? new Date(existingToken.lastVerified).toLocaleString() : 'Never'}</p>
@@ -332,7 +332,7 @@ export default function ConnectCloudflarePage() {
               <button
                 onClick={handleRemoveToken}
                 disabled={loading}
-                className="px-4 py-2 text-sm text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-md transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-bold text-red-700 hover:text-red-900 hover:bg-red-100 border-2 border-red-300 rounded-lg transition-colors disabled:opacity-50"
               >
                 Disconnect
               </button>
@@ -344,25 +344,25 @@ export default function ConnectCloudflarePage() {
         {step === 'token' && (
           <>
             {/* Instructions */}
-            <div className="bg-white/5 rounded-lg border border-white/10 p-6 mb-8 backdrop-blur">
-              <h2 className="text-xl font-semibold text-white mb-4">
+            <div className="bg-white rounded-2xl border-2 border-gray-300 p-8 mb-8 shadow-md">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Step 1: Create a Cloudflare API Token
               </h2>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-8 h-8 bg-[#f5c518]/20 text-[#f5c518] rounded-full flex items-center justify-center font-semibold mr-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center font-bold mr-4">
                     1
                   </div>
                   <div className="flex-1">
-                    <p className="text-zinc-300 mb-2">
+                    <p className="text-gray-700 mb-3 font-medium">
                       Click the button below to open Cloudflare&apos;s API token creation page:
                     </p>
                     <a
                       href="https://dash.cloudflare.com/profile/api-tokens/create"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center px-4 py-2 bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518] rounded-md hover:bg-[#f5c518]/30 transition-colors"
+                      className="inline-flex items-center px-6 py-3 bg-yellow-400 border-2 border-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 transition-colors font-bold shadow-md"
                     >
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -373,41 +373,41 @@ export default function ConnectCloudflarePage() {
                 </div>
 
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-8 h-8 bg-[#f5c518]/20 text-[#f5c518] rounded-full flex items-center justify-center font-semibold mr-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center font-bold mr-4">
                     2
                   </div>
                   <div className="flex-1">
-                    <p className="text-zinc-300 mb-2">
+                    <p className="text-gray-700 mb-3 font-medium">
                       Select <strong>&quot;Create Custom Token&quot;</strong> and configure these <strong>minimum required</strong> permissions:
                     </p>
-                    <div className="bg-black/30 rounded-md p-4 space-y-2 text-sm font-mono">
+                    <div className="bg-gray-100 border-2 border-gray-300 rounded-lg p-4 space-y-2 text-sm font-mono">
                       <div className="flex items-center">
-                        <span className="text-zinc-400 w-32">Zone</span>
-                        <span className="text-zinc-500 mx-2">→</span>
-                        <span className="text-zinc-300">Zone</span>
-                        <span className="text-zinc-500 mx-2">→</span>
-                        <span className="text-emerald-400 font-semibold">Read</span>
+                        <span className="text-gray-600 w-32">Zone</span>
+                        <span className="text-gray-400 mx-2">→</span>
+                        <span className="text-gray-900 font-bold">Zone</span>
+                        <span className="text-gray-400 mx-2">→</span>
+                        <span className="text-yellow-700 font-bold">Read</span>
                       </div>
                       <div className="flex items-center">
-                        <span className="text-zinc-400 w-32">Zone</span>
-                        <span className="text-zinc-500 mx-2">→</span>
-                        <span className="text-zinc-300">Firewall Services</span>
-                        <span className="text-zinc-500 mx-2">→</span>
-                        <span className="text-emerald-400 font-semibold">Edit</span>
+                        <span className="text-gray-600 w-32">Zone</span>
+                        <span className="text-gray-400 mx-2">→</span>
+                        <span className="text-gray-900 font-bold">Firewall Services</span>
+                        <span className="text-gray-400 mx-2">→</span>
+                        <span className="text-yellow-700 font-bold">Edit</span>
                       </div>
                     </div>
-                    <p className="text-zinc-400 text-sm mt-2">
+                    <p className="text-gray-600 text-sm mt-3 font-medium">
                       Note: Make sure &quot;Zone Resources&quot; is set to <strong>&quot;Include → All zones&quot;</strong>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-8 h-8 bg-[#f5c518]/20 text-[#f5c518] rounded-full flex items-center justify-center font-semibold mr-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-yellow-400 text-gray-900 rounded-full flex items-center justify-center font-bold mr-4">
                     3
                   </div>
                   <div className="flex-1">
-                    <p className="text-zinc-300">
+                    <p className="text-gray-700 font-medium">
                       Copy the token and paste it below
                     </p>
                   </div>
@@ -416,14 +416,14 @@ export default function ConnectCloudflarePage() {
             </div>
 
             {/* Token Input Form */}
-            <div className="bg-white/5 rounded-lg border border-white/10 p-6 backdrop-blur">
-              <h2 className="text-xl font-semibold text-white mb-4">
+            <div className="bg-white rounded-2xl border-2 border-gray-300 p-8 shadow-md">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Paste Your API Token
               </h2>
 
-              <form onSubmit={handleTokenSubmit} className="space-y-4">
+              <form onSubmit={handleTokenSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="token" className="block text-sm font-medium text-white mb-2">
+                  <label htmlFor="token" className="block text-sm font-bold text-gray-900 mb-2">
                     Cloudflare API Token
                   </label>
                   <input
@@ -432,40 +432,40 @@ export default function ConnectCloudflarePage() {
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="PP_Dqm0PpxVpPzxUpEmXGswskREXy4fTeA48pcPPso"
-                    className="w-full px-4 py-2 border border-white/20 bg-white/5 text-white rounded-md focus:ring-2 focus:ring-[#f5c518]/40 focus:border-[#f5c518]/60 placeholder-zinc-500"
+                    className="w-full px-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 placeholder-gray-500"
                     disabled={loading}
                   />
-                  <p className="mt-1 text-xs text-zinc-400">
+                  <p className="mt-2 text-xs text-gray-600 font-medium">
                     Your token is encrypted and stored securely. We never share it with anyone.
                   </p>
                 </div>
 
                 {error && (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-md p-4">
-                    <p className="text-sm text-red-300">{error}</p>
+                  <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
+                    <p className="text-sm font-medium text-red-900">{error}</p>
                   </div>
                 )}
 
                 {success && (
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-md p-4">
-                    <p className="text-sm text-emerald-300">
+                  <div className="bg-yellow-100 border-2 border-yellow-300 rounded-lg p-4">
+                    <p className="text-sm font-medium text-yellow-900">
                       ✓ Token saved successfully! Moving to domain verification...
                     </p>
                   </div>
                 )}
 
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                   <button
                     type="submit"
                     disabled={loading || !token.trim()}
-                    className="flex-1 px-6 py-3 bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518] rounded-md hover:bg-[#f5c518]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    className="flex-1 px-8 py-3 bg-yellow-400 border-2 border-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
                   >
                     {loading ? 'Verifying...' : 'Connect Cloudflare'}
                   </button>
                   <button
                     type="button"
                     onClick={() => router.push('/')}
-                    className="px-6 py-3 bg-white/10 text-zinc-300 rounded-md hover:bg-white/20 transition-colors"
+                    className="px-8 py-3 bg-white border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-100 transition-colors font-bold"
                   >
                     Cancel
                   </button>
@@ -477,19 +477,19 @@ export default function ConnectCloudflarePage() {
 
         {/* Step 2: Project Setup */}
         {step === 'project' && (
-          <div className="bg-white/5 rounded-lg border border-white/10 p-6 backdrop-blur">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="bg-white rounded-2xl border-2 border-gray-300 p-8 shadow-md">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Create New Project
             </h2>
-            <p className="text-zinc-400 mb-6">
+            <p className="text-gray-600 mb-8 font-medium">
               Enter your website details and Cloudflare credentials to configure protection.
             </p>
 
             <form onSubmit={handleProjectSubmit} className="space-y-6">
               {/* Website URL */}
               <div>
-                <label htmlFor="websiteUrl" className="block text-sm font-medium text-white mb-2">
-                  Website URL <span className="text-red-400">*</span>
+                <label htmlFor="websiteUrl" className="block text-sm font-bold text-gray-900 mb-2">
+                  Website URL <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
@@ -497,10 +497,10 @@ export default function ConnectCloudflarePage() {
                   value={websiteUrl}
                   onChange={(e) => handleWebsiteUrlChange(e.target.value)}
                   placeholder="https://example.com"
-                  className="w-full px-4 py-2 border border-white/20 bg-white/5 text-white rounded-md focus:ring-2 focus:ring-[#f5c518]/40 focus:border-[#f5c518]/60 placeholder-zinc-500"
+                  className="w-full px-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 placeholder-gray-500"
                   disabled={lookingUpZone}
                 />
-                <p className="mt-1 text-xs text-zinc-400">
+                <p className="mt-2 text-xs text-gray-600 font-medium">
                   The full URL of the website you want to protect
                 </p>
               </div>
@@ -509,8 +509,8 @@ export default function ConnectCloudflarePage() {
 
               {/* API Token */}
               <div>
-                <label htmlFor="projectApiToken" className="block text-sm font-medium text-white mb-2">
-                  Cloudflare API Token <span className="text-red-400">*</span>
+                <label htmlFor="projectApiToken" className="block text-sm font-bold text-gray-900 mb-2">
+                  Cloudflare API Token <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="password"
@@ -518,16 +518,16 @@ export default function ConnectCloudflarePage() {
                   value={projectApiToken}
                   onChange={(e) => setProjectApiToken(e.target.value)}
                   placeholder="Enter your Cloudflare API token"
-                  className="w-full px-4 py-2 border border-white/20 bg-white/5 text-white rounded-md focus:ring-2 focus:ring-[#f5c518]/40 focus:border-[#f5c518]/60 placeholder-zinc-500"
+                  className="w-full px-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 placeholder-gray-500"
                   disabled={lookingUpZone}
                 />
-                <p className="mt-1 text-xs text-zinc-400">
+                <p className="mt-2 text-xs text-gray-600 font-medium">
                   A Cloudflare API token with Zone:Read and Zone:Edit permissions.{' '}
                   <a
                     href="https://dash.cloudflare.com/profile/api-tokens/create"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#f5c518] hover:underline"
+                    className="text-yellow-700 hover:text-yellow-900 font-bold"
                   >
                     Create one here
                   </a>
@@ -535,34 +535,34 @@ export default function ConnectCloudflarePage() {
               </div>
 
               {/* Zone ID Display */}
-              <div className="border-t border-white/10 pt-4">
-                <label className="block text-sm font-medium text-white mb-3">
-                  Zone ID <span className="text-red-400">*</span>
+              <div className="border-t-2 border-gray-200 pt-6">
+                <label className="block text-sm font-bold text-gray-900 mb-3">
+                  Zone ID <span className="text-red-600">*</span>
                 </label>
                 {fetchingZones ? (
-                  <div className="flex items-center gap-2 text-blue-300">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-300/20 border-t-blue-300" />
+                  <div className="flex items-center gap-2 text-yellow-700 font-medium">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-yellow-400/20 border-t-yellow-400" />
                     Fetching zone ID...
                   </div>
                 ) : zoneId ? (
-                  <div className="mt-3 bg-blue-500/10 border border-blue-500/30 rounded-md p-3">
-                    <p className="text-sm text-blue-300">
+                  <div className="mt-3 bg-yellow-100 border-2 border-yellow-300 rounded-lg p-4">
+                    <p className="text-sm text-yellow-900 font-medium">
                       <strong>Zone ID:</strong>{' '}
-                      <code className="bg-black/30 px-2 py-1 rounded text-xs">{zoneId}</code>
+                      <code className="bg-white border border-yellow-300 px-2 py-1 rounded text-xs">{zoneId}</code>
                     </p>
                   </div>
                 ) : (
-                  <div className="text-sm text-red-400">No zone ID found for this API token.</div>
+                  <div className="text-sm font-medium text-red-600">No zone ID found for this API token.</div>
                 )}
               </div>
 
               {error && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-md p-4">
-                  <p className="text-sm text-red-300">{error}</p>
+                <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
+                  <p className="text-sm font-medium text-red-900">{error}</p>
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button
                   type="submit"
                   disabled={
@@ -571,14 +571,14 @@ export default function ConnectCloudflarePage() {
                     !projectApiToken.trim() ||
                     !zoneId
                   }
-                  className="flex-1 px-6 py-3 bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518] rounded-md hover:bg-[#f5c518]/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className="flex-1 px-8 py-3 bg-yellow-400 border-2 border-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
                 >
                   {lookingUpZone ? 'Creating Project...' : 'Create Project'}
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push('/dashboard')}
-                  className="px-6 py-3 bg-white/10 text-zinc-300 rounded-md hover:bg-white/20 transition-colors"
+                  className="px-8 py-3 bg-white border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-100 transition-colors font-bold"
                 >
                   Cancel
                 </button>
@@ -589,27 +589,27 @@ export default function ConnectCloudflarePage() {
 
         {/* Step 3: Complete */}
         {step === 'complete' && zoneResult && (
-          <div className="bg-white/5 rounded-lg border border-white/10 p-6 backdrop-blur">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="bg-white rounded-2xl border-2 border-gray-300 p-8 shadow-md">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">
               🎉 Setup Complete!
             </h2>
 
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-6 mb-6">
-              <h3 className="text-lg font-semibold text-emerald-300 mb-4">
+            <div className="bg-yellow-100 border-2 border-yellow-300 rounded-2xl p-6 mb-8">
+              <h3 className="text-xl font-bold text-yellow-900 mb-4">
                 ✓ Project Created Successfully
               </h3>
               
               <div className="space-y-4">
                                 <div>
-                                  <p className="text-sm font-medium text-emerald-200 mb-2">Gatekeeper Secret:</p>
+                                  <p className="text-sm font-bold text-yellow-900 mb-2">Gatekeeper Secret:</p>
                                   {gatekeeperSecret ? (
                                     <div className="flex items-center gap-2">
-                                      <code className="flex-1 text-xs font-mono bg-black/30 border border-emerald-400/30 px-3 py-2 rounded text-emerald-100">
+                                      <code className="flex-1 text-xs font-mono bg-white border-2 border-yellow-300 px-3 py-2 rounded text-yellow-900">
                                         {gatekeeperSecret}
                                       </code>
                                       <button
                                         onClick={() => copyToClipboard(gatekeeperSecret)}
-                                        className="p-2 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-400/20 rounded transition-colors"
+                                        className="p-2 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-200 rounded transition-colors"
                                         title="Copy Gatekeeper Secret"
                                       >
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -623,15 +623,15 @@ export default function ConnectCloudflarePage() {
                                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-emerald-200 mb-1">Website URL:</p>
-                    <p className="text-emerald-100 font-mono">{websiteUrl}</p>
+                    <p className="text-sm font-bold text-yellow-900 mb-1">Website URL:</p>
+                    <p className="text-yellow-800 font-mono">{websiteUrl}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-emerald-200 mb-1">Status:</p>
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                    <p className="text-sm font-bold text-yellow-900 mb-1">Status:</p>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
                       zoneResult.status === 'active' 
-                        ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/40' 
-                        : 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                        ? 'bg-yellow-200 text-yellow-900 border-2 border-yellow-400' 
+                        : 'bg-orange-200 text-orange-900 border-2 border-orange-400'
                     }`}>
                       {zoneResult.status}
                     </span>
@@ -639,14 +639,14 @@ export default function ConnectCloudflarePage() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-medium text-emerald-200 mb-2">Zone ID:</p>
+                  <p className="text-sm font-bold text-yellow-900 mb-2">Zone ID:</p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs font-mono bg-black/30 border border-emerald-400/30 px-3 py-2 rounded text-emerald-100">
+                    <code className="flex-1 text-xs font-mono bg-white border-2 border-yellow-300 px-3 py-2 rounded text-yellow-900">
                       {zoneResult.zoneId}
                     </code>
                     <button
                       onClick={() => copyToClipboard(zoneResult.zoneId!)}
-                      className="p-2 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-400/20 rounded transition-colors"
+                      className="p-2 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-200 rounded transition-colors"
                       title="Copy Zone ID"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -658,16 +658,16 @@ export default function ConnectCloudflarePage() {
 
                 {zoneResult.nameservers && zoneResult.nameservers.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-emerald-200 mb-2">Nameservers:</p>
-                    <div className="space-y-1">
+                    <p className="text-sm font-bold text-yellow-900 mb-2">Nameservers:</p>
+                    <div className="space-y-2">
                       {zoneResult.nameservers.map((ns, index) => (
                         <div key={index} className="flex items-center gap-2">
-                          <code className="flex-1 text-xs font-mono bg-black/30 border border-emerald-400/30 px-3 py-2 rounded text-emerald-100">
+                          <code className="flex-1 text-xs font-mono bg-white border-2 border-yellow-300 px-3 py-2 rounded text-yellow-900">
                             {ns}
                           </code>
                           <button
                             onClick={() => copyToClipboard(ns)}
-                            className="p-2 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-400/20 rounded transition-colors"
+                            className="p-2 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-200 rounded transition-colors"
                             title="Copy Nameserver"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -682,23 +682,23 @@ export default function ConnectCloudflarePage() {
               </div>
             </div>
 
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-              <h4 className="text-sm font-semibold text-blue-300 mb-2">What's Next?</h4>
-              <p className="text-sm text-blue-200">
+            <div className="bg-gray-100 border-2 border-gray-300 rounded-lg p-4 mb-8">
+              <h4 className="text-sm font-bold text-gray-900 mb-2">What's Next?</h4>
+              <p className="text-sm text-gray-700 font-medium">
                 Your project is now configured. You can now deploy WAF skip rules to protect your domain while allowing authorized access.
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={handleComplete}
-                className="flex-1 px-6 py-3 bg-[#f5c518]/20 border border-[#f5c518]/40 text-[#f5c518] rounded-md hover:bg-[#f5c518]/30 transition-colors font-medium"
+                className="flex-1 px-8 py-3 bg-yellow-400 border-2 border-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 transition-colors font-bold shadow-md"
               >
                 Go to Dashboard
               </button>
               <button
                 onClick={() => router.push('/verify-token')}
-                className="px-6 py-3 bg-white/10 text-zinc-300 rounded-md hover:bg-white/20 transition-colors"
+                className="px-8 py-3 bg-white border-2 border-gray-300 text-gray-900 rounded-lg hover:bg-gray-100 transition-colors font-bold"
               >
                 Advanced Verification
               </button>
@@ -707,14 +707,14 @@ export default function ConnectCloudflarePage() {
         )}
 
         {/* Security Notice */}
-        <div className="mt-8 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+        <div className="mt-8 bg-gray-100 border-2 border-gray-300 rounded-2xl p-6 shadow-md">
           <div className="flex items-start">
-            <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-yellow-600 mt-0.5 mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
             <div>
-              <h3 className="text-sm font-semibold text-blue-300 mb-1">Security & Privacy</h3>
-              <p className="text-sm text-blue-200">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Security & Privacy</h3>
+              <p className="text-sm text-gray-700 font-medium">
                 Your API token is encrypted using AES-256-CBC encryption before being stored in our database. 
                 We only use it to manage your domains and never share it with third parties. 
                 You can disconnect at any time.

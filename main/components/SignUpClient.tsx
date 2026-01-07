@@ -74,22 +74,22 @@ export default function SignUpClient() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 p-6">
+            <div className="w-full max-w-md rounded-2xl border-2 border-gray-300 bg-white p-8 shadow-lg">
                 <div className="mb-8 text-center">
-                    <h1 className="text-2xl font-semibold text-white">Sign Up</h1>
-                    <p className="mt-2 text-sm text-zinc-400">Gatekeeper Bot Firewall</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Gatekeeper</h1>
+                    <p className="mt-2 text-sm text-gray-600">Create your account</p>
                 </div>
 
                 {error && (
-                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+                    <div className="mb-6 rounded-lg border-2 border-red-300 bg-red-100 p-4 text-sm font-medium text-red-900">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-300">
+                        <label htmlFor="email" className="mb-2 block text-sm font-bold text-gray-900">
                             Email
                         </label>
                         <input
@@ -98,43 +98,43 @@ export default function SignUpClient() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-zinc-500 focus:border-[#f5c518]/60 focus:outline-none focus:ring-2 focus:ring-[#f5c518]/20"
+                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                             placeholder="you@example.com"
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="firstName" className="mb-2 block text-sm font-medium text-zinc-300">
-                                First Name (optional)
+                            <label htmlFor="firstName" className="mb-2 block text-sm font-bold text-gray-900">
+                                First Name
                             </label>
                             <input
                                 id="firstName"
                                 type="text"
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
-                                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-zinc-500 focus:border-[#f5c518]/60 focus:outline-none focus:ring-2 focus:ring-[#f5c518]/20"
+                                className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                                 placeholder="John"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="lastName" className="mb-2 block text-sm font-medium text-zinc-300">
-                                Last Name (optional)
+                            <label htmlFor="lastName" className="mb-2 block text-sm font-bold text-gray-900">
+                                Last Name
                             </label>
                             <input
                                 id="lastName"
                                 type="text"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
-                                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-zinc-500 focus:border-[#f5c518]/60 focus:outline-none focus:ring-2 focus:ring-[#f5c518]/20"
+                                className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                                 placeholder="Doe"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="password" className="mb-2 block text-sm font-medium text-zinc-300">
+                        <label htmlFor="password" className="mb-2 block text-sm font-bold text-gray-900">
                             Password
                         </label>
                         <input
@@ -144,13 +144,13 @@ export default function SignUpClient() {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             minLength={8}
-                            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-zinc-500 focus:border-[#f5c518]/60 focus:outline-none focus:ring-2 focus:ring-[#f5c518]/20"
+                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                             placeholder="At least 8 characters"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium text-zinc-300">
+                        <label htmlFor="confirmPassword" className="mb-2 block text-sm font-bold text-gray-900">
                             Confirm Password
                         </label>
                         <input
@@ -160,7 +160,7 @@ export default function SignUpClient() {
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             minLength={8}
-                            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-zinc-500 focus:border-[#f5c518]/60 focus:outline-none focus:ring-2 focus:ring-[#f5c518]/20"
+                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-200"
                             placeholder="Confirm your password"
                         />
                     </div>
@@ -168,15 +168,15 @@ export default function SignUpClient() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full rounded-lg border border-[#f5c518]/60 bg-[#f5c518]/20 px-4 py-3 text-sm font-semibold text-[#f5c518] transition hover:-translate-y-0.5 hover:border-[#f5c518] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full rounded-lg border-2 border-yellow-400 bg-yellow-400 px-4 py-3 text-sm font-bold text-gray-900 transition hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Signing up...' : 'Sign Up'}
                     </button>
                 </form>
 
-                <p className="mt-6 text-center text-sm text-zinc-400">
+                <p className="mt-6 text-center text-sm text-gray-600">
                     Already have an account?{' '}
-                    <a href="/sign-in" className="text-[#f5c518] hover:underline">
+                    <a href="/sign-in" className="font-bold text-yellow-600 hover:text-yellow-700">
                         Sign in
                     </a>
                 </p>

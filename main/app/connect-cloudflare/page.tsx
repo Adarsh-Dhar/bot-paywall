@@ -218,6 +218,22 @@ export default function ConnectCloudflarePage() {
       // Generate a unique gatekeeper_secret for this domain
       const secret = generateGatekeeperSecret();
       // Save the project with gatekeeper_secret and payment info
+      // Convert entered MOVE amount to octas (smallest unit) before saving
+      function convertMoveToOctas(input: string): string | undefined {
+        const trimmed = input.trim();
+        if (!trimmed) return undefined;
+        const value = Number(trimmed);
+        if (!Number.isFinite(value) || value < 0) {
+          setError('Invalid payment amount. Enter a non-negative MOVE amount, e.g., 0.01');
+          return undefined;
+        }
+        // 1 MOVE = 100,000,000 octas
+        const octas = Math.round(value * 100_000_000);
+        return String(octas);
+      }
+
+      const paymentAmountOctas = convertMoveToOctas(paymentAmount);
+
       const saveResult = await saveProjectWithToken(
         validatedUrl,
         projectApiToken.trim(),
@@ -225,7 +241,7 @@ export default function ConnectCloudflarePage() {
         selectedZone.nameservers,
         secret,
         paymentAddress.trim() || undefined,
-        paymentAmount.trim() || undefined
+        paymentAmountOctas
       );
       // Store the secret in state for display
       setGatekeeperSecret(secret);
@@ -582,19 +598,19 @@ export default function ConnectCloudflarePage() {
               {/* Payment Amount */}
               <div>
                 <label htmlFor="paymentAmount" className="block text-sm font-bold text-gray-900 mb-2">
-                  Payment Amount (in octas) <span className="text-gray-500 text-xs">(Optional)</span>
+                  Payment Amount (MOVE) <span className="text-gray-500 text-xs">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   id="paymentAmount"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="1000000"
+                  placeholder="0.01"
                   className="w-full px-4 py-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-yellow-200 focus:border-yellow-400 placeholder-gray-500 font-mono text-sm"
                   disabled={lookingUpZone}
                 />
                 <p className="mt-2 text-xs text-gray-600 font-medium">
-                  The payment amount in octas (smallest unit). 1000000 octas = 0.01 MOVE. Leave empty to use default.
+                  The payment amount in MOVE tokens. Example: 0.01 MOVE. Leave empty to use default.
                 </p>
               </div>
 

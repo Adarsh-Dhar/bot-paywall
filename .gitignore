@@ -119,3 +119,5 @@ Thumbs.db
 
 # tests
 /coverage
+.vercel
+.env*.local

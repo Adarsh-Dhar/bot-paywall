@@ -6,6 +6,7 @@ Provides the primary interface for interacting with bot-paywall services.
 
 import time
 from typing import Optional, Dict, Any, List
+from urllib.parse import quote_plus
 
 import requests
 
@@ -60,9 +61,13 @@ class BotPaywallClient:
             retry_delay: Seconds between retries
             **kwargs: Additional configuration options
         """
+        # Normalize base URLs to avoid double slashes in requests
+        normalized_access = (access_server_url or "").rstrip('/')
+        normalized_main = (main_app_url or "").rstrip('/')
+
         self.config = BotPaywallConfig(
-            access_server_url=access_server_url,
-            main_app_url=main_app_url,
+            access_server_url=normalized_access,
+            main_app_url=normalized_main,
             private_key=private_key,
             wait_after_payment=wait_after_payment,
             max_retries=max_retries,
@@ -91,7 +96,8 @@ class BotPaywallClient:
     def get_project_by_secret_key(self, secret_key: str) -> Optional[Dict[str, Any]]:
         """Fetch project details using a project's `secret_key`."""
         try:
-            url = f"{self.config.main_app_url}/api/projects/public?secretKey={secret_key}"
+            # URL-encode secret key to be safe and use normalized base
+            url = f"{self.config.main_app_url}/api/projects/public?secretKey={quote_plus(secret_key)}"
             log(f"Fetching project details by secret key...", "INFO")
             response = self.session.get(url, timeout=self.config.request_timeout)
 
@@ -172,7 +178,8 @@ class BotPaywallClient:
                 log(f"Could not extract domain from: {project_url_or_domain}", "ERROR")
                 return None
 
-            url = f"{self.config.main_app_url}/api/projects/public?domain={domain}"
+            # URL-encode domain in query params
+            url = f"{self.config.main_app_url}/api/projects/public?domain={quote_plus(domain)}"
 
             log(f"Fetching credentials for domain {domain}...", "INFO")
             response = self.session.get(url, timeout=self.config.request_timeout)

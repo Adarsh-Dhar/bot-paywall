@@ -270,7 +270,7 @@ export async function getCloudflareTokenStatus(): Promise<{ hasToken: boolean; i
     if (!authResult) return { hasToken: false, isActive: false };
 
     const projectWithToken = await prisma.project.findFirst({
-      where: { userId: authResult.userId, api_token: { not: null } },
+      where: { userId: authResult.userId, api_token: { not: null as any } },
       select: { api_token: true, updatedAt: true },
     });
 

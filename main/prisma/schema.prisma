@@ -28,7 +28,7 @@ model Project {
   secretKey      String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  api_token      String
+  api_token      String?
   paymentAddress String?       // MOVE token payment address
   paymentAmount  String?       // Payment amount in octas (smallest unit)
   user           User          @relation(fields: [userId], references: [userId], onDelete: Cascade)

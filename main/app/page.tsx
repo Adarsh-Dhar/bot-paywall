@@ -25,6 +25,7 @@ export default async function Home() {
     nameservers: string;
     lastUpdated: string;
     websiteUrl?: string | null;
+    requestsCount: number;
   };
 
   const protectedDomains: DomainView[] = projects?.map((project) => ({
@@ -34,6 +35,7 @@ export default async function Home() {
     nameservers: 'Cloudflare NS',
     lastUpdated: new Date(project.updatedAt).toLocaleDateString(),
     websiteUrl: project.websiteUrl,
+    requestsCount: 0,
   })) || [];
 
   return (

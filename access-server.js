@@ -6,20 +6,36 @@ import "dotenv/config";
 
 // Startup diagnostic
 const ACCESS_SERVER_URL = process.env.ACCESS_SERVER_URL;
-const urlObj = new URL(ACCESS_SERVER_URL);
-const PORT = parseInt(urlObj.port) || 5000;
+
+// Derive PORT from environment first, then from ACCESS_SERVER_URL, finally default
+let PORT;
+let derivedPort;
+try {
+  if (process.env.PORT) {
+    derivedPort = parseInt(process.env.PORT);
+  } else if (ACCESS_SERVER_URL) {
+    const urlObj = new URL(ACCESS_SERVER_URL);
+    derivedPort = parseInt(urlObj.port);
+  }
+} catch (e) {
+  console.warn("Invalid ACCESS_SERVER_URL; falling back to default port:", e.message);
+}
+PORT = Number.isFinite(derivedPort) ? derivedPort : 5000;
 
 console.log('Startup diagnostic:', {
   has_ACCESS_SERVER_API_KEY: !!process.env.ACCESS_SERVER_API_KEY,
   has_MAIN_APP_API_URL: !!process.env.MAIN_APP_API_URL,
-  ACCESS_SERVER_URL: ACCESS_SERVER_URL
+  has_PORT_env: !!process.env.PORT,
+  ACCESS_SERVER_URL: ACCESS_SERVER_URL,
+  PORT_in_use: PORT
 });
 
 const app = express();
 
 // Main app API configuration
 const MAIN_APP_CONFIG = {
-  API_BASE_URL: process.env.MAIN_APP_API_URL ,
+  // Trim trailing slashes to avoid double-slash URLs
+  API_BASE_URL: (process.env.MAIN_APP_API_URL || '').replace(/\/+$/, ''),
   ACCESS_SERVER_API_KEY: process.env.ACCESS_SERVER_API_KEY?.trim() || ''
 };
 
@@ -709,7 +725,8 @@ app.get("/debug/cleanups", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 X402 ACCESS SERVER RUNNING AT ${ACCESS_SERVER_URL}`);
+  const serverAddressLog = ACCESS_SERVER_URL || `http://localhost:${PORT}`;
+  console.log(`🚀 X402 ACCESS SERVER RUNNING AT ${serverAddressLog}`);
   console.log(`🔗 Connected to Main App: ${MAIN_APP_CONFIG.API_BASE_URL}`);
   console.log(`⚠️  STRICT MODE: Database configuration only (no .env fallback)`);
 });

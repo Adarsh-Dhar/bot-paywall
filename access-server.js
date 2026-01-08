@@ -5,7 +5,7 @@ import fetch from "node-fetch";
 import "dotenv/config";
 
 // Startup diagnostic
-const ACCESS_SERVER_URL = process.env.ACCESS_SERVER_URL || 'http://localhost:5000';
+const ACCESS_SERVER_URL = process.env.ACCESS_SERVER_URL;
 const urlObj = new URL(ACCESS_SERVER_URL);
 const PORT = parseInt(urlObj.port) || 5000;
 

@@ -19,7 +19,8 @@ from botpaywall.utils import extract_domain_from_url  #added
 
 # Load environment variables from .env file
 from pathlib import Path
-env_path = Path(__file__).parent / '.env'
+# Point to the .env file at the root of bot-paywall directory (3 levels up)
+env_path = Path(__file__).parent.parent.parent.parent / '.env'
 if env_path.exists():
     with open(env_path) as f:
         for line in f:
@@ -38,8 +39,8 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 CONFIG = {
-    'access_server_url': "http://localhost:5000",
-    'main_app_url': "http://localhost:3000",
+    'access_server_url': os.getenv("ACCESS_SERVER_URL"),
+    'main_app_url': os.getenv("MAIN_APP_API_URL"),
     'max_retries': 3,
     # Wait for Cloudflare rule propagation
     'wait_after_payment': 10,

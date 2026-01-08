@@ -39,8 +39,8 @@ class BotPaywallClient:
 
     def __init__(
         self,
-        access_server_url: str = "http://localhost:5000",
-        main_app_url: str = "http://localhost:3000",
+        access_server_url: str = os.getenv("ACCESS_SERVER_URL"),
+        main_app_url: str = os.getenv("MAIN_APP_API_URL"),
         private_key: Optional[str] = None,
         secret_key: Optional[str] = None,
         wait_after_payment: int = 10,

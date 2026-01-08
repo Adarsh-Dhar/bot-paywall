@@ -9,7 +9,7 @@
 
 import fetch from 'node-fetch';
 
-const ACCESS_SERVER_URL = process.env.ACCESS_SERVER_URL || 'http://localhost:5000';
+const ACCESS_SERVER_URL = process.env.ACCESS_SERVER_URL;
 const TEST_DOMAIN = process.argv[2] || 'test-cloudflare-website.adarsh.software';
 const TEST_IP = process.argv[3] || '192.168.1.100';
 

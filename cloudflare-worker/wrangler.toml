@@ -7,4 +7,4 @@ binding = "PAYWALL_DB"
 id = "f573def1f793421a800f1551bdc53378"
 
 [vars]
-API_BASE_URL = "https://215d5dcbf860.ngrok-free.app"
+API_BASE_URL = "https://bot-paywall.adarsh.software/"
